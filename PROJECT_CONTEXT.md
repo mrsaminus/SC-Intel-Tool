@@ -264,7 +264,10 @@ Additional quantization JSON files exist for other minerals.
 * Pirate
 * Scammer
 * NOVA
-* NAF
+* Defence
+* Relief
+* Skyline
+* Frontiers
 * Core
 * B.A.L.D.E.R.
 

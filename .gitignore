@@ -13,6 +13,9 @@ venv/
 # Local database
 sc_intel.db
 
+# Reference-only extracted tools/data
+reference_material/
+
 # OS junk
 .DS_Store
 Thumbs.db
