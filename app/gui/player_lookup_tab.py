@@ -1,66 +1,32 @@
-from dataclasses import replace
-from datetime import datetime, timedelta
-from itertools import combinations
-
 import requests
-from PySide6.QtCore import Qt, QTimer, QUrl
-from PySide6.QtGui import QColor, QDesktopServices, QPixmap
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QDesktopServices, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
-    QAbstractItemView,
     QComboBox,
     QFrame,
     QGridLayout,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QLineEdit,
-    QMainWindow,
     QMessageBox,
     QPushButton,
     QScrollArea,
     QSizePolicy,
-    QStackedWidget,
-    QTabWidget,
-    QTableWidget,
-    QTableWidgetItem,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
 
 from app.database import (
-    clear_lookup_history,
-    delete_lookup_history,
-    get_lookup_history,
     get_note,
-    init_db,
     save_lookup,
     save_note,
 )
-from app.cstone_client import (
-    CSTONE_HOME_URL,
-    CStoneError,
-    cstone_category_labels,
-    cstone_category_url,
-    fetch_cstone_item_locations,
-    fetch_cstone_items,
-)
-from app.mining_data import load_mining_data
 from app.rsi_lookup import RSILookupError, lookup_player
-from app.scfocus_client import SCFOCUS_SHIPS_URL, fetch_scfocus_ship_items
-from app.uex_client import UEXError, fetch_commodity_sell_prices
 
 from .constants import (
-    GEM_SELLING_MATERIALS,
     IMAGE_HEADERS,
-    REFINERY_METHODS,
-    REFINERY_METHOD_YIELD_FALLBACKS,
-    REFINERY_STATIONS,
-    SALVAGE_REFINERY_DETAILS,
-    SALVAGE_REFINERY_MATERIALS,
-    SHIP_ORE_MATERIALS,
-    SHIP_REFINERY_MATERIALS,
     TAG_COLORS,
 )
 from .workers import BackgroundTaskMixin

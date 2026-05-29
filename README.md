@@ -6,15 +6,21 @@ SC Intel Tool is a Star Citizen desktop utility for player intel, organization c
 
 The app is in active alpha development. Player Lookup, Search History, Mining & Salvage, and Item Finder are usable, while Trading, Watchlists, and OCR are planned.
 
-## Run From Source
+## Install And Run
+
+### Development / Source Install
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe main.py
+pip install -r requirements.txt
+python main.py
 ```
 
 Full Mining & Salvage reference data expects the local `reference_material/mining_warchest` folder used by the maintainer build.
+
+### Packaged Release
+
+Download the packaged release from [GitHub Releases](https://github.com/mrsaminus/SC-Intel-Tool/releases). For portable ZIP releases, extract the ZIP and run the executable inside the extracted folder. For current single-executable alpha releases, download and run the Windows executable directly.
 
 ## Updates
 
@@ -30,7 +36,15 @@ release metadata must be public for normal users.
 Packaged Windows builds can install updates from the Settings tab. The app
 downloads the newest Windows executable, closes itself, replaces the old
 executable, and starts again. Source/developer installs should update with git
-manually.
+manually using `git pull`.
+
+Packaged builds store user data outside the install folder, so updates should preserve notes and lookup history.
+
+## Privacy
+
+SC Intel Tool has no telemetry, analytics, tracking, or user reporting. Player notes, lookup history, settings, and local database data are not sent to the developer.
+
+The app only makes outbound requests to public Star Citizen-related data sources needed for its features: RSI, UEX, Cornerstone, SC Focus, and GitHub Releases for update checking. All user data remains local unless the user explicitly exports it.
 
 ## User Data
 
