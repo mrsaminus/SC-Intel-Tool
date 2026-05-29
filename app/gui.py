@@ -234,7 +234,7 @@ IMAGE_HEADERS = {
     "User-Agent": "Mozilla/5.0 SC-Intel-Tool",
 }
 
-SHIP_REFINERY_MATERIALS = [
+SHIP_ORE_MATERIALS = [
     ("QUAN", "Quantainium"),
     ("STIL", "Stileron"),
     ("SAVR", "Savrilium"),
@@ -262,6 +262,48 @@ SHIP_REFINERY_MATERIALS = [
     ("SILI", "Silicon"),
     ("INER", "Inert Materials"),
 ]
+
+SALVAGE_REFINERY_MATERIALS = [
+    ("RUBL", "Construction Rubble"),
+    ("PIEC", "Construction Pieces"),
+    ("CSAL", "Construction Salvage"),
+]
+
+GEM_SELLING_MATERIALS = [
+    ("JANA", "Janalite"),
+    ("HADA", "Hadanite"),
+    ("FEYN", "Feynmaline"),
+    ("BERA", "Beradom"),
+    ("DOLV", "Dolivine"),
+    ("GLAC", "Glacosite"),
+    ("APHO", "Aphorite"),
+    ("CARI", "Caranite"),
+    ("JACL", "Jaclium"),
+    ("SALD", "Saldynium"),
+]
+
+SHIP_REFINERY_MATERIALS = SHIP_ORE_MATERIALS + SALVAGE_REFINERY_MATERIALS + GEM_SELLING_MATERIALS
+
+SALVAGE_REFINERY_DETAILS = {
+    "Construction Rubble": {
+        "density": "Highest density",
+        "yield": "Lowest yield",
+        "time": "Fastest refinery processing time",
+        "yield_multiplier": 0.7,
+    },
+    "Construction Pieces": {
+        "density": "Medium density",
+        "yield": "Medium yield",
+        "time": "Medium refinery processing time",
+        "yield_multiplier": 1.0,
+    },
+    "Construction Salvage": {
+        "density": "Lowest density",
+        "yield": "Highest yield",
+        "time": "Longest refinery processing time",
+        "yield_multiplier": 1.3,
+    },
+}
 
 REFINERY_STATIONS = [
     "Any refinery",
@@ -331,7 +373,7 @@ class MainWindow(QMainWindow):
 
         self.tabs.addTab(self.player_tab, "Player Lookup")
         self.tabs.addTab(self.history_tab, "Search History")
-        self.tabs.addTab(self.mining_tab, "Mining")
+        self.tabs.addTab(self.mining_tab, "Mining & Salvage")
         self.tabs.addTab(self.trading_tab, "Trading")
         self.tabs.addTab(self.item_finder_tab, "Item Finder")
         self.tabs.addTab(self.notes_tab, "Notes")
@@ -1581,6 +1623,7 @@ class MiningTab(QWidget):
             for method in self.mining_data.refinery_methods
         }
         self.uex_prices = {}
+        self.uex_price_lists = {}
         self.refinery_sessions = {}
         self.refinery_completed_sessions = []
         self.refinery_tab_session_ids = []
@@ -1598,8 +1641,8 @@ class MiningTab(QWidget):
         layout.setSpacing(12)
 
         header = self.create_module_header(
-            "Mining Intelligence",
-            "Ore search, locations, refining, rock breaking, equipment and profit tools.",
+            "Mining & Salvage Intelligence",
+            "Ore search, salvage resources, refining, rock breaking, equipment and profit tools.",
         )
         layout.addWidget(header)
 
@@ -1820,6 +1863,7 @@ class MiningTab(QWidget):
             "Best UEX Terminal",
             "Notes",
         ])
+        self.ore_results_table.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self.ore_results_table, 1)
         self.ore_empty_label = self.create_empty_state("No ore results match the current filters.")
         layout.addWidget(self.ore_empty_label)
@@ -1978,26 +2022,24 @@ class MiningTab(QWidget):
         setup_row.addWidget(self.refinery_method_filter, 1)
         input_layout.addLayout(setup_row)
 
-        material_label = QLabel("ORE CHOOSER")
-        material_label.setObjectName("sectionTitle")
-        input_layout.addWidget(material_label)
+        self.add_refinery_material_section(input_layout, "ORE CHOOSER", SHIP_ORE_MATERIALS, columns=6)
+        self.add_refinery_material_section(input_layout, "SALVAGE", SALVAGE_REFINERY_MATERIALS, columns=3)
+        self.add_refinery_material_section(
+            input_layout,
+            "GEM SELLING (NO REFINING)",
+            GEM_SELLING_MATERIALS,
+            columns=5,
+        )
 
-        material_grid = QGridLayout()
-        material_grid.setHorizontalSpacing(6)
-        material_grid.setVerticalSpacing(6)
-        for index, (code, material) in enumerate(SHIP_REFINERY_MATERIALS):
-            button = QPushButton(code)
-            button.setToolTip(material)
-            button.clicked.connect(lambda checked=False, selected=material: self.add_refinery_material(selected))
-            material_grid.addWidget(button, index // 6, index % 6)
-
+        material_actions = QHBoxLayout()
         all_button = QPushButton("ALL")
         all_button.clicked.connect(self.add_all_refinery_materials)
         none_button = QPushButton("NONE")
         none_button.clicked.connect(self.clear_refinery_session)
-        material_grid.addWidget(all_button, 5, 0)
-        material_grid.addWidget(none_button, 5, 1)
-        input_layout.addLayout(material_grid)
+        material_actions.addWidget(all_button)
+        material_actions.addWidget(none_button)
+        material_actions.addStretch(1)
+        input_layout.addLayout(material_actions)
 
         table_actions = QHBoxLayout()
         self.refinery_remove_material_button = QPushButton("Remove Selected Material")
@@ -2013,16 +2055,17 @@ class MiningTab(QWidget):
             "Yield (cSCU)",
             "Yield (SCU)",
             "UEX Sell",
-            "Gross",
+            "Sell Value",
         ])
         self.refinery_table.setSortingEnabled(False)
+        self.refinery_table.horizontalHeader().setStretchLastSection(True)
         self.refinery_table.setEditTriggers(
             QAbstractItemView.DoubleClicked
             | QAbstractItemView.SelectedClicked
             | QAbstractItemView.EditKeyPressed
         )
         input_layout.addWidget(self.refinery_table, 1)
-        self.refinery_empty_label = self.create_empty_state("No ore selected for this refining session.")
+        self.refinery_empty_label = self.create_empty_state("No material selected for this refining session.")
         input_layout.addWidget(self.refinery_empty_label)
 
         summary_card = self.create_filter_card("SELLING / PROFIT SUMMARY")
@@ -2058,7 +2101,7 @@ class MiningTab(QWidget):
         totals = [
             ("TOTAL QTY", self.refinery_total_qty_label),
             ("TOTAL YIELD", self.refinery_total_yield_label),
-            ("GROSS VALUE", self.refinery_gross_value_label),
+            ("SELL VALUE", self.refinery_gross_value_label),
             ("REFINERY FEE", self.refinery_fee_input),
             ("NET VALUE", self.refinery_net_value_label),
             ("REFINERY TIME", self.refinery_time_input),
@@ -2077,14 +2120,33 @@ class MiningTab(QWidget):
         timer_row.addWidget(self.refinery_timer_start_button)
         timer_row.addWidget(self.refinery_timer_reset_button)
         summary_layout.addLayout(timer_row)
+
+        sell_locations_label = QLabel("SELL LOCATION OPTIONS")
+        sell_locations_label.setObjectName("sectionTitle")
+        summary_layout.addWidget(sell_locations_label)
+        self.refinery_sell_locations_table = self.create_table([
+            "Location",
+            "Sell Value",
+            "Materials",
+        ])
+        self.refinery_sell_locations_table.setSortingEnabled(False)
+        self.refinery_sell_locations_table.setMinimumHeight(150)
+        self.refinery_sell_locations_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.refinery_sell_locations_table.horizontalHeader().setStretchLastSection(False)
+        summary_layout.addWidget(self.refinery_sell_locations_table, 1)
+        self.refinery_sell_locations_empty_label = self.create_empty_state(
+            "Refresh UEX For Session to see matching sell locations."
+        )
+        summary_layout.addWidget(self.refinery_sell_locations_empty_label)
+
         hint = QLabel(
             "Enter ore QTY in either cSCU or SCU. Yield is auto-estimated from refinery station and method; "
-            "you can still edit Yield if the in-game quote differs. Gross value uses the best live UEX sell price in memory."
+            "you can still edit Yield if the in-game quote differs. Gems use QTY directly because they are sold, not refined. "
+            "Sell value uses the best live UEX sell price in memory."
         )
         hint.setObjectName("moduleSubtitle")
         hint.setWordWrap(True)
         summary_layout.addWidget(hint)
-        summary_layout.addStretch(1)
 
         content.addWidget(input_card, 2)
         content.addWidget(summary_card, 1)
@@ -2097,6 +2159,23 @@ class MiningTab(QWidget):
         layout.addWidget(self.refinery_stack, 1)
         widget.setLayout(layout)
         return widget
+
+    def add_refinery_material_section(self, parent_layout, title, materials, columns=6):
+        label = QLabel(title)
+        label.setObjectName("sectionTitle")
+        parent_layout.addWidget(label)
+
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(6)
+        grid.setVerticalSpacing(6)
+        for index, (code, material) in enumerate(materials):
+            button = QPushButton(code)
+            button.setToolTip(self.refinery_material_tooltip(material))
+            button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            button.clicked.connect(lambda checked=False, selected=material: self.add_refinery_material(selected))
+            grid.addWidget(button, index // columns, index % columns)
+
+        parent_layout.addLayout(grid)
 
     def build_refinery_history_widget(self):
         widget = QWidget()
@@ -2119,7 +2198,7 @@ class MiningTab(QWidget):
             "Method",
             "QTY",
             "Yield",
-            "Gross",
+            "Sell Value",
             "Net",
             "Saved",
         ])
@@ -2165,6 +2244,7 @@ class MiningTab(QWidget):
             "Notes",
         ])
         self.rock_table.setSortingEnabled(False)
+        self.rock_table.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self.rock_table, 1)
         self.rock_empty_label = self.create_empty_state("No rock-breaking setups match the current filters.")
         layout.addWidget(self.rock_empty_label)
@@ -2182,8 +2262,8 @@ class MiningTab(QWidget):
         row = QHBoxLayout()
         self.equipment_search_input = QLineEdit()
         self.equipment_search_input.setPlaceholderText("Search equipment...")
-        self.equipment_type_filter = self.create_combo(["All equipment", "Laser", "Module", "Gadget"])
-        self.equipment_size_filter = self.create_combo(["Any size", "S0", "S1", "S2", "S3"])
+        self.equipment_type_filter = self.create_combo(["All equipment", "Laser", "Module", "Gadget", "Salvage"])
+        self.equipment_size_filter = self.create_combo(["Any size", "FPS", "S0", "S1", "S2", "S3", "N/A"])
         row.addWidget(self.equipment_search_input, 1)
         row.addWidget(self.equipment_type_filter)
         row.addWidget(self.equipment_size_filter)
@@ -2898,15 +2978,25 @@ class MiningTab(QWidget):
         for row_index, material in enumerate(sorted(materials)):
             entry = materials[material]
             price = self.uex_prices.get(material.lower())
-            gross_value = self.refinery_material_value(material, entry.get("yield_cscu", 0))
+            sell_only = self.is_sell_only_refinery_material(material, session)
+            sell_value = self.refinery_material_value(
+                material,
+                self.refinery_sell_quantity_cscu(material, entry, session),
+            )
+            yield_cscu_item = self.read_only_item("N/A") if sell_only else self.editable_number_item(
+                entry.get("yield_cscu", 0)
+            )
+            yield_scu_item = self.read_only_item("N/A") if sell_only else self.editable_number_item(
+                self.format_scu_from_cscu(entry.get("yield_cscu", 0))
+            )
             row_items = [
                 self.read_only_item(material, material),
                 self.editable_number_item(entry.get("qty_cscu", 0)),
                 self.editable_number_item(self.format_scu_from_cscu(entry.get("qty_cscu", 0))),
-                self.editable_number_item(entry.get("yield_cscu", 0)),
-                self.editable_number_item(self.format_scu_from_cscu(entry.get("yield_cscu", 0))),
+                yield_cscu_item,
+                yield_scu_item,
                 self.read_only_item(self.format_price(price.price_sell if price else None)),
-                self.read_only_item(self.format_auec_amount(gross_value)),
+                self.read_only_item(self.format_auec_amount(sell_value)),
             ]
             row_items[0].setToolTip(entry.get("code", material))
             for col_index, table_item in enumerate(row_items):
@@ -2921,7 +3011,11 @@ class MiningTab(QWidget):
     def update_refinery_row_value(self, row, material):
         session = self.refinery_session()
         entry = session["materials"].get(material, {})
-        gross_value = self.refinery_material_value(material, entry.get("yield_cscu", 0))
+        sell_only = self.is_sell_only_refinery_material(material, session)
+        sell_value = self.refinery_material_value(
+            material,
+            self.refinery_sell_quantity_cscu(material, entry, session),
+        )
         qty_cscu_item = self.refinery_table.item(row, 1)
         qty_scu_item = self.refinery_table.item(row, 2)
         yield_cscu_item = self.refinery_table.item(row, 3)
@@ -2936,10 +3030,10 @@ class MiningTab(QWidget):
         if qty_scu_item:
             qty_scu_item.setText(self.format_scu_from_cscu(entry.get("qty_cscu", 0)))
         if yield_cscu_item:
-            yield_cscu_item.setText(self.format_number(entry.get("yield_cscu", 0)))
+            yield_cscu_item.setText("N/A" if sell_only else self.format_number(entry.get("yield_cscu", 0)))
         if yield_scu_item:
-            yield_scu_item.setText(self.format_scu_from_cscu(entry.get("yield_cscu", 0)))
-        gross_item.setText(self.format_auec_amount(gross_value))
+            yield_scu_item.setText("N/A" if sell_only else self.format_scu_from_cscu(entry.get("yield_cscu", 0)))
+        gross_item.setText(self.format_auec_amount(sell_value))
         self.loading_refinery_table = False
 
     def update_refinery_summary(self):
@@ -2972,17 +3066,106 @@ class MiningTab(QWidget):
             self.refinery_price_status_label.setText(
                 "All selected materials have live UEX prices in memory only."
             )
+        self.populate_refinery_sell_locations(session)
 
     def refinery_session_totals(self, session):
         materials = session.get("materials", {})
         total_qty = sum(entry.get("qty_cscu", 0) for entry in materials.values())
-        total_yield = sum(entry.get("yield_cscu", 0) for entry in materials.values())
+        total_yield = sum(
+            0 if self.is_sell_only_refinery_material(material, session) else entry.get("yield_cscu", 0)
+            for material, entry in materials.items()
+        )
         gross_value = sum(
-            self.refinery_material_value(material, entry.get("yield_cscu", 0))
+            self.refinery_material_value(
+                material,
+                self.refinery_sell_quantity_cscu(material, entry, session),
+            )
             for material, entry in materials.items()
         )
         fee = session.get("fee", 0)
         return total_qty, total_yield, gross_value, gross_value - fee
+
+    def populate_refinery_sell_locations(self, session=None):
+        if not hasattr(self, "refinery_sell_locations_table"):
+            return
+
+        session = session or self.refinery_session()
+        grouped_locations = {}
+        has_sell_quantity = False
+        has_price_rows = False
+        for material, entry in session.get("materials", {}).items():
+            sell_quantity = self.refinery_sell_quantity_cscu(material, entry, session)
+            if sell_quantity <= 0:
+                continue
+
+            has_sell_quantity = True
+            prices = self.uex_price_lists.get(material.lower(), [])
+            has_price_rows = has_price_rows or bool(prices)
+            for price in prices:
+                if not price.price_sell:
+                    continue
+
+                key = (
+                    price.star_system_name,
+                    price.location_name,
+                    price.terminal_name,
+                )
+                location = grouped_locations.setdefault(key, {
+                    "label": self.format_uex_terminal(price),
+                    "materials": [],
+                    "value": 0.0,
+                })
+                value = self.refinery_material_value_from_price(sell_quantity, price.price_sell)
+                location["value"] += value
+                location["materials"].append(f"{material} ({self.format_auec_amount(value)})")
+
+        rows = sorted(
+            grouped_locations.values(),
+            key=lambda location: location["value"],
+            reverse=True,
+        )[:12]
+
+        self.refinery_sell_locations_table.setRowCount(len(rows))
+        for row_index, row in enumerate(rows):
+            row_values = [
+                row["label"],
+                self.format_auec_amount(row["value"]),
+                ", ".join(row["materials"]),
+            ]
+            for column_index, value in enumerate(row_values):
+                item = QTableWidgetItem(str(value))
+                item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                if column_index == 1:
+                    item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                self.refinery_sell_locations_table.setItem(row_index, column_index, item)
+
+        if not rows:
+            if not session.get("materials"):
+                empty_text = "Add materials to see sell location options."
+            elif not has_sell_quantity:
+                empty_text = "Enter QTY to calculate sell location values."
+            elif not has_price_rows:
+                empty_text = "Refresh UEX For Session to see matching sell locations."
+            else:
+                empty_text = "No matching UEX sell locations found for the selected materials."
+            self.refinery_sell_locations_empty_label.setText(empty_text)
+
+        self.refinery_sell_locations_empty_label.setVisible(not rows)
+        self.refinery_sell_locations_table.setVisible(bool(rows))
+        if rows:
+            self.resize_refinery_sell_location_columns()
+
+    def resize_refinery_sell_location_columns(self):
+        header = self.refinery_sell_locations_table.horizontalHeader()
+        for column in range(self.refinery_sell_locations_table.columnCount()):
+            header.setSectionResizeMode(column, QHeaderView.ResizeToContents)
+
+        self.refinery_sell_locations_table.resizeColumnsToContents()
+        padding = 18
+        for column in range(self.refinery_sell_locations_table.columnCount()):
+            width = self.refinery_sell_locations_table.columnWidth(column) + padding
+            self.refinery_sell_locations_table.setColumnWidth(column, width)
+            header.setSectionResizeMode(column, QHeaderView.Interactive)
 
     def refresh_refinery_uex_prices(self):
         materials = sorted(self.refinery_session()["materials"])
@@ -3007,6 +3190,7 @@ class MiningTab(QWidget):
                 failed.append(f"{material}: {exc}")
                 continue
 
+            self.uex_price_lists[material.lower()] = prices
             self.uex_prices[material.lower()] = prices[0] if prices else None
             refreshed += 1
 
@@ -3179,6 +3363,19 @@ class MiningTab(QWidget):
 
         return material[:4].upper()
 
+    def refinery_material_tooltip(self, material):
+        if self.is_gem_selling_material(material):
+            return f"{material}\nGem selling only. Cannot be refined; value uses QTY."
+
+        details = SALVAGE_REFINERY_DETAILS.get(material)
+        if not details:
+            return material
+
+        return (
+            f"{material}\n"
+            f"{details['density']} | {details['yield']} | {details['time']}"
+        )
+
     def select_refinery_material(self, material):
         for row in range(self.refinery_table.rowCount()):
             item = self.refinery_table.item(row, 0)
@@ -3186,16 +3383,41 @@ class MiningTab(QWidget):
                 self.refinery_table.selectRow(row)
                 return
 
+    def is_gem_selling_material(self, material):
+        return any(candidate == material for _, candidate in GEM_SELLING_MATERIALS)
+
+    def is_no_refinery_session(self, session=None):
+        if session is not None:
+            station_text = session.get("station", "")
+        elif hasattr(self, "refinery_station_filter"):
+            station_text = self.refinery_station_filter.currentText()
+        else:
+            station_text = ""
+
+        return str(station_text).startswith("No Refinery")
+
+    def is_sell_only_refinery_material(self, material, session=None):
+        return self.is_gem_selling_material(material) or self.is_no_refinery_session(session)
+
+    def refinery_sell_quantity_cscu(self, material, entry, session=None):
+        if self.is_sell_only_refinery_material(material, session):
+            return self.parse_float(entry.get("qty_cscu", 0))
+
+        return self.parse_float(entry.get("yield_cscu", 0))
+
     def refinery_material_value(self, material, yield_cscu):
         price = self.uex_prices.get(material.lower())
         if not price or not price.price_sell:
             return 0.0
 
-        return (self.parse_float(yield_cscu) / 100) * price.price_sell
+        return self.refinery_material_value_from_price(yield_cscu, price.price_sell)
+
+    def refinery_material_value_from_price(self, quantity_cscu, price_sell):
+        return (self.parse_float(quantity_cscu) / 100) * self.parse_float(price_sell)
 
     def calculate_refinery_yield(self, material, qty_cscu):
         qty = self.parse_float(qty_cscu)
-        if qty <= 0 or self.refinery_station_filter.currentText().startswith("No Refinery"):
+        if qty <= 0 or self.is_sell_only_refinery_material(material):
             return 0.0
 
         method = self.selected_refinery_method()
@@ -3208,7 +3430,8 @@ class MiningTab(QWidget):
 
         station = self.selected_refinery_station()
         bonus = station.bonuses.get(self.canonical_refinery_material(material), 0.0) if station else 0.0
-        return max(0.0, float(round(qty * method_yield * (1 + bonus))))
+        salvage_multiplier = SALVAGE_REFINERY_DETAILS.get(material, {}).get("yield_multiplier", 1.0)
+        return max(0.0, float(round(qty * method_yield * (1 + bonus) * salvage_multiplier)))
 
     def selected_refinery_station(self):
         return self.refinery_station_lookup.get(

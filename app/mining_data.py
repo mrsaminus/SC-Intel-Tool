@@ -65,6 +65,63 @@ NYX_HINTS = {
     "rock breaker",
 }
 
+SALVAGE_EQUIPMENT = [
+    {
+        "name": "Abrade Scraper Module",
+        "price": 21250,
+        "shop_count": 6,
+        "best_shop": "Dumper's Depot - Area18",
+        "best_location": "Stanton - ArcCorp - Area18",
+        "effect": "Hull scraping module; speed x3.5, efficiency 340.",
+        "notes": "Greycat scraper module. Good general RMC collection.",
+    },
+    {
+        "name": "Cinch Scraper Module",
+        "price": 11150,
+        "shop_count": 7,
+        "best_shop": "Platinum Bay",
+        "best_location": "Stanton - ARC-L1",
+        "effect": "Precision hull scraping module; speed x1.5, efficiency 340.",
+        "notes": "Small focused scraper for careful hull stripping.",
+    },
+    {
+        "name": "Trawler Scraper Module",
+        "price": 29593,
+        "shop_count": 6,
+        "best_shop": "Platinum Bay - Everus Harbor",
+        "best_location": "Stanton - Hurston - Everus Harbor",
+        "effect": "Fast hull scraping module; speed x6, efficiency 340.",
+        "notes": "Built for speed over efficiency on larger salvage jobs.",
+    },
+    {
+        "name": "ReadyGrip Tractor Module",
+        "price": 10593,
+        "shop_count": 12,
+        "best_shop": "Cargo Services - Everus Harbor",
+        "best_location": "Stanton - Hurston - Everus Harbor",
+        "effect": "Tractor module for salvage laser heads.",
+        "notes": "Moves salvage/cargo while fitted to a salvage head.",
+    },
+    {
+        "name": "Cambio-Lite SRT Attachment",
+        "price": 375,
+        "shop_count": 49,
+        "best_shop": "Refinery Shop - Pyro Gateway",
+        "best_location": "Nyx - Pyro Gateway",
+        "effect": "FPS salvage and repair attachment for the Pyro RYT Multi-Tool.",
+        "notes": "Collects and converts scrap into RMC for sale or quick repairs.",
+    },
+    {
+        "name": "Cambio-Lite SRT Canister",
+        "price": 275,
+        "shop_count": 3,
+        "best_shop": "Tools & Supplies",
+        "best_location": "Nyx - People's Service Stations",
+        "effect": "Canister for storing RMC reclaimed with Cambio-Lite SRT.",
+        "notes": "Used with Pyro RYT Multi-Tool and Cambio-Lite SRT attachment.",
+    },
+]
+
 SCAN_SIGNATURE_SPECS = [
     ("Quantainium", "Legendary", 2, 3170),
     ("Stileron", "Legendary", 2, 3185),
@@ -657,6 +714,7 @@ def load_equipment_from_rock_data(path, shops, errors):
             elif equipment_type == "Gadget":
                 rock_gadgets.append(load_rock_modifier(item, "Gadget", str(name)))
 
+    append_salvage_equipment(equipment)
     return equipment, rock_lasers, rock_modules, rock_gadgets
 
 
@@ -674,6 +732,25 @@ def load_rock_modifier(item, modifier_type, name):
         optimal_charge_window=parse_float_value(item.get("OptimalChargeWindow")) or 1,
         cluster_modifier=parse_float_value(item.get("ClusterModifier")) or 1,
     )
+
+
+def append_salvage_equipment(equipment):
+    existing = {item.name.lower() for item in equipment}
+    for item in SALVAGE_EQUIPMENT:
+        if item["name"].lower() in existing:
+            continue
+
+        equipment.append(MiningEquipment(
+            name=item["name"],
+            equipment_type="Salvage",
+            size="FPS" if "Cambio" in item["name"] else "N/A",
+            price=item["price"],
+            shop_count=item["shop_count"],
+            best_shop=item["best_shop"],
+            best_location=item["best_location"],
+            effect=item["effect"],
+            notes=item["notes"],
+        ))
 
 
 def load_equipment_from_csv(path, errors):
