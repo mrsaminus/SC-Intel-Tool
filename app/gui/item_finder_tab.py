@@ -48,7 +48,7 @@ from app.cstone_client import (
 )
 from app.mining_data import load_mining_data
 from app.rsi_lookup import RSILookupError, lookup_player
-from app.scfocus_client import SCFOCUS_SHIPS_URL, fetch_scfocus_ship_items
+from app.scfocus_client import SCFOCUS_SHIPS_URL, WIKELO_CATEGORY, fetch_scfocus_ship_items
 from app.uex_client import UEXError, fetch_commodity_sell_prices
 
 from .constants import (
@@ -118,7 +118,8 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
             "All categories",
             "Ships for Sale",
             "Ships for Rent",
-            "Ships for Earning",
+            WIKELO_CATEGORY,
+            "Special Acquisition Ships",
             *cstone_category_labels(),
         ])
         row.addWidget(self.item_search_input, 1)
@@ -148,6 +149,8 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
             "Availability",
             "Summary",
         ])
+        self.item_results_table.horizontalHeader().setStretchLastSection(False)
+        self.item_results_table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         layout.addWidget(self.item_results_table, 1)
         self.item_empty_label = self.create_empty_state("No live item data loaded yet.")
         layout.addWidget(self.item_empty_label)
@@ -179,7 +182,7 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
 
         self.item_locations_table = self.create_table([
             "Location",
-            "Base Price",
+            "Price / Method",
             "Verified",
         ])
         layout.addWidget(self.item_locations_table, 1)
@@ -323,9 +326,11 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
                     table_item = QTableWidgetItem(str(value))
                     table_item.setFlags(table_item.flags() & ~Qt.ItemIsEditable)
                     table_item.setData(Qt.UserRole, row_index)
+                    table_item.setToolTip(str(value))
                     if col_index == 3:
                         table_item.setForeground(QColor("#68e6a5" if item.sold else "#7bb9c8"))
                     self.item_results_table.setItem(row_index, col_index, table_item)
+            self.item_results_table.resizeColumnsToContents()
         finally:
             self.item_results_table.setSortingEnabled(True)
             self.item_results_table.setUpdatesEnabled(True)
@@ -357,7 +362,7 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
         if len(pending) <= self.auto_availability_limit:
             return "Checking..."
 
-        return "Narrow search"
+        return "Filter more"
 
     def schedule_availability_autoload(self):
         if self.auto_loading_availability or self.availability_auto_load_scheduled:
@@ -369,8 +374,8 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
 
         if len(pending) > self.auto_availability_limit:
             self.finder_status_label.setText(
-                f"{len(pending)} visible Cornerstone rows need location counts. "
-                f"Narrow the search to {self.auto_availability_limit} or fewer and they load automatically."
+                f"{len(pending)} visible Cornerstone items need location counts. "
+                f"Keep filtering to {self.auto_availability_limit} or fewer items to load location counts automatically."
             )
             return
 
@@ -588,10 +593,12 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
                 table_item = QTableWidgetItem(str(value))
                 table_item.setFlags(table_item.flags() & ~Qt.ItemIsEditable)
                 table_item.setData(Qt.UserRole, row_index)
+                table_item.setToolTip(str(value))
                 if col_index == 1:
                     table_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 self.item_locations_table.setItem(row_index, col_index, table_item)
 
+        self.item_locations_table.resizeColumnsToContents()
         self.item_locations_table.setSortingEnabled(True)
         self.item_location_empty_label.setVisible(not self.finder_locations)
         if self.finder_locations:
@@ -637,7 +644,7 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
             QDesktopServices.openUrl(QUrl(SCFOCUS_SHIPS_URL))
             return
 
-        if not item and self.item_category_filter.currentText().startswith("Ships for "):
+        if not item and self.is_scfocus_ship_category(self.item_category_filter.currentText()):
             QDesktopServices.openUrl(QUrl(SCFOCUS_SHIPS_URL))
             return
 
@@ -650,11 +657,19 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
             return
 
         category = self.item_category_filter.currentText()
-        if category.startswith("Ships for "):
+        if self.is_scfocus_ship_category(category):
             QDesktopServices.openUrl(QUrl(SCFOCUS_SHIPS_URL))
             return
 
         QDesktopServices.openUrl(QUrl(cstone_category_url(category)))
+
+    def is_scfocus_ship_category(self, category):
+        return category in {
+            "Ships for Sale",
+            "Ships for Rent",
+            WIKELO_CATEGORY,
+            "Special Acquisition Ships",
+        }
 
     def open_selected_item(self):
         item = self.selected_item()

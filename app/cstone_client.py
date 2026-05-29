@@ -196,7 +196,7 @@ def fetch_cstone_item_locations(detail_url):
 
     locations = []
     for match in LOCATION_ROW_RE.finditer(response.text):
-        location = clean_html(match.group("location"))
+        location = normalize_location_text(clean_html(match.group("location")))
         price = format_grouped_numbers(clean_html(match.group("price")))
         verified = clean_html(match.group("verified"))
         href = html.unescape(match.group("href"))
@@ -295,7 +295,7 @@ def summarize_generic_cstone_item(record):
     parts = []
     for key, label in fields:
         value = record.get(key)
-        if value in (None, "", 0, 0.0):
+        if not is_meaningful_value(value):
             continue
         parts.append(f"{label} {format_number(value)}")
         if len(parts) == 4:
@@ -352,6 +352,21 @@ def format_number(value):
         return f"{numeric:.0f}"
 
     return f"{numeric:.2f}"
+
+
+def is_meaningful_value(value):
+    if value in (None, "", 0, 0.0):
+        return False
+
+    text = str(value).strip()
+    return bool(text) and text.lower() not in {"n/a", "na", "none", "-", "<", ">"}
+
+
+def normalize_location_text(value):
+    text = str(value or "")
+    text = re.sub(r"\s*[<>]\s*", " - ", text)
+    text = re.sub(r"\s*-\s*", " - ", text)
+    return re.sub(r"\s+", " ", text).strip(" -")
 
 
 def clean_html(value):

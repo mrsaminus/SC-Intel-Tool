@@ -5,13 +5,6 @@ TAG_COLORS = {
     "Hostile": ("#ff6b6b", "#331718"),
     "Pirate": ("#ff9f43", "#321f0d"),
     "Scammer": ("#ff5fd2", "#321329"),
-    "NOVA": ("#33dfff", "#092936"),
-    "Defence": ("#5aa8ff", "#10243a"),
-    "Relief": ("#58e6e6", "#0c2a2d"),
-    "Skyline": ("#b58cff", "#241737"),
-    "Frontiers": ("#5ee37d", "#102a18"),
-    "Core": ("#c7ff6b", "#24320e"),
-    "B.A.L.D.E.R.": ("#ffd166", "#32270b"),
 }
 
 IMAGE_HEADERS = {

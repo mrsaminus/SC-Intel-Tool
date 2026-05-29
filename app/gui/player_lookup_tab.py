@@ -176,13 +176,6 @@ class PlayerLookupTab(BackgroundTaskMixin, QWidget):
             "Hostile",
             "Pirate",
             "Scammer",
-            "NOVA",
-            "Defence",
-            "Relief",
-            "Skyline",
-            "Frontiers",
-            "Core",
-            "B.A.L.D.E.R.",
         ])
 
         self.open_profile_button = QPushButton("Open Profile")
@@ -474,7 +467,7 @@ class PlayerLookupTab(BackgroundTaskMixin, QWidget):
         saved_note = get_note(handle)
         if saved_note:
             tag, notes = saved_note
-            self.tag_box.setCurrentText(tag or "Unmarked")
+            self.tag_box.setCurrentText(tag if tag in TAG_COLORS else "Unmarked")
             self.notes_box.setPlainText(notes or "")
         else:
             self.tag_box.setCurrentText("Unmarked")

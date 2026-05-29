@@ -71,6 +71,11 @@ QTableWidget {
     selection-color: #ffffff;
 }
 
+QTableWidget::item {
+    padding-left: 6px;
+    padding-right: 6px;
+}
+
 QHeaderView::section {
     background: #0d2530;
     border: 0;

@@ -14,12 +14,12 @@ class NotesTab(QWidget):
         text = QTextEdit()
         text.setReadOnly(True)
         text.setPlainText(
-            "Global notes/watchlist kommer her.\n\n"
-            "Dette blir brukt til:\n"
+            "Global notes and watchlists will be available here.\n\n"
+            "Planned uses:\n"
             "- Watchlist\n"
             "- Hostile list\n"
             "- Friendly list\n"
-            "- NOVA/Defence/Relief/Skyline/Frontiers/Core/BALDER tagging"
+            "- Custom tags"
         )
 
         layout.addWidget(text)

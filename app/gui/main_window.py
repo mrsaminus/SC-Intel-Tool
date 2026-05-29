@@ -3,6 +3,7 @@ import sys
 from PySide6.QtWidgets import QApplication, QMainWindow, QTabWidget
 
 from app.database import init_db
+from app.version import APP_VERSION
 
 from .item_finder_tab import ItemFinderTab
 from .mining_tab import MiningTab
@@ -18,7 +19,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("SC Intel Tool")
+        self.setWindowTitle(f"SC Intel Tool {APP_VERSION}")
         self.setMinimumSize(1120, 780)
         self.setStyleSheet(APP_STYLE)
 

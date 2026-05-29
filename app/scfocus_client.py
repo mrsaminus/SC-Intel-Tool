@@ -9,6 +9,9 @@ from app.display_format import format_grouped_numbers
 
 SCFOCUS_SHIPS_URL = "https://scfocus.org/ship-sale-rental-locations-history/"
 SCFOCUS_TIMEOUT_SECONDS = 15
+WIKELO_CATEGORY = "Wikelo"
+SPECIAL_ACQUISITION_CATEGORY = "Special Acquisition Ships"
+SPECIAL_ACQUISITION_CATEGORIES = {WIKELO_CATEGORY, SPECIAL_ACQUISITION_CATEGORY}
 
 
 @dataclass(frozen=True)
@@ -63,7 +66,7 @@ def fetch_scfocus_ship_items():
             if not parsed:
                 continue
 
-            ship_name, location = parsed
+            ship_name, location, category = parsed
             key = (category, ship_name.lower())
             group = groups.setdefault(key, {
                 "name": ship_name,
@@ -82,7 +85,7 @@ def fetch_scfocus_ship_items():
             name=name,
             category=category,
             size="Ship",
-            sold=category != "Ships for Earning",
+            sold=category not in SPECIAL_ACQUISITION_CATEGORIES,
             detail_url=SCFOCUS_SHIPS_URL,
             category_url=SCFOCUS_SHIPS_URL,
             effect=summarize_ship_locations(category, locations),
@@ -105,8 +108,10 @@ def classify_ship_table(table, heading_text):
 
     if "rental" in header_text or "rental" in heading_lower:
         return "Ships for Rent"
-    if "wikelo" in heading_lower or "executive hangar" in heading_lower or "earn" in header_text:
-        return "Ships for Earning"
+    if "wikelo" in heading_lower:
+        return WIKELO_CATEGORY
+    if "executive hangar" in heading_lower or "earn" in header_text:
+        return SPECIAL_ACQUISITION_CATEGORY
     if "sale location" in header_text or "showroom" in heading_lower or "ship shop" in heading_lower:
         return "Ships for Sale"
 
@@ -121,11 +126,13 @@ def parse_ship_row(cells, category, heading_text, page_updated):
     if not first or first.lower() == "ship":
         return None
 
-    if category == "Ships for Earning":
+    if category in SPECIAL_ACQUISITION_CATEGORIES:
         if len(cells) < 2:
             return None
         location_text = cells[1]
-        price = "Earned"
+        price = special_acquisition_method(heading_text, location_text)
+        if price == WIKELO_CATEGORY:
+            category = WIKELO_CATEGORY
     else:
         if len(cells) < 3:
             return None
@@ -140,12 +147,15 @@ def parse_ship_row(cells, category, heading_text, page_updated):
         price=price,
         verified=page_updated,
         url=SCFOCUS_SHIPS_URL,
-    )
+    ), category
 
 
 def summarize_ship_locations(category, locations):
-    if category == "Ships for Earning":
-        return f"Earned | {len(locations)} location{'s' if len(locations) != 1 else ''}"
+    if category == WIKELO_CATEGORY:
+        return f"Wikelo | {len(locations)} location{'s' if len(locations) != 1 else ''}"
+
+    if category == SPECIAL_ACQUISITION_CATEGORY:
+        return f"Special acquisition | {len(locations)} location{'s' if len(locations) != 1 else ''}"
 
     numeric_prices = [
         parse_price_number(location.price)
@@ -173,6 +183,15 @@ def extract_page_updated(soup):
 
 def normalize_ship_name(value):
     return re.sub(r"\s+", " ", value or "").strip(" -")
+
+
+def special_acquisition_method(heading_text, location_text):
+    text = f"{heading_text} {location_text}".lower()
+    if "wikelo" in text:
+        return WIKELO_CATEGORY
+    if "executive hangar" in text:
+        return "Executive Hangar"
+    return "No aUEC price"
 
 
 def normalize_price(value):

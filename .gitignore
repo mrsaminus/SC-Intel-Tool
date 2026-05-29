@@ -25,3 +25,9 @@ Thumbs.db
 
 # Temporary
 *.log
+
+# Build/release artifacts
+build/
+dist/
+*.spec
+*.zip

@@ -73,13 +73,6 @@ Needs work:
   - Hostile
   - Pirate
   - Scammer
-  - NOVA
-  - Defence
-  - Relief
-  - Skyline
-  - Frontiers
-  - Core
-  - B.A.L.D.E.R.
 
 ### Search History
 
@@ -104,6 +97,7 @@ Needs work:
 - Last seen / last checked timestamps with clearer UI
 - Export player intel/history
 - Optional manual override for piracy/risk notes
+- Custom tag management
 - Better handling for RSI page changes and lookup throttling
 
 ## Organization Intel
@@ -355,14 +349,17 @@ Needs work:
 
 Implemented:
 
-- Main Settings tab placeholder
+- Main Settings tab
+- Current app version display
+- Check for updates button
+- GitHub Releases link
+- User data folder display
+- Database path display
+- Open user data folder action
 
 Needs work:
 
 - Theme/settings controls
-- Show current app version
-- Check for updates button
-- Data folder paths
 - RSI timeout setting
 - UEX timeout setting
 - Live data refresh settings
@@ -372,19 +369,19 @@ Needs work:
 
 ## Release, Packaging & Updates
 
-Status: not started.
+Status: in progress.
 
 This is required before the app is comfortable for other people to download and
 use without a Python development setup.
 
 Planned:
 
-- Standalone Windows build
+- Standalone Windows build script
 - GitHub Releases for public downloads
 - Version number visible in the app
 - `Check for updates` button in Settings
 - Update check against the latest GitHub Release
-- Download/open release page when a newer version is available
+- Open release page when a newer version is available
 - Release notes/changelog shown before updating
 - Simple installer or portable zip release
 - Clear separation between user data and app install files
@@ -403,7 +400,7 @@ Recommended update approach:
 
 Release workflow needs:
 
-- Decide version format, for example `v0.1.0`
+- Decide first public version tag, for example `v0.1.0-alpha.1`
 - Add an app version constant
 - Add changelog/release notes
 - Add build script for standalone packaging
@@ -546,18 +543,29 @@ Implemented:
 
 ### Priority 3: Release Pipeline
 
+Status: in progress.
+
 Build the release/update foundation before the first alpha goes out.
 
-- Add app version constant
-- Add version display in Settings/About
-- Add `Check for updates` button
-- Check latest GitHub Release metadata
-- For first release, open the GitHub Release page when an update is available
-- Package the app as a standalone Windows build
-- Publish releases through GitHub Releases
-- Preserve SQLite user data across updates
-- Add README install/update instructions
-- Add release checklist
+Implemented:
+
+- App version constant
+- Version display in Settings/About
+- `Check for updates` button
+- Latest GitHub Release metadata check
+- Release page button
+- Packaged-build user data path for preserving SQLite data across updates
+- Windows portable build script
+- First Windows portable artifact built and smoke-tested
+- README install/update/build instructions
+- Changelog starter
+- Release checklist in README
+
+Remaining:
+
+- Publish first GitHub alpha release
+- Confirm `Check for updates` can see the published release metadata
+- Add GitHub Actions release build later if desired
 
 Preferred release model:
 
@@ -606,6 +614,7 @@ Publish the first usable public build.
 
 - Add player watchlist
 - Add org watchlist
+- Add custom tags
 - Add relationship/risk notes
 - Add export/import for intel data
 
