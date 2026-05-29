@@ -9,7 +9,6 @@ from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -34,6 +33,7 @@ from app.cstone_client import (
 )
 from app.scfocus_client import SCFOCUS_SHIPS_URL, WIKELO_CATEGORY, fetch_scfocus_ship_items
 
+from .table_utils import configure_readable_table_columns
 from .workers import BackgroundTaskMixin
 
 
@@ -126,9 +126,7 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
             "Availability",
             "Summary",
         ])
-        self.item_results_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
-        self.item_results_table.horizontalHeader().setStretchLastSection(True)
-        self.item_results_table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        configure_readable_table_columns(self.item_results_table, min_width=110, max_width=360, stretch_last=True)
         layout.addWidget(self.item_results_table, 1)
         self.item_empty_label = self.create_empty_state("No live item data loaded yet.")
         layout.addWidget(self.item_empty_label)
@@ -163,6 +161,7 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
             "Price / Method",
             "Verified",
         ])
+        configure_readable_table_columns(self.item_locations_table, min_width=110, max_width=420, stretch_last=True)
         layout.addWidget(self.item_locations_table, 1)
         self.item_location_empty_label = self.create_empty_state(
             "Select an item and load buy locations."
@@ -321,8 +320,7 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
                     if col_index == 3:
                         table_item.setForeground(QColor("#68e6a5" if item.sold else "#7bb9c8"))
                     self.item_results_table.setItem(row_index, col_index, table_item)
-            self.item_results_table.resizeColumnsToContents()
-            self.item_results_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
+            configure_readable_table_columns(self.item_results_table, min_width=110, max_width=360, stretch_last=True)
         finally:
             self.item_results_table.setSortingEnabled(True)
             self.item_results_table.setUpdatesEnabled(True)
@@ -740,7 +738,7 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
                     table_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 self.item_locations_table.setItem(row_index, col_index, table_item)
 
-        self.item_locations_table.resizeColumnsToContents()
+        configure_readable_table_columns(self.item_locations_table, min_width=110, max_width=420, stretch_last=True)
         self.item_locations_table.setSortingEnabled(True)
         self.item_location_empty_label.setVisible(not self.finder_locations)
         if self.finder_locations:
@@ -874,12 +872,7 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
         table.setSelectionMode(QAbstractItemView.SingleSelection)
         table.setSortingEnabled(True)
-        table.setWordWrap(False)
-        table.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
-        table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        for index in range(len(headers)):
-            table.horizontalHeader().setSectionResizeMode(index, QHeaderView.ResizeToContents)
-        table.horizontalHeader().setStretchLastSection(True)
+        configure_readable_table_columns(table, stretch_last=True)
         return table
 
     def create_empty_state(self, text):

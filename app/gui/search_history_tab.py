@@ -7,7 +7,6 @@ from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -29,6 +28,7 @@ from app.database import (
 from app.rsi_lookup import RSILookupError, lookup_player
 
 from .constants import IMAGE_HEADERS
+from .table_utils import configure_readable_table_columns
 from .workers import BackgroundTaskMixin
 
 
@@ -104,9 +104,7 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         self.history_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.history_table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.history_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.history_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        self.history_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        self.history_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        configure_readable_table_columns(self.history_table, min_width=95, max_width=260)
         self.history_table.horizontalHeader().setSectionsClickable(True)
         self.history_table.horizontalHeader().setSortIndicatorShown(False)
         list_layout.addWidget(self.history_table)
@@ -368,6 +366,7 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
                 self.history_table.setItem(table_row, col, item)
 
         self.history_table.setUpdatesEnabled(True)
+        configure_readable_table_columns(self.history_table, min_width=95, max_width=260)
         self.history_count_label.setText(f"{len(filtered_rows)} / {len(self.history_rows)} shown")
 
         if self.history_sort_column is None:

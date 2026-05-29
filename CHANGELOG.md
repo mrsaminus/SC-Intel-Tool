@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.7 - 2026-05-30
+
+- Improved table readability across Player Intel, Mining & Salvage and Item Finder views.
+- Added Refinery scroll/layout protection so small windows stay readable instead of compressing controls.
+- Cleaned up unused imports and generated Python cache files.
+- Improved README privacy, install, run and update guidance.
+
 ## 0.1.0-alpha.6 - 2026-05-29
 
 - Hardened the Windows auto-update installer with post-copy hash checks, file unblocking, delayed restart and explicit working directory.

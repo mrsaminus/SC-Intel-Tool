@@ -10,11 +10,11 @@ from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QSizePolicy,
     QStackedWidget,
     QTabWidget,
@@ -37,6 +37,7 @@ from .constants import (
     SHIP_ORE_MATERIALS,
     SHIP_REFINERY_MATERIALS,
 )
+from .table_utils import configure_readable_table_columns
 from .workers import BackgroundTaskMixin
 
 
@@ -302,7 +303,7 @@ class MiningTab(BackgroundTaskMixin, QWidget):
             "Best UEX Terminal",
             "Notes",
         ])
-        self.ore_results_table.horizontalHeader().setStretchLastSection(True)
+        configure_readable_table_columns(self.ore_results_table, stretch_last=True)
         layout.addWidget(self.ore_results_table, 1)
         self.ore_empty_label = self.create_empty_state("No ore results match the current filters.")
         layout.addWidget(self.ore_empty_label)
@@ -336,7 +337,7 @@ class MiningTab(BackgroundTaskMixin, QWidget):
             "Count",
             "Notes",
         ])
-        self.location_table.horizontalHeader().setStretchLastSection(True)
+        configure_readable_table_columns(self.location_table, stretch_last=True)
         layout.addWidget(self.location_table, 1)
         self.location_empty_label = self.create_empty_state("No locations match the current filters.")
         layout.addWidget(self.location_empty_label)
@@ -381,7 +382,7 @@ class MiningTab(BackgroundTaskMixin, QWidget):
             "Matches",
             "All Signatures",
         ])
-        self.scan_signature_table.horizontalHeader().setStretchLastSection(True)
+        configure_readable_table_columns(self.scan_signature_table, stretch_last=True)
         layout.addWidget(self.scan_signature_table, 1)
         self.scan_empty_label = self.create_empty_state("No scan signatures match the current input.")
         layout.addWidget(self.scan_empty_label)
@@ -434,6 +435,7 @@ class MiningTab(BackgroundTaskMixin, QWidget):
         self.refinery_stack = QStackedWidget()
 
         work_widget = QWidget()
+        work_widget.setMinimumSize(1050, 700)
         work_layout = QVBoxLayout()
         work_layout.setContentsMargins(0, 0, 0, 0)
         work_layout.setSpacing(12)
@@ -442,6 +444,7 @@ class MiningTab(BackgroundTaskMixin, QWidget):
         content.setSpacing(12)
 
         input_card = self.create_filter_card("SHIP ORES / REFINING")
+        input_card.setMinimumWidth(690)
         input_layout = input_card.layout()
 
         session_row = QHBoxLayout()
@@ -450,6 +453,13 @@ class MiningTab(BackgroundTaskMixin, QWidget):
         self.refinery_new_session_button = QPushButton("New Session")
         self.refinery_save_session_button = QPushButton("Save To History")
         self.refinery_close_session_button = QPushButton("Close Session")
+        self.refinery_session_name_input.setMinimumWidth(170)
+        for button in (
+            self.refinery_new_session_button,
+            self.refinery_save_session_button,
+            self.refinery_close_session_button,
+        ):
+            button.setMinimumWidth(110)
         session_row.addWidget(self.refinery_session_name_input, 1)
         session_row.addWidget(self.refinery_new_session_button)
         session_row.addWidget(self.refinery_save_session_button)
@@ -459,6 +469,8 @@ class MiningTab(BackgroundTaskMixin, QWidget):
         setup_row = QHBoxLayout()
         self.refinery_station_filter = self.create_combo(self.refinery_station_options())
         self.refinery_method_filter = self.create_combo(self.refinery_method_options())
+        self.refinery_station_filter.setMinimumWidth(280)
+        self.refinery_method_filter.setMinimumWidth(220)
         setup_row.addWidget(self.refinery_station_filter, 1)
         setup_row.addWidget(self.refinery_method_filter, 1)
         input_layout.addLayout(setup_row)
@@ -485,6 +497,8 @@ class MiningTab(BackgroundTaskMixin, QWidget):
         table_actions = QHBoxLayout()
         self.refinery_remove_material_button = QPushButton("Remove Selected Material")
         self.refinery_refresh_uex_button = QPushButton("Refresh UEX For Session")
+        self.refinery_remove_material_button.setMinimumWidth(180)
+        self.refinery_refresh_uex_button.setMinimumWidth(180)
         table_actions.addWidget(self.refinery_remove_material_button)
         table_actions.addWidget(self.refinery_refresh_uex_button)
         input_layout.addLayout(table_actions)
@@ -499,7 +513,8 @@ class MiningTab(BackgroundTaskMixin, QWidget):
             "Sell Value",
         ])
         self.refinery_table.setSortingEnabled(False)
-        self.refinery_table.horizontalHeader().setStretchLastSection(True)
+        self.refinery_table.setMinimumHeight(240)
+        configure_readable_table_columns(self.refinery_table, min_width=96, max_width=180, stretch_last=True)
         self.refinery_table.setEditTriggers(
             QAbstractItemView.DoubleClicked
             | QAbstractItemView.SelectedClicked
@@ -510,6 +525,7 @@ class MiningTab(BackgroundTaskMixin, QWidget):
         input_layout.addWidget(self.refinery_empty_label)
 
         summary_card = self.create_filter_card("SELLING / PROFIT SUMMARY")
+        summary_card.setMinimumWidth(340)
         summary_layout = summary_card.layout()
         self.refinery_price_status_label = QLabel(
             "UEX prices are fetched live for this session and are not stored locally."
@@ -558,6 +574,8 @@ class MiningTab(BackgroundTaskMixin, QWidget):
         timer_row = QHBoxLayout()
         self.refinery_timer_start_button = QPushButton("Start")
         self.refinery_timer_reset_button = QPushButton("Reset")
+        self.refinery_timer_start_button.setMinimumWidth(110)
+        self.refinery_timer_reset_button.setMinimumWidth(110)
         timer_row.addWidget(self.refinery_timer_start_button)
         timer_row.addWidget(self.refinery_timer_reset_button)
         summary_layout.addLayout(timer_row)
@@ -572,8 +590,9 @@ class MiningTab(BackgroundTaskMixin, QWidget):
         ])
         self.refinery_sell_locations_table.setSortingEnabled(False)
         self.refinery_sell_locations_table.setMinimumHeight(150)
+        self.refinery_sell_locations_table.setMinimumWidth(320)
         self.refinery_sell_locations_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.refinery_sell_locations_table.horizontalHeader().setStretchLastSection(False)
+        configure_readable_table_columns(self.refinery_sell_locations_table, min_width=120, max_width=520)
         summary_layout.addWidget(self.refinery_sell_locations_table, 1)
         self.refinery_sell_locations_empty_label = self.create_empty_state(
             "Refresh UEX For Session to see matching sell locations."
@@ -595,7 +614,14 @@ class MiningTab(BackgroundTaskMixin, QWidget):
         work_widget.setLayout(work_layout)
 
         self.refinery_history_widget = self.build_refinery_history_widget()
-        self.refinery_stack.addWidget(work_widget)
+        work_scroll = QScrollArea()
+        work_scroll.setWidgetResizable(True)
+        work_scroll.setFrameShape(QFrame.NoFrame)
+        work_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        work_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        work_scroll.setWidget(work_widget)
+
+        self.refinery_stack.addWidget(work_scroll)
         self.refinery_stack.addWidget(self.refinery_history_widget)
         layout.addWidget(self.refinery_stack, 1)
         widget.setLayout(layout)
@@ -612,6 +638,7 @@ class MiningTab(BackgroundTaskMixin, QWidget):
         for index, (code, material) in enumerate(materials):
             button = QPushButton(code)
             button.setToolTip(self.refinery_material_tooltip(material))
+            button.setMinimumWidth(96)
             button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             button.clicked.connect(lambda checked=False, selected=material: self.add_refinery_material(selected))
             grid.addWidget(button, index // columns, index % columns)
@@ -643,7 +670,7 @@ class MiningTab(BackgroundTaskMixin, QWidget):
             "Net",
             "Saved",
         ])
-        self.refinery_history_table.horizontalHeader().setStretchLastSection(True)
+        configure_readable_table_columns(self.refinery_history_table, min_width=110, max_width=260, stretch_last=True)
         history_layout.addWidget(self.refinery_history_table, 1)
         self.refinery_history_empty_label = self.create_empty_state("No saved refinery sessions yet.")
         history_layout.addWidget(self.refinery_history_empty_label)
@@ -685,7 +712,7 @@ class MiningTab(BackgroundTaskMixin, QWidget):
             "Notes",
         ])
         self.rock_table.setSortingEnabled(False)
-        self.rock_table.horizontalHeader().setStretchLastSection(True)
+        configure_readable_table_columns(self.rock_table, min_width=110, max_width=360, stretch_last=True)
         layout.addWidget(self.rock_table, 1)
         self.rock_empty_label = self.create_empty_state("No rock-breaking setups match the current filters.")
         layout.addWidget(self.rock_empty_label)
@@ -722,6 +749,7 @@ class MiningTab(BackgroundTaskMixin, QWidget):
             "Effect",
             "Notes",
         ])
+        configure_readable_table_columns(self.equipment_table, min_width=100, max_width=340, stretch_last=True)
         layout.addWidget(self.equipment_table, 1)
         self.equipment_empty_label = self.create_empty_state("No equipment matches the current filters.")
         layout.addWidget(self.equipment_empty_label)
@@ -853,7 +881,7 @@ class MiningTab(BackgroundTaskMixin, QWidget):
             ])
 
         rows.sort(key=lambda row: (row[0].lower(), row[1], row[2].lower(), row[3]))
-        self.set_table_rows(self.ore_results_table, rows, resize_columns=not self.ore_results_columns_sized)
+        self.set_table_rows(self.ore_results_table, rows)
         self.ore_results_columns_sized = True
         self.ore_empty_label.setVisible(not rows)
 
@@ -1378,6 +1406,7 @@ class MiningTab(BackgroundTaskMixin, QWidget):
 
         self.refinery_history_table.setSortingEnabled(sorting_enabled)
         self.refinery_history_empty_label.setVisible(not self.refinery_completed_sessions)
+        configure_readable_table_columns(self.refinery_history_table, min_width=110, max_width=260, stretch_last=True)
 
     def remove_selected_refinery_history(self):
         row = self.refinery_history_table.currentRow()
@@ -1504,6 +1533,7 @@ class MiningTab(BackgroundTaskMixin, QWidget):
 
         self.loading_refinery_table = False
         self.refinery_empty_label.setVisible(not materials)
+        configure_readable_table_columns(self.refinery_table, min_width=96, max_width=180, stretch_last=True)
         self.update_refinery_summary()
 
     def update_refinery_row_value(self, row, material):
@@ -1654,16 +1684,7 @@ class MiningTab(BackgroundTaskMixin, QWidget):
             self.resize_refinery_sell_location_columns()
 
     def resize_refinery_sell_location_columns(self):
-        header = self.refinery_sell_locations_table.horizontalHeader()
-        for column in range(self.refinery_sell_locations_table.columnCount()):
-            header.setSectionResizeMode(column, QHeaderView.ResizeToContents)
-
-        self.refinery_sell_locations_table.resizeColumnsToContents()
-        padding = 18
-        for column in range(self.refinery_sell_locations_table.columnCount()):
-            width = self.refinery_sell_locations_table.columnWidth(column) + padding
-            self.refinery_sell_locations_table.setColumnWidth(column, width)
-            header.setSectionResizeMode(column, QHeaderView.Interactive)
+        configure_readable_table_columns(self.refinery_sell_locations_table, min_width=120, max_width=520)
 
     def refresh_refinery_uex_prices(self):
         if self.refinery_uex_refresh_running:
@@ -2148,7 +2169,10 @@ class MiningTab(BackgroundTaskMixin, QWidget):
                     table.setItem(row_index, col_index, item)
 
             if resize_columns:
-                table.resizeColumnsToContents()
+                min_width = int(table.property("readable_min_width") or 90)
+                max_width = int(table.property("readable_max_width") or 280)
+                stretch_last = bool(table.property("readable_stretch_last"))
+                configure_readable_table_columns(table, min_width, max_width, stretch_last)
         finally:
             table.setSortingEnabled(sorting_enabled)
             table.setUpdatesEnabled(True)
@@ -2315,12 +2339,7 @@ class MiningTab(BackgroundTaskMixin, QWidget):
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
         table.setSelectionMode(QAbstractItemView.SingleSelection)
         table.setSortingEnabled(True)
-        table.setWordWrap(False)
-        table.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
-        table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        for index in range(len(headers)):
-            table.horizontalHeader().setSectionResizeMode(index, QHeaderView.Interactive)
-        table.horizontalHeader().setStretchLastSection(False)
+        configure_readable_table_columns(table)
         return table
 
     def create_empty_state(self, text):
