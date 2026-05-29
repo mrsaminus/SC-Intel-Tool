@@ -34,6 +34,10 @@ Source/development runs use the workspace `sc_intel.db` by default.
 
 The Settings tab shows the active user data folder and database path.
 
+## Windows SmartScreen
+
+Early alpha builds are unsigned, so Windows may show an "Unknown publisher" SmartScreen warning. Reducing this for normal users requires Authenticode code signing with a trusted certificate and release reputation over time.
+
 ## Build A Windows Release
 
 From the repository root:
@@ -56,7 +60,7 @@ Release checklist:
 2. Update `CHANGELOG.md`.
 3. Run smoke tests locally.
 4. Run `.\scripts\build_windows.ps1`.
-5. Create a GitHub Release with a matching tag, for example `v0.1.0-alpha.2`.
+5. Create a GitHub Release with a matching tag, for example `v0.1.0-alpha.3`.
 6. Upload the Windows executable and include the SHA256 checksum in the release notes.
 
 ## Roadmap

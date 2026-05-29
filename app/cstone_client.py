@@ -1,8 +1,10 @@
 import html
 import re
 from dataclasses import dataclass
+from urllib.parse import quote
 
 import requests
+from bs4 import BeautifulSoup
 
 from app.display_format import format_grouped_numbers
 
@@ -121,6 +123,18 @@ class CStoneLocation:
     url: str
 
 
+@dataclass(frozen=True)
+class CStoneLocationInventoryItem:
+    item_id: str
+    name: str
+    item_type: str
+    size: str
+    price: str
+    location: str
+    detail_url: str
+    location_url: str
+
+
 def cstone_category_labels():
     return [category["label"] for category in CSTONE_CATEGORIES]
 
@@ -211,6 +225,65 @@ def fetch_cstone_item_locations(detail_url):
         ))
 
     return locations
+
+
+def fetch_cstone_location_names():
+    response = requests.get(
+        CSTONE_HOME_URL,
+        timeout=CSTONE_TIMEOUT_SECONDS,
+        headers={"User-Agent": "SC-Intel-Tool"},
+    )
+    response.raise_for_status()
+
+    soup = BeautifulSoup(response.text, "lxml")
+    location_select = soup.find("select", id="location")
+    if not location_select:
+        return []
+
+    locations = []
+    seen = set()
+    for option in location_select.find_all("option"):
+        location = clean_html(option.get_text(" ", strip=True))
+        key = location.lower()
+        if location and key not in seen:
+            locations.append(location)
+            seen.add(key)
+
+    return locations
+
+
+def fetch_cstone_location_inventory(location):
+    response = requests.get(
+        cstone_location_api_url(location),
+        timeout=CSTONE_TIMEOUT_SECONDS,
+        headers={"User-Agent": "SC-Intel-Tool"},
+    )
+    response.raise_for_status()
+
+    payload = response.json()
+    if not isinstance(payload, list):
+        raise CStoneError("Unexpected Cornerstone location response format.")
+
+    items = []
+    for record in payload:
+        item_id = str(record.get("ItemId") or "").strip()
+        name = str(record.get("name") or "").strip()
+        if not item_id or not name:
+            continue
+
+        price = format_location_price(record.get("price"))
+        items.append(CStoneLocationInventoryItem(
+            item_id=item_id,
+            name=name,
+            item_type=str(record.get("type") or "N/A").strip() or "N/A",
+            size=format_size(record.get("size")),
+            price=price,
+            location=location,
+            detail_url=f"{CSTONE_HOME_URL}/Search/{quote(item_id, safe='')}",
+            location_url=cstone_location_page_url(location),
+        ))
+
+    return items
 
 
 def fetch_cstone_json(path):
@@ -367,6 +440,34 @@ def normalize_location_text(value):
     text = re.sub(r"\s*[<>]\s*", " - ", text)
     text = re.sub(r"\s*-\s*", " - ", text)
     return re.sub(r"\s+", " ", text).strip(" -")
+
+
+def format_location_price(value):
+    if value in (None, ""):
+        return "N/A"
+
+    price = format_grouped_numbers(value)
+    if not price or price == "0":
+        return "N/A"
+
+    return f"{price} aUEC"
+
+
+def cstone_location_api_url(location):
+    return f"{CSTONE_HOME_URL}/GetLocation/{quote(cstone_location_route_value(location), safe='')}"
+
+
+def cstone_location_page_url(location):
+    return f"{CSTONE_HOME_URL}/Location1/{quote(cstone_location_route_value(location), safe='')}"
+
+
+def cstone_location_route_value(location):
+    return (
+        str(location or "")
+        .replace("&", "[[and]]")
+        .replace(".", "#46;")
+        .replace("'", "[[apo]]")
+    )
 
 
 def clean_html(value):

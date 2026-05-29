@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.3 - 2026-05-29
+
+- Added Item Finder location searches for city, station and shop names using Cornerstone location inventory data.
+- Improved the Item Finder results table so the Summary column fills remaining width by default.
+
 ## 0.1.0-alpha.2 - 2026-05-29
 
 - Switched the default Windows release build to a single-file executable.

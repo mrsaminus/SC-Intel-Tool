@@ -301,6 +301,7 @@ Implemented:
 - Open item and open location buttons
 - Price formatting with thousands separators
 - Tables use content-based widths with horizontal scroll
+- Location search by city, station, and shop name using Cornerstone location inventory data
 
 Needs work:
 
@@ -406,6 +407,7 @@ Release workflow needs:
 - Add build script for standalone packaging
 - Add GitHub Actions workflow for release builds
 - Attach release artifacts to GitHub Releases
+- Add code signing so Windows SmartScreen can show a trusted publisher
 - Document install/update steps in README
 
 ## OCR / Chat Scanner
@@ -560,16 +562,19 @@ Implemented:
 - README install/update/build instructions
 - Changelog starter
 - Release checklist in README
+- Single-file Windows executable release
+- First GitHub alpha releases published
 
 Remaining:
 
-- Publish first GitHub alpha release
 - Confirm `Check for updates` can see the published release metadata
+- Add code signing certificate support to reduce Windows SmartScreen warnings
 - Add GitHub Actions release build later if desired
 
 Preferred release model:
 
-- Portable zip first, because it is simple and transparent
+- Single-file executable for normal users
+- Portable zip/folder builds remain available for debugging
 - Installer later if needed
 - Update checks should use GitHub Releases for normal users
 - Git updates should remain a developer/source-install workflow only

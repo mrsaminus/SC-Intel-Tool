@@ -41,8 +41,12 @@ from app.database import (
 from app.cstone_client import (
     CSTONE_HOME_URL,
     CStoneError,
+    CStoneItem,
+    CStoneLocation,
     cstone_category_labels,
     cstone_category_url,
+    fetch_cstone_location_inventory,
+    fetch_cstone_location_names,
     fetch_cstone_item_locations,
     fetch_cstone_items,
 )
@@ -72,14 +76,20 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
         self.finder_items = []
         self.visible_finder_items = []
         self.finder_locations = []
+        self.cstone_location_names = []
+        self.location_search_cache = {}
+        self.item_location_cache = {}
         self.current_finder_item_id = None
         self.finder_last_refresh = None
         self.finder_refresh_interval = timedelta(hours=4)
         self.availability_counts = {}
         self.auto_availability_limit = 25
+        self.location_search_limit = 60
+        self.location_search_request_id = 0
         self.availability_auto_load_scheduled = False
         self.auto_loading_availability = False
         self.finder_refresh_running = False
+        self.location_search_running = False
         self.item_locations_loading = False
         self.item_location_request_id = 0
         self.finder_refresh_timer = QTimer(self)
@@ -113,7 +123,7 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
 
         row = QHBoxLayout()
         self.item_search_input = QLineEdit()
-        self.item_search_input.setPlaceholderText("Search gear, ship, location or effect...")
+        self.item_search_input.setPlaceholderText("Search gear, ship, city, station, shop or effect...")
         self.item_category_filter = self.create_combo([
             "All categories",
             "Ships for Sale",
@@ -149,8 +159,9 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
             "Availability",
             "Summary",
         ])
-        self.item_results_table.horizontalHeader().setStretchLastSection(False)
-        self.item_results_table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.item_results_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
+        self.item_results_table.horizontalHeader().setStretchLastSection(True)
+        self.item_results_table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         layout.addWidget(self.item_results_table, 1)
         self.item_empty_label = self.create_empty_state("No live item data loaded yet.")
         layout.addWidget(self.item_empty_label)
@@ -231,10 +242,16 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
         def load_items():
             loaded_items = []
             failed = []
+            cstone_locations = []
             try:
                 loaded_items.extend(fetch_cstone_items())
             except (CStoneError, requests.RequestException, ValueError) as exc:
                 failed.append(f"Cornerstone: {exc}")
+
+            try:
+                cstone_locations = fetch_cstone_location_names()
+            except (CStoneError, requests.RequestException, ValueError) as exc:
+                failed.append(f"Cornerstone locations: {exc}")
 
             try:
                 loaded_items.extend(fetch_scfocus_ship_items())
@@ -243,6 +260,7 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
 
             return {
                 "loaded_items": loaded_items,
+                "cstone_locations": cstone_locations,
                 "failed": failed,
                 "silent": silent,
             }
@@ -256,11 +274,15 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
 
     def on_finder_items_refreshed(self, result):
         loaded_items = result["loaded_items"]
+        cstone_locations = result["cstone_locations"]
         failed = result["failed"]
         silent = result["silent"]
 
         if loaded_items:
             self.finder_items = loaded_items
+            self.cstone_location_names = cstone_locations
+            self.location_search_cache.clear()
+            self.item_location_cache.clear()
             self.finder_last_refresh = datetime.now()
             if not self.finder_refresh_timer.isActive():
                 self.finder_refresh_timer.start()
@@ -274,7 +296,7 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
                 QMessageBox.warning(self, "Live refresh warning", "\n".join(failed))
         else:
             self.finder_status_label.setText(
-                f"Loaded {len(self.finder_items)} live rows from Cornerstone and SC Focus. "
+                f"Loaded {len(self.finder_items)} live rows and {len(self.cstone_location_names)} Cornerstone locations. "
                 "Data is in-memory only and will refresh every 4 hours."
             )
 
@@ -293,21 +315,23 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
         query = self.item_search_input.text().strip().lower()
         category_filter = self.item_category_filter.currentText()
         self.visible_finder_items = []
+        visible_keys = set()
 
         for item in self.finder_items:
             if category_filter != "All categories" and item.category != category_filter:
                 continue
-            searchable = " ".join((
-                item.name,
-                item.source,
-                item.category,
-                item.item_type,
-                item.availability,
-                item.effect,
-            )).lower()
+            searchable = self.item_search_text(item)
             if query and query not in searchable:
                 continue
             self.visible_finder_items.append(item)
+            visible_keys.add(self.finder_item_key(item))
+
+        for item in self.cached_location_search_items(query, category_filter):
+            key = self.finder_item_key(item)
+            if key in visible_keys:
+                continue
+            self.visible_finder_items.append(item)
+            visible_keys.add(key)
 
         self.item_results_table.setUpdatesEnabled(False)
         self.item_results_table.setSortingEnabled(False)
@@ -331,6 +355,7 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
                         table_item.setForeground(QColor("#68e6a5" if item.sold else "#7bb9c8"))
                     self.item_results_table.setItem(row_index, col_index, table_item)
             self.item_results_table.resizeColumnsToContents()
+            self.item_results_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
         finally:
             self.item_results_table.setSortingEnabled(True)
             self.item_results_table.setUpdatesEnabled(True)
@@ -341,7 +366,147 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
         else:
             self.item_empty_label.setText("No items match the current filters.")
         self.update_selected_item_panel()
+        self.schedule_location_search_if_needed(query, category_filter)
         self.schedule_availability_autoload()
+
+    def item_search_text(self, item):
+        parts = [
+            item.name,
+            item.source,
+            item.category,
+            item.item_type,
+            item.availability,
+            item.effect,
+        ]
+        if hasattr(item, "locations"):
+            for location in item.locations:
+                parts.extend((location.location, location.price, location.verified))
+
+        return " ".join(str(part) for part in parts if part).lower()
+
+    def cached_location_search_items(self, query, category_filter):
+        if category_filter != "All categories" or len(query) < 3:
+            return []
+
+        return self.location_search_cache.get(query, [])
+
+    def schedule_location_search_if_needed(self, query, category_filter):
+        if category_filter != "All categories" or len(query) < 3:
+            return
+        if not self.cstone_location_names or self.location_search_running:
+            return
+        if query in self.location_search_cache:
+            return
+
+        matching_locations = self.matching_cstone_locations(query)
+        if not matching_locations:
+            return
+
+        if len(matching_locations) > self.location_search_limit:
+            self.finder_status_label.setText(
+                f"{len(matching_locations)} Cornerstone locations match '{query}'. "
+                f"Keep filtering to {self.location_search_limit} or fewer locations to load shop items."
+            )
+            return
+
+        self.location_search_running = True
+        self.location_search_request_id += 1
+        request_id = self.location_search_request_id
+        self.finder_status_label.setText(
+            f"Loading shop inventory for {len(matching_locations)} location(s) matching '{query}'..."
+        )
+
+        def load_location_inventory():
+            results = []
+            failures = []
+            for location in matching_locations:
+                try:
+                    results.extend(fetch_cstone_location_inventory(location))
+                except (CStoneError, requests.RequestException, ValueError) as exc:
+                    failures.append(f"{location}: {exc}")
+
+            return {
+                "request_id": request_id,
+                "query": query,
+                "locations": matching_locations,
+                "results": results,
+                "failures": failures,
+            }
+
+        self.start_background_task(
+            load_location_inventory,
+            self.on_location_search_loaded,
+            self.on_location_search_error,
+            lambda requested_id=request_id: self.finish_location_search(requested_id),
+        )
+
+    def matching_cstone_locations(self, query):
+        return [
+            location
+            for location in self.cstone_location_names
+            if query in location.lower()
+        ]
+
+    def on_location_search_loaded(self, result):
+        request_id = result["request_id"]
+        query = result["query"]
+        if request_id != self.location_search_request_id:
+            return
+
+        items = []
+        for inventory_item in result["results"]:
+            item = self.location_inventory_to_item(inventory_item)
+            key = self.finder_item_key(item)
+            self.availability_counts[key] = 1
+            self.item_location_cache[key] = [CStoneLocation(
+                location=inventory_item.location,
+                price=inventory_item.price,
+                verified="Cornerstone",
+                url=inventory_item.location_url,
+            )]
+            items.append(item)
+
+        self.location_search_cache[query] = items
+        if result["failures"]:
+            self.finder_status_label.setText(
+                f"Loaded {len(items)} shop rows from {len(result['locations'])} matching location(s), "
+                f"with {len(result['failures'])} warning(s)."
+            )
+        else:
+            self.finder_status_label.setText(
+                f"Loaded {len(items)} shop rows from {len(result['locations'])} matching location(s)."
+            )
+
+        if self.item_search_input.text().strip().lower() == query:
+            self.populate_item_results()
+
+    def on_location_search_error(self, exc):
+        self.finder_status_label.setText(f"Location inventory lookup failed: {exc}")
+
+    def finish_location_search(self, request_id):
+        if request_id != self.location_search_request_id:
+            return
+
+        self.location_search_running = False
+        query = self.item_search_input.text().strip().lower()
+        category_filter = self.item_category_filter.currentText()
+        if query and query not in self.location_search_cache:
+            self.schedule_location_search_if_needed(query, category_filter)
+
+    def location_inventory_to_item(self, inventory_item):
+        return CStoneItem(
+            item_id=f"location:{inventory_item.item_id}:{inventory_item.location}",
+            name=inventory_item.name,
+            category="Location Search",
+            size=inventory_item.size,
+            sold=True,
+            detail_url=inventory_item.detail_url,
+            category_url=inventory_item.location_url,
+            effect=f"{inventory_item.location} | {inventory_item.price}",
+            source="Cornerstone",
+            item_type=inventory_item.item_type,
+            availability="1 location",
+        )
 
     def on_selected_item_changed(self):
         previous_item_id = self.current_finder_item_id
@@ -412,6 +577,7 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
         selected = self.selected_item()
         selected_key = self.finder_item_key(selected) if selected else None
         for item, locations in results:
+            self.item_location_cache[self.finder_item_key(item)] = list(locations)
             self.set_item_availability_count(item, len(locations))
             if selected_key == self.finder_item_key(item):
                 self.finder_locations = locations
@@ -480,6 +646,14 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
         self.load_item_locations_button.setEnabled(False)
         self.load_item_locations_button.setText("Loading...")
 
+        cached_locations = self.item_location_cache.get(self.finder_item_key(item))
+        if cached_locations is not None:
+            if request_id == self.item_location_request_id:
+                self.finder_locations = list(cached_locations)
+                self.populate_location_rows()
+            self.finish_selected_item_locations_load(request_id)
+            return
+
         if item.source == "SC Focus":
             if request_id == self.item_location_request_id:
                 self.finder_locations = list(item.locations)
@@ -510,6 +684,7 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
             return
 
         self.set_item_availability_count(requested_item, len(locations))
+        self.item_location_cache[self.finder_item_key(requested_item)] = list(locations)
         selected = self.selected_item()
         if selected and self.finder_item_key(selected) == self.finder_item_key(requested_item):
             self.finder_locations = locations
