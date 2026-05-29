@@ -133,7 +133,7 @@ try {
     }
 
     if ($Package -eq "OneFile") {
-        $PyInstallerArgs += "--onefile"
+        $PyInstallerArgs += @("--onefile", "--runtime-tmpdir", ".")
     }
 
     $PyInstallerArgs += $AddDataArgs + @("main.py")

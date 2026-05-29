@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.6 - 2026-05-29
+
+- Hardened the Windows auto-update installer with post-copy hash checks, file unblocking, delayed restart and explicit working directory.
+- Changed one-file Windows builds to extract runtime files beside the executable instead of the system Temp folder to reduce `_MEI` startup failures.
+
 ## 0.1.0-alpha.5 - 2026-05-29
 
 - Added the BALDER icon to the app window and packaged Windows executable.

@@ -105,6 +105,10 @@ def start_update_installer(downloaded_update):
             str(downloaded_update.path),
             "-Target",
             str(current_exe),
+            "-ExpectedSize",
+            str(downloaded_update.size),
+            "-ExpectedSha256",
+            downloaded_update.sha256,
         ],
         close_fds=True,
     )
@@ -132,7 +136,9 @@ def update_script():
 param(
     [int]$ProcessId,
     [string]$Source,
-    [string]$Target
+    [string]$Target,
+    [long]$ExpectedSize = 0,
+    [string]$ExpectedSha256 = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -144,6 +150,21 @@ function Write-UpdateLog {
     Add-Content -LiteralPath $LogPath -Value "[$Timestamp] $Message"
 }
 
+function Get-Sha256 {
+    param([string]$Path)
+    return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToUpperInvariant()
+}
+
+function Unblock-IfPossible {
+    param([string]$Path)
+    try {
+        Unblock-File -LiteralPath $Path -ErrorAction SilentlyContinue
+    }
+    catch {
+        Write-UpdateLog "Unblock skipped for $Path: $($_.Exception.Message)"
+    }
+}
+
 try {
     Write-UpdateLog "Waiting for process $ProcessId to exit."
     $Process = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
@@ -153,23 +174,73 @@ try {
         }
     }
 
-    Start-Sleep -Milliseconds 500
+    Start-Sleep -Seconds 2
+
+    if (-not (Test-Path -LiteralPath $Source)) {
+        throw "Downloaded update was not found: $Source"
+    }
+
+    if ($ExpectedSize -gt 0) {
+        $SourceSize = (Get-Item -LiteralPath $Source).Length
+        if ($SourceSize -ne $ExpectedSize) {
+            throw "Downloaded update size changed before install. Expected $ExpectedSize bytes, got $SourceSize bytes."
+        }
+    }
+
+    if ($ExpectedSha256) {
+        $SourceHash = Get-Sha256 -Path $Source
+        if ($SourceHash -ne $ExpectedSha256.ToUpperInvariant()) {
+            throw "Downloaded update hash changed before install."
+        }
+    }
+
+    Unblock-IfPossible -Path $Source
 
     $Backup = "$Target.previous"
+    $InstallCandidate = "$Target.new"
+    if (Test-Path -LiteralPath $InstallCandidate) {
+        Remove-Item -LiteralPath $InstallCandidate -Force
+    }
     if (Test-Path -LiteralPath $Backup) {
         Remove-Item -LiteralPath $Backup -Force
     }
+
+    Write-UpdateLog "Copying update to install candidate $InstallCandidate."
+    Copy-Item -LiteralPath $Source -Destination $InstallCandidate -Force
+
+    if ($ExpectedSize -gt 0) {
+        $CandidateSize = (Get-Item -LiteralPath $InstallCandidate).Length
+        if ($CandidateSize -ne $ExpectedSize) {
+            throw "Install candidate size mismatch. Expected $ExpectedSize bytes, got $CandidateSize bytes."
+        }
+    }
+
+    if ($ExpectedSha256) {
+        $CandidateHash = Get-Sha256 -Path $InstallCandidate
+        if ($CandidateHash -ne $ExpectedSha256.ToUpperInvariant()) {
+            throw "Install candidate hash mismatch."
+        }
+    }
+
     if (Test-Path -LiteralPath $Target) {
         Copy-Item -LiteralPath $Target -Destination $Backup -Force
     }
 
-    Write-UpdateLog "Installing $Source to $Target."
-    Copy-Item -LiteralPath $Source -Destination $Target -Force
+    Write-UpdateLog "Installing $InstallCandidate to $Target."
+    Move-Item -LiteralPath $InstallCandidate -Destination $Target -Force
+    Unblock-IfPossible -Path $Target
+
+    Start-Sleep -Seconds 2
+    $WorkingDirectory = Split-Path -Parent $Target
     Write-UpdateLog "Starting updated app."
-    Start-Process -FilePath $Target
+    $StartedProcess = Start-Process -FilePath $Target -WorkingDirectory $WorkingDirectory -PassThru
+    Write-UpdateLog "Started updated app with process id $($StartedProcess.Id)."
 }
 catch {
     Write-UpdateLog "Update failed: $($_.Exception.Message)"
+    if (Test-Path -LiteralPath "$Target.new") {
+        Remove-Item -LiteralPath "$Target.new" -Force
+    }
     if ((Test-Path -LiteralPath "$Target.previous") -and -not (Test-Path -LiteralPath $Target)) {
         Copy-Item -LiteralPath "$Target.previous" -Destination $Target -Force
     }
