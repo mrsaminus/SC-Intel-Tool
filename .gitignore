@@ -13,6 +13,9 @@ venv/
 # Local database
 sc_intel.db
 
+# Local project context
+PROJECT_CONTEXT.md
+
 # Reference-only extracted tools/data
 reference_material/
 
