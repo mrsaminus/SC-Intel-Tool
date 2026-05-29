@@ -1,5 +1,5 @@
 APP_NAME = "SC Intel Tool"
-APP_VERSION = "0.1.0-alpha.4"
+APP_VERSION = "0.1.0-alpha.5"
 
 GITHUB_OWNER = "mrsaminus"
 GITHUB_REPO = "SC-Intel-Tool"

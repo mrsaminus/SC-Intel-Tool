@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.5 - 2026-05-29
+
+- Added the BALDER icon to the app window and packaged Windows executable.
+- Added a Changelog panel under Notes so users can see release changes in-app.
+
 ## 0.1.0-alpha.4 - 2026-05-29
 
 - Added an in-app Install Update flow for packaged Windows builds.

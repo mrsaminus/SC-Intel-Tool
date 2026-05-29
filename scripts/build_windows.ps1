@@ -101,6 +101,22 @@ try {
         Write-Warning "reference_material was not found. The build will launch, but bundled mining reference data may be incomplete."
     }
 
+    $AppIconPath = Join-Path $ProjectRoot "app\assets\Balder.ico"
+    if (Test-Path $AppIconPath) {
+        $IconPath = (Resolve-Path $AppIconPath).Path
+        $AddDataArgs += @("--add-data", "$IconPath;app/assets")
+    } else {
+        $IconPath = ""
+        Write-Warning "app\assets\Balder.ico was not found. The build will use the default executable icon."
+    }
+
+    if (Test-Path "CHANGELOG.md") {
+        $ChangelogPath = (Resolve-Path "CHANGELOG.md").Path
+        $AddDataArgs += @("--add-data", "$ChangelogPath;.")
+    } else {
+        Write-Warning "CHANGELOG.md was not found. The packaged Notes tab will not include release notes."
+    }
+
     $PyInstallerArgs = @(
         "-m", "PyInstaller",
         "--noconfirm",
@@ -111,6 +127,10 @@ try {
         "--distpath", $TempDist,
         "--specpath", $TempSpec
     )
+
+    if ($IconPath) {
+        $PyInstallerArgs += @("--icon", $IconPath)
+    }
 
     if ($Package -eq "OneFile") {
         $PyInstallerArgs += "--onefile"

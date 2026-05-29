@@ -1,8 +1,10 @@
 import sys
 
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMainWindow, QTabWidget
 
 from app.database import init_db
+from app.paths import bundled_path
 from app.version import APP_VERSION
 
 from .item_finder_tab import ItemFinderTab
@@ -15,11 +17,20 @@ from .styles import APP_STYLE
 from .trading_tab import TradingTab
 
 
+def app_icon():
+    icon_path = bundled_path("app", "assets", "Balder.ico")
+    if icon_path.exists():
+        return QIcon(str(icon_path))
+
+    return QIcon()
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
         self.setWindowTitle(f"SC Intel Tool {APP_VERSION}")
+        self.setWindowIcon(app_icon())
         self.setMinimumSize(1120, 780)
         self.setStyleSheet(APP_STYLE)
 
@@ -48,6 +59,7 @@ def run_app():
     init_db()
 
     app = QApplication(sys.argv)
+    app.setWindowIcon(app_icon())
 
     window = MainWindow()
     window.show()
