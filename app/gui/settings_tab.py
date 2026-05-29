@@ -1,6 +1,7 @@
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
+    QApplication,
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -14,6 +15,7 @@ from PySide6.QtWidgets import (
 from app.database import DB_PATH
 from app.paths import get_user_data_dir, is_packaged_app
 from app.update_checker import UpdateCheckError, check_for_updates as fetch_update_info
+from app.updater import UpdateInstallError, download_update, start_update_installer
 from app.version import APP_NAME, APP_VERSION, GITHUB_RELEASES_URL, GITHUB_REPOSITORY
 
 from .workers import BackgroundTaskMixin
@@ -24,7 +26,9 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         super().__init__()
 
         self.update_check_running = False
+        self.update_install_running = False
         self.latest_release_url = GITHUB_RELEASES_URL
+        self.latest_update_info = None
 
         layout = QVBoxLayout()
         layout.setContentsMargins(12, 12, 12, 12)
@@ -68,10 +72,14 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
 
         row = QHBoxLayout()
         self.check_updates_button = QPushButton("Check For Updates")
+        self.install_update_button = QPushButton("Install Update")
         self.open_releases_button = QPushButton("Open Releases")
         self.check_updates_button.clicked.connect(self.check_for_updates)
+        self.install_update_button.clicked.connect(self.install_update)
         self.open_releases_button.clicked.connect(self.open_releases_page)
+        self.install_update_button.setEnabled(False)
         row.addWidget(self.check_updates_button)
+        row.addWidget(self.install_update_button)
         row.addWidget(self.open_releases_button)
         row.addStretch(1)
         layout.addLayout(row)
@@ -108,7 +116,9 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
             return
 
         self.update_check_running = True
+        self.latest_update_info = None
         self.check_updates_button.setEnabled(False)
+        self.install_update_button.setEnabled(False)
         self.check_updates_button.setText("Checking...")
         self.update_status_label.setText("Checking latest GitHub Release...")
 
@@ -122,12 +132,23 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
     def on_update_check_finished(self, result):
         self.latest_release_url = result.release_url or GITHUB_RELEASES_URL
         if result.update_available:
-            self.update_status_label.setText(
-                f"Update available: {result.latest_version}. "
-                f"Current version: {result.current_version}. Open Releases to download it."
-            )
+            self.latest_update_info = result
+            if result.asset_url:
+                self.install_update_button.setEnabled(True)
+                self.update_status_label.setText(
+                    f"Update available: {result.latest_version}. "
+                    f"Current version: {result.current_version}. Click Install Update to download, "
+                    "replace this app and restart."
+                )
+            else:
+                self.update_status_label.setText(
+                    f"Update available: {result.latest_version}, but no Windows executable was found. "
+                    "Open Releases to download it manually."
+                )
             return
 
+        self.latest_update_info = None
+        self.install_update_button.setEnabled(False)
         self.update_status_label.setText(
             f"No newer release found. Current version: {result.current_version}; "
             f"latest release: {result.latest_version}."
@@ -146,6 +167,67 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         self.update_check_running = False
         self.check_updates_button.setEnabled(True)
         self.check_updates_button.setText("Check For Updates")
+
+    def install_update(self):
+        if self.update_install_running or not self.latest_update_info:
+            return
+
+        if not is_packaged_app():
+            QMessageBox.information(
+                self,
+                "Automatic install unavailable",
+                "Automatic install is only available in packaged Windows builds. "
+                "For source/development runs, update with git or download from Releases.",
+            )
+            return
+
+        answer = QMessageBox.question(
+            self,
+            "Install update",
+            f"Download and install {self.latest_update_info.latest_version}? "
+            "SC Intel Tool will close and restart automatically.",
+        )
+        if answer != QMessageBox.Yes:
+            return
+
+        self.update_install_running = True
+        self.check_updates_button.setEnabled(False)
+        self.install_update_button.setEnabled(False)
+        self.open_releases_button.setEnabled(False)
+        self.install_update_button.setText("Installing...")
+        self.update_status_label.setText("Downloading update...")
+
+        update_info = self.latest_update_info
+        self.start_background_task(
+            lambda: download_update(update_info),
+            self.on_update_downloaded,
+            self.on_update_install_error,
+            self.finish_update_install,
+        )
+
+    def on_update_downloaded(self, downloaded_update):
+        try:
+            start_update_installer(downloaded_update)
+        except UpdateInstallError as exc:
+            self.on_update_install_error(exc)
+            return
+
+        self.update_status_label.setText("Update downloaded. Closing app so the updater can finish...")
+        app = QApplication.instance()
+        if app:
+            app.quit()
+
+    def on_update_install_error(self, exc):
+        message = str(exc) if isinstance(exc, UpdateInstallError) else f"Update install failed: {exc}"
+        self.update_status_label.setText(message)
+        QMessageBox.warning(self, "Update install failed", message)
+
+    def finish_update_install(self):
+        self.update_install_running = False
+        self.check_updates_button.setEnabled(True)
+        self.open_releases_button.setEnabled(True)
+        self.install_update_button.setText("Install Update")
+        self.install_update_button.setEnabled(bool(self.latest_update_info and self.latest_update_info.asset_url))
 
     def open_releases_page(self):
         QDesktopServices.openUrl(QUrl(self.latest_release_url or GITHUB_RELEASES_URL))

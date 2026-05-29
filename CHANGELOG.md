@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.4 - 2026-05-29
+
+- Added an in-app Install Update flow for packaged Windows builds.
+- Improved update checks to select the Windows executable from GitHub Releases.
+- Added clearer update-check messages when release metadata is private or unavailable.
+
 ## 0.1.0-alpha.3 - 2026-05-29
 
 - Added Item Finder location searches for city, station and shop names using Cornerstone location inventory data.

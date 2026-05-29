@@ -555,6 +555,7 @@ Implemented:
 - Version display in Settings/About
 - `Check for updates` button
 - Latest GitHub Release metadata check
+- In-app `Install Update` flow for packaged Windows builds
 - Release page button
 - Packaged-build user data path for preserving SQLite data across updates
 - Windows portable build script
@@ -568,6 +569,8 @@ Implemented:
 Remaining:
 
 - Confirm `Check for updates` can see the published release metadata
+- Make release metadata publicly reachable before relying on in-app update checks
+- Smoke-test automatic update from one packaged release to the next
 - Add code signing certificate support to reduce Windows SmartScreen warnings
 - Add GitHub Actions release build later if desired
 
@@ -576,7 +579,8 @@ Preferred release model:
 - Single-file executable for normal users
 - Portable zip/folder builds remain available for debugging
 - Installer later if needed
-- Update checks should use GitHub Releases for normal users
+- Update checks should use public GitHub Releases for normal users
+- Packaged Windows builds should install updates directly from Settings
 - Git updates should remain a developer/source-install workflow only
 
 ### Priority 4: Finish Mining & Salvage Core

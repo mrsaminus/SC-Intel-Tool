@@ -24,7 +24,13 @@ For normal users, updates should come from GitHub Releases:
 
 [SC Intel Tool Releases](https://github.com/mrsaminus/SC-Intel-Tool/releases)
 
-Source/developer installs can update with git manually.
+The in-app update check uses GitHub's public Releases API, so the repository or
+release metadata must be public for normal users.
+
+Packaged Windows builds can install updates from the Settings tab. The app
+downloads the newest Windows executable, closes itself, replaces the old
+executable, and starts again. Source/developer installs should update with git
+manually.
 
 ## User Data
 
@@ -60,7 +66,7 @@ Release checklist:
 2. Update `CHANGELOG.md`.
 3. Run smoke tests locally.
 4. Run `.\scripts\build_windows.ps1`.
-5. Create a GitHub Release with a matching tag, for example `v0.1.0-alpha.3`.
+5. Create a GitHub Release with a matching tag, for example `v0.1.0-alpha.4`.
 6. Upload the Windows executable and include the SHA256 checksum in the release notes.
 
 ## Roadmap
