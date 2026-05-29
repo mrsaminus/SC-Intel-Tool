@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.2 - 2026-05-29
+
+- Switched the default Windows release build to a single-file executable.
+- Fixed bundled reference data lookup for packaged PyInstaller builds.
+
 ## 0.1.0-alpha.1 - 2026-05-29
 
 - Split the GUI into focused modules under `app/gui/`.

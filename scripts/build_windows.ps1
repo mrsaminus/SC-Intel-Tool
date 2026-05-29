@@ -1,5 +1,7 @@
 param(
-    [string]$Version = ""
+    [string]$Version = "",
+    [ValidateSet("OneFile", "OneDir")]
+    [string]$Package = "OneFile"
 )
 
 $ErrorActionPreference = "Stop"
@@ -108,18 +110,35 @@ try {
         "--workpath", $TempBuild,
         "--distpath", $TempDist,
         "--specpath", $TempSpec
-    ) + $AddDataArgs + @("main.py")
+    )
+
+    if ($Package -eq "OneFile") {
+        $PyInstallerArgs += "--onefile"
+    }
+
+    $PyInstallerArgs += $AddDataArgs + @("main.py")
 
     Invoke-Checked $Python $PyInstallerArgs
 
     New-Item -ItemType Directory -Force -Path "dist" | Out-Null
-    $Artifact = Join-Path "dist" "SC-Intel-Tool-$Version-windows-portable.zip"
-    if (Test-Path $Artifact) {
-        Remove-Item -LiteralPath $Artifact
+
+    if ($Package -eq "OneFile") {
+        $Artifact = Join-Path "dist" "SC-Intel-Tool-$Version-windows.exe"
+        if (Test-Path $Artifact) {
+            Remove-Item -LiteralPath $Artifact
+        }
+
+        Copy-Item -LiteralPath (Join-Path $TempDist "SC-Intel-Tool.exe") -Destination $Artifact
+    } else {
+        $Artifact = Join-Path "dist" "SC-Intel-Tool-$Version-windows-portable.zip"
+        if (Test-Path $Artifact) {
+            Remove-Item -LiteralPath $Artifact
+        }
+
+        $BuiltApp = Join-Path $TempDist "SC-Intel-Tool"
+        Compress-WithRetry -SourcePath (Join-Path $BuiltApp "*") -DestinationPath $Artifact
     }
 
-    $BuiltApp = Join-Path $TempDist "SC-Intel-Tool"
-    Compress-WithRetry -SourcePath (Join-Path $BuiltApp "*") -DestinationPath $Artifact
     $Hash = Get-FileHash -LiteralPath $Artifact -Algorithm SHA256
 
     Write-Host ""

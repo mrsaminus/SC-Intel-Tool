@@ -6,9 +6,10 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 from zipfile import ZipFile
 
+from app.paths import bundled_path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_MINING_ROOT = PROJECT_ROOT / "reference_material" / "mining_warchest"
+
+DEFAULT_MINING_ROOT = bundled_path("reference_material", "mining_warchest")
 
 SECTION_RE = re.compile(r"\b(Surface|Asteroid)\s*:", re.IGNORECASE)
 SYSTEM_MARKER_RE = re.compile(

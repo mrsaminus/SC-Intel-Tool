@@ -16,6 +16,17 @@ def app_root():
     return Path(__file__).resolve().parents[1]
 
 
+def bundled_root():
+    if is_packaged_app() and hasattr(sys, "_MEIPASS"):
+        return Path(sys._MEIPASS)
+
+    return app_root()
+
+
+def bundled_path(*parts):
+    return bundled_root().joinpath(*parts)
+
+
 def get_user_data_dir():
     override = os.environ.get("SC_INTEL_DATA_DIR")
     if override:

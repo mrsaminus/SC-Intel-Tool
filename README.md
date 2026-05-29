@@ -34,7 +34,7 @@ Source/development runs use the workspace `sc_intel.db` by default.
 
 The Settings tab shows the active user data folder and database path.
 
-## Build A Windows Portable Release
+## Build A Windows Release
 
 From the repository root:
 
@@ -42,7 +42,13 @@ From the repository root:
 .\scripts\build_windows.ps1
 ```
 
-The script installs runtime/dev requirements, builds with PyInstaller, creates a portable zip in `dist/`, and prints the SHA256 checksum.
+The script installs runtime/dev requirements, builds a single-file Windows executable with PyInstaller, writes it to `dist/`, and prints the SHA256 checksum.
+
+For a portable folder zip instead, run:
+
+```powershell
+.\scripts\build_windows.ps1 -Package OneDir
+```
 
 Release checklist:
 
@@ -50,8 +56,8 @@ Release checklist:
 2. Update `CHANGELOG.md`.
 3. Run smoke tests locally.
 4. Run `.\scripts\build_windows.ps1`.
-5. Create a GitHub Release with a matching tag, for example `v0.1.0-alpha.1`.
-6. Upload the portable zip and include the SHA256 checksum in the release notes.
+5. Create a GitHub Release with a matching tag, for example `v0.1.0-alpha.2`.
+6. Upload the Windows executable and include the SHA256 checksum in the release notes.
 
 ## Roadmap
 
