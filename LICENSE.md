@@ -15,7 +15,7 @@ You may:
 
 You may NOT, without explicit written permission:
 
-* Copy substantial portions of the codebase
+* Copy, reuse, or redistribute parts of the codebase
 * Redistribute modified versions
 * Repackage or rehost builds
 * Create derivative projects based on this code
