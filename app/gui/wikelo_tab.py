@@ -18,7 +18,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.database import get_wikelo_checklist_state, set_wikelo_checklist_state
+from app.database import (
+    get_wikelo_checklist_state,
+    reset_all_wikelo_checklist_state,
+    reset_wikelo_checklist_reward,
+    set_wikelo_checklist_state,
+)
 from app.wikelo_client import WIKELO_SOURCE_URL, fetch_wikelo_items, normalized_key
 
 from .table_utils import configure_readable_table_columns
@@ -156,8 +161,14 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
 
         button_row = QHBoxLayout()
         self.open_selected_wikelo_source_button = QPushButton("Open Selected Item Source")
+        self.reset_selected_wikelo_button = QPushButton("Reset Selected Reward")
+        self.reset_all_wikelo_button = QPushButton("Reset All Wikelo Progress")
         self.open_selected_wikelo_source_button.clicked.connect(self.open_selected_wikelo_source)
+        self.reset_selected_wikelo_button.clicked.connect(self.reset_selected_wikelo_reward)
+        self.reset_all_wikelo_button.clicked.connect(self.reset_all_wikelo_progress)
         button_row.addWidget(self.open_selected_wikelo_source_button)
+        button_row.addWidget(self.reset_selected_wikelo_button)
+        button_row.addWidget(self.reset_all_wikelo_button)
         layout.addLayout(button_row)
 
         self.wikelo_requirements_table = self.create_table([
@@ -372,6 +383,7 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
     def update_selected_wikelo_panel(self):
         item = self.selected_wikelo_item()
         self.open_selected_wikelo_source_button.setEnabled(item is not None)
+        self.reset_selected_wikelo_button.setEnabled(item is not None)
         if not item:
             self.selected_wikelo_name_label.setText("No Wikelo item selected")
             self.selected_wikelo_meta_label.setText("")
@@ -582,6 +594,46 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
     def open_selected_wikelo_source(self):
         item = self.selected_wikelo_item()
         QDesktopServices.openUrl(QUrl(item.source_url if item else WIKELO_SOURCE_URL))
+
+    def reset_selected_wikelo_reward(self):
+        item = self.selected_wikelo_item()
+        if not item:
+            return
+
+        message = QMessageBox(self)
+        message.setIcon(QMessageBox.Warning)
+        message.setWindowTitle("Reset Reward Progress")
+        message.setText("Reset checklist progress for this reward?\n\nThis cannot be undone.")
+        cancel_button = message.addButton("Cancel", QMessageBox.RejectRole)
+        reset_button = message.addButton("Reset", QMessageBox.DestructiveRole)
+        message.setDefaultButton(cancel_button)
+        message.exec()
+        if message.clickedButton() != reset_button:
+            return
+
+        reset_wikelo_checklist_reward(self.checklist_reward_key(item))
+        self.populate_requirement_rows(item)
+
+    def reset_all_wikelo_progress(self):
+        message = QMessageBox(self)
+        message.setIcon(QMessageBox.Warning)
+        message.setWindowTitle("Reset All Wikelo Progress")
+        message.setText(
+            "Reset ALL Wikelo checklist progress?\n\n"
+            "Use this after game wipes or if you want to start fresh.\n\n"
+            "This cannot be undone."
+        )
+        cancel_button = message.addButton("Cancel", QMessageBox.RejectRole)
+        reset_button = message.addButton("Reset All", QMessageBox.DestructiveRole)
+        message.setDefaultButton(cancel_button)
+        message.exec()
+        if message.clickedButton() != reset_button:
+            return
+
+        reset_all_wikelo_checklist_state()
+        item = self.selected_wikelo_item()
+        if item:
+            self.populate_requirement_rows(item)
 
     def create_module_header(self, title, subtitle):
         card = QFrame()

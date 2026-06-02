@@ -114,6 +114,27 @@ def set_wikelo_checklist_state(reward_key, option_key, material_key, checked):
         conn.commit()
 
 
+def reset_wikelo_checklist_reward(reward_key):
+    with get_connection() as conn:
+        cur = conn.cursor()
+        ensure_wikelo_checklist_table(cur)
+        cur.execute(
+            "DELETE FROM wikelo_checklist_state WHERE reward_key = ?",
+            (reward_key,),
+        )
+        conn.commit()
+        return cur.rowcount
+
+
+def reset_all_wikelo_checklist_state():
+    with get_connection() as conn:
+        cur = conn.cursor()
+        ensure_wikelo_checklist_table(cur)
+        cur.execute("DELETE FROM wikelo_checklist_state")
+        conn.commit()
+        return cur.rowcount
+
+
 def save_lookup(
     handle,
     display_name,
