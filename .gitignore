@@ -29,5 +29,6 @@ Thumbs.db
 # Build/release artifacts
 build/
 dist/
+SC-Intel-Tool.zip
 *.spec
 *.zip
