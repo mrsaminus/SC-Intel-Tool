@@ -44,7 +44,7 @@ Packaged builds store user data outside the install folder, so updates should pr
 
 SC Intel Tool has no telemetry, analytics, tracking, or user reporting. Player notes, lookup history, settings, and local database data are not sent to the developer.
 
-The app only makes outbound requests to public Star Citizen-related data sources needed for its features: RSI, UEX, Cornerstone, SC Focus, and GitHub Releases for update checking. All user data remains local unless the user explicitly exports it.
+The app only makes outbound requests to public Star Citizen-related data sources needed for its features: RSI, UEX, Cornerstone, SC Focus, the public Wikelo Google Sheet, and GitHub Releases for update checking. All user data remains local unless the user explicitly exports it.
 
 ## User Data
 

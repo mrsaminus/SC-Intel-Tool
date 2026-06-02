@@ -16,6 +16,7 @@ from .search_history_tab import SearchHistoryTab
 from .settings_tab import SettingsTab
 from .styles import APP_STYLE
 from .trading_tab import TradingTab
+from .wikelo_tab import WikeloItemsTab
 
 
 def app_icon():
@@ -43,6 +44,7 @@ class MainWindow(QMainWindow):
         self.mining_tab = MiningTab()
         self.trading_tab = TradingTab()
         self.item_finder_tab = ItemFinderTab()
+        self.wikelo_tab = WikeloItemsTab()
         self.notes_tab = NotesTab()
         self.settings_tab = SettingsTab()
 
@@ -52,6 +54,7 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.mining_tab, "Mining & Salvage")
         self.tabs.addTab(self.trading_tab, "Trading")
         self.tabs.addTab(self.item_finder_tab, "Item Finder")
+        self.tabs.addTab(self.wikelo_tab, "Wikelo Items")
         self.tabs.addTab(self.notes_tab, "Notes")
         self.tabs.addTab(self.settings_tab, "Settings")
 

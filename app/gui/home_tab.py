@@ -18,6 +18,7 @@ class HomeTab(QWidget):
         ("Mining & Salvage", "Plan mining, salvage, refining, scan IDs and equipment."),
         ("Trading", "Trading tools and market planning space."),
         ("Item Finder", "Find gear, ships and buy/rental locations."),
+        ("Wikelo Items", "Browse Wikelo missions, required materials and rewards."),
         ("Notes", "App notes, changelog and local reference notes."),
         ("Settings", "Update checks, privacy notes and local app settings."),
     ]
