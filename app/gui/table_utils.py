@@ -13,7 +13,7 @@ def configure_readable_table_columns(table, min_width=90, max_width=280, stretch
 
     header = table.horizontalHeader()
     header.setStretchLastSection(False)
-    header.setMinimumSectionSize(min_width)
+    header.setMinimumSectionSize(28)
 
     for column in range(table.columnCount()):
         header.setSectionResizeMode(column, QHeaderView.ResizeToContents)

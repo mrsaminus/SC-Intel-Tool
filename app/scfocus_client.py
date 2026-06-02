@@ -66,14 +66,14 @@ def fetch_scfocus_ship_items():
             if not parsed:
                 continue
 
-            ship_name, location, category = parsed
-            key = (category, ship_name.lower())
-            group = groups.setdefault(key, {
-                "name": ship_name,
-                "category": category,
-                "locations": [],
-            })
-            group["locations"].append(location)
+            for ship_name, location, parsed_category in parsed:
+                key = (parsed_category, ship_name.lower())
+                group = groups.setdefault(key, {
+                    "name": ship_name,
+                    "category": parsed_category,
+                    "locations": [],
+                })
+                group["locations"].append(location)
 
     items = []
     for group in groups.values():
@@ -129,10 +129,22 @@ def parse_ship_row(cells, category, heading_text, page_updated):
     if category in SPECIAL_ACQUISITION_CATEGORIES:
         if len(cells) < 2:
             return None
-        location_text = cells[1]
-        price = special_acquisition_method(heading_text, location_text)
-        if price == WIKELO_CATEGORY:
-            category = WIKELO_CATEGORY
+        locations = []
+        for location_text in special_acquisition_locations(cells[1:]):
+            price = special_acquisition_method(heading_text, location_text)
+            parsed_category = WIKELO_CATEGORY if price == WIKELO_CATEGORY else category
+            locations.append((
+                first,
+                SCFocusShipLocation(
+                    location=location_text,
+                    price=price,
+                    verified=page_updated,
+                    url=SCFOCUS_SHIPS_URL,
+                ),
+                parsed_category,
+            ))
+
+        return locations
     else:
         if len(cells) < 3:
             return None
@@ -142,12 +154,23 @@ def parse_ship_row(cells, category, heading_text, page_updated):
     if not location_text:
         return None
 
-    return first, SCFocusShipLocation(
+    return [(first, SCFocusShipLocation(
         location=location_text,
         price=price,
         verified=page_updated,
         url=SCFOCUS_SHIPS_URL,
-    ), category
+    ), category)]
+
+
+def special_acquisition_locations(values):
+    locations = []
+    for value in values:
+        text = re.sub(r"\s+", " ", value or "").strip(" -")
+        if not text or text.lower() in {"location", "locations", "ship", "n/a", "na", "none", "-"}:
+            continue
+        locations.append(text)
+
+    return locations
 
 
 def summarize_ship_locations(category, locations):

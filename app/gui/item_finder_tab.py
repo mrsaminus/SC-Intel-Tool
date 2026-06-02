@@ -31,10 +31,41 @@ from app.cstone_client import (
     fetch_cstone_item_locations,
     fetch_cstone_items,
 )
-from app.scfocus_client import SCFOCUS_SHIPS_URL, WIKELO_CATEGORY, fetch_scfocus_ship_items
+from app.scfocus_client import (
+    SCFOCUS_SHIPS_URL,
+    SPECIAL_ACQUISITION_CATEGORY,
+    WIKELO_CATEGORY,
+    fetch_scfocus_ship_items,
+)
 
 from .table_utils import configure_readable_table_columns
 from .workers import BackgroundTaskMixin
+
+
+SORT_ROLE = Qt.UserRole + 1
+SHIP_SALE_CATEGORY = "Ships for Sale"
+SHIP_RENT_CATEGORY = "Ships for Rent"
+SHIP_SALE_SOURCE_CATEGORIES = {SHIP_SALE_CATEGORY, WIKELO_CATEGORY, SPECIAL_ACQUISITION_CATEGORY}
+SHIP_CATEGORIES = {SHIP_SALE_CATEGORY, SHIP_RENT_CATEGORY, WIKELO_CATEGORY, SPECIAL_ACQUISITION_CATEGORY}
+
+
+class SortableTableWidgetItem(QTableWidgetItem):
+    def __lt__(self, other):
+        left = self.data(SORT_ROLE)
+        right = other.data(SORT_ROLE) if isinstance(other, QTableWidgetItem) else None
+        if left is not None or right is not None:
+            return self.sort_key(left) < self.sort_key(right)
+
+        return super().__lt__(other)
+
+    @staticmethod
+    def sort_key(value):
+        if value is None:
+            return (2, "")
+        if isinstance(value, (int, float)):
+            return (0, float(value))
+
+        return (1, str(value).lower())
 
 
 class ItemFinderTab(BackgroundTaskMixin, QWidget):
@@ -280,25 +311,27 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
     def populate_item_results(self):
         query = self.item_search_input.text().strip().lower()
         category_filter = self.item_category_filter.currentText()
-        self.visible_finder_items = []
+        raw_visible_items = []
         visible_keys = set()
 
         for item in self.finder_items:
-            if category_filter != "All categories" and item.category != category_filter:
+            if not self.item_matches_category(item, category_filter):
                 continue
             searchable = self.item_search_text(item)
             if query and query not in searchable:
                 continue
-            self.visible_finder_items.append(item)
+            raw_visible_items.append(item)
             visible_keys.add(self.finder_item_key(item))
 
         for item in self.cached_location_search_items(query, category_filter):
             key = self.finder_item_key(item)
             if key in visible_keys:
                 continue
-            self.visible_finder_items.append(item)
+            raw_visible_items.append(item)
             visible_keys.add(key)
 
+        self.visible_finder_items = self.deduplicated_visible_items(raw_visible_items, category_filter)
+        self.update_item_result_columns(category_filter, self.visible_finder_items)
         self.item_results_table.setUpdatesEnabled(False)
         self.item_results_table.setSortingEnabled(False)
         try:
@@ -310,12 +343,13 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
                     item.category,
                     item.item_type,
                     self.display_item_availability(item),
-                    item.effect,
+                    self.item_summary_text(item, category_filter),
                 ]
                 for col_index, value in enumerate(values):
-                    table_item = QTableWidgetItem(str(value))
+                    table_item = SortableTableWidgetItem(str(value))
                     table_item.setFlags(table_item.flags() & ~Qt.ItemIsEditable)
                     table_item.setData(Qt.UserRole, row_index)
+                    table_item.setData(SORT_ROLE, self.item_sort_value(item, col_index, value, category_filter))
                     table_item.setToolTip(str(value))
                     if col_index == 3:
                         table_item.setForeground(QColor("#68e6a5" if item.sold else "#7bb9c8"))
@@ -333,6 +367,191 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
         self.update_selected_item_panel()
         self.schedule_location_search_if_needed(query, category_filter)
         self.schedule_availability_autoload()
+
+    def update_item_result_columns(self, category_filter, visible_items):
+        summary_header = "Lowest Price" if category_filter in {SHIP_SALE_CATEGORY, SHIP_RENT_CATEGORY} else "Summary"
+        self.item_results_table.horizontalHeaderItem(4).setText(summary_header)
+        self.item_results_table.setColumnHidden(2, self.hide_type_column_for_category(category_filter, visible_items))
+
+    def hide_type_column_for_category(self, category_filter, visible_items):
+        if not category_filter.startswith("Armor - ") or not visible_items:
+            return False
+
+        expected = self.normalized_armor_type(category_filter)
+        return all(
+            self.normalized_armor_type(item.item_type) in {expected, category_filter.lower().replace("armor - ", "")}
+            for item in visible_items
+        )
+
+    def normalized_armor_type(self, value):
+        text = str(value or "").lower().replace("armor - ", "").replace("armor", "").strip()
+        if text.endswith("s"):
+            text = text[:-1]
+        if text == "torso":
+            return "core"
+
+        return text
+
+    def item_matches_category(self, item, category_filter):
+        if category_filter == "All categories":
+            return True
+        if category_filter == SHIP_SALE_CATEGORY:
+            return self.is_ship_sale_item(item)
+        if category_filter == SHIP_RENT_CATEGORY:
+            return self.is_ship_rent_item(item)
+
+        return item.category == category_filter
+
+    def deduplicated_visible_items(self, items, category_filter):
+        groups = {}
+        ordered_items = []
+
+        for item in items:
+            group_key = self.ship_group_key(item, category_filter)
+            if not group_key:
+                ordered_items.append(item)
+                continue
+
+            if group_key not in groups:
+                groups[group_key] = []
+                ordered_items.append(group_key)
+            groups[group_key].append(item)
+
+        deduplicated = []
+        for entry in ordered_items:
+            if isinstance(entry, tuple):
+                deduplicated.append(self.merged_ship_item(groups[entry], entry[0]))
+            else:
+                deduplicated.append(entry)
+
+        return deduplicated
+
+    def ship_group_key(self, item, category_filter):
+        if self.is_ship_sale_item(item) and category_filter in {"All categories", SHIP_SALE_CATEGORY}:
+            return (SHIP_SALE_CATEGORY, self.normalized_ship_name(item.name))
+        if self.is_ship_rent_item(item) and category_filter in {"All categories", SHIP_RENT_CATEGORY}:
+            return (SHIP_RENT_CATEGORY, self.normalized_ship_name(item.name))
+        if item.category in {WIKELO_CATEGORY, SPECIAL_ACQUISITION_CATEGORY} and category_filter == item.category:
+            return (item.category, self.normalized_ship_name(item.name))
+
+        return None
+
+    def merged_ship_item(self, items, category):
+        base = items[0]
+        locations = self.unique_item_locations(
+            location
+            for item in items
+            for location in getattr(item, "locations", ())
+        )
+        return replace(
+            base,
+            item_id=f"{category}:{self.normalized_ship_name(base.name)}",
+            category=category,
+            sold=category not in {WIKELO_CATEGORY, SPECIAL_ACQUISITION_CATEGORY},
+            availability=self.location_availability_text(locations),
+            effect=self.ship_detail_summary_text(category, locations),
+            locations=tuple(locations),
+        )
+
+    def unique_item_locations(self, locations):
+        unique_locations = []
+        seen = set()
+        for location in locations:
+            key = (
+                str(location.location).strip().lower(),
+                str(location.price).strip().lower(),
+                str(location.verified).strip().lower(),
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            unique_locations.append(location)
+
+        return unique_locations
+
+    def normalized_ship_name(self, name):
+        return " ".join(str(name or "").lower().split())
+
+    def is_ship_sale_item(self, item):
+        return item.source == "SC Focus" and item.item_type == "Ship" and item.category in SHIP_SALE_SOURCE_CATEGORIES
+
+    def is_ship_rent_item(self, item):
+        return item.source == "SC Focus" and item.item_type == "Ship" and item.category == SHIP_RENT_CATEGORY
+
+    def is_ship_item(self, item):
+        return item.source == "SC Focus" and item.item_type == "Ship" and item.category in SHIP_CATEGORIES
+
+    def item_summary_text(self, item, category_filter):
+        if self.is_ship_item(item) and category_filter in {SHIP_SALE_CATEGORY, SHIP_RENT_CATEGORY}:
+            return self.lowest_ship_price_text(item)
+
+        return item.effect
+
+    def item_sort_value(self, item, column, value, category_filter):
+        if column == 4 and self.is_ship_item(item) and category_filter in {SHIP_SALE_CATEGORY, SHIP_RENT_CATEGORY}:
+            price = self.lowest_ship_price_value(item)
+            return price if price is not None else float("inf")
+        if column == 3:
+            locations = self.known_item_locations(item)
+            if locations is not None:
+                return len(locations)
+
+        return value
+
+    def lowest_ship_price_text(self, item):
+        price = self.lowest_ship_price_value(item)
+        if price is not None:
+            return f"{price:,} aUEC"
+
+        prices = {location.price for location in getattr(item, "locations", ()) if location.price}
+        if WIKELO_CATEGORY in prices:
+            return WIKELO_CATEGORY
+        if "No aUEC price" in prices:
+            return "No aUEC price"
+
+        return "N/A"
+
+    def lowest_ship_price_value(self, item):
+        prices = [
+            self.price_number(location.price)
+            for location in getattr(item, "locations", ())
+        ]
+        prices = [price for price in prices if price is not None]
+        return min(prices) if prices else None
+
+    def price_number(self, value):
+        digits = "".join(char for char in str(value or "") if char.isdigit())
+        if not digits:
+            return None
+
+        try:
+            return int(digits)
+        except ValueError:
+            return None
+
+    def ship_detail_summary_text(self, category, locations):
+        lowest_price = self.lowest_ship_price_text_for_locations(locations)
+        if lowest_price == "N/A":
+            return f"{category} | {self.location_count_text(len(locations))}"
+
+        return f"{category} | Lowest {lowest_price}"
+
+    def lowest_ship_price_text_for_locations(self, locations):
+        prices = [
+            self.price_number(location.price)
+            for location in locations
+        ]
+        prices = [price for price in prices if price is not None]
+        if prices:
+            return f"{min(prices):,} aUEC"
+
+        price_texts = {location.price for location in locations if location.price}
+        if WIKELO_CATEGORY in price_texts:
+            return WIKELO_CATEGORY
+        if "No aUEC price" in price_texts:
+            return "No aUEC price"
+
+        return "N/A"
 
     def item_search_text(self, item):
         parts = [
@@ -481,6 +700,10 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
             self.load_selected_item_locations()
 
     def display_item_availability(self, item):
+        locations = self.known_item_locations(item)
+        if locations is not None:
+            return self.location_availability_text(locations)
+
         if item.source != "Cornerstone":
             return item.availability
 
@@ -542,8 +765,7 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
         selected = self.selected_item()
         selected_key = self.finder_item_key(selected) if selected else None
         for item, locations in results:
-            self.item_location_cache[self.finder_item_key(item)] = list(locations)
-            self.set_item_availability_count(item, len(locations))
+            self.set_item_availability_locations(item, locations)
             if selected_key == self.finder_item_key(item):
                 self.finder_locations = locations
                 self.populate_location_rows()
@@ -648,8 +870,7 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
         if request_id != self.item_location_request_id:
             return
 
-        self.set_item_availability_count(requested_item, len(locations))
-        self.item_location_cache[self.finder_item_key(requested_item)] = list(locations)
+        self.set_item_availability_locations(requested_item, locations)
         selected = self.selected_item()
         if selected and self.finder_item_key(selected) == self.finder_item_key(requested_item):
             self.finder_locations = locations
@@ -678,7 +899,12 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
             return
 
         key = self.finder_item_key(item)
-        availability = self.location_count_text(location_count)
+        locations = self.item_location_cache.get(key)
+        availability = (
+            self.location_availability_text(locations)
+            if locations is not None
+            else self.location_count_text(location_count)
+        )
         self.availability_counts[key] = location_count
         updated_item = replace(item, availability=availability)
 
@@ -695,8 +921,13 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
         selected = self.selected_item()
         if selected and self.finder_item_key(selected) == key:
             self.selected_item_category_label.setText(
-                f"{updated_item.category} | {updated_item.item_type} | {updated_item.availability} | Source: {updated_item.source}"
+                f"{updated_item.category} | {updated_item.item_type} | {availability} | Source: {updated_item.source}"
             )
+
+    def set_item_availability_locations(self, item, locations):
+        key = self.finder_item_key(item)
+        self.item_location_cache[key] = list(locations)
+        self.set_item_availability_count(item, len(locations))
 
     def update_visible_availability_cells(self, key, availability):
         for row in range(self.item_results_table.rowCount()):
@@ -719,6 +950,18 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
 
     def location_count_text(self, location_count):
         return f"{location_count} location{'s' if location_count != 1 else ''}"
+
+    def known_item_locations(self, item):
+        if hasattr(item, "locations"):
+            return list(item.locations)
+
+        return self.item_location_cache.get(self.finder_item_key(item))
+
+    def location_availability_text(self, locations):
+        if len(locations) == 1:
+            return locations[0].location
+
+        return self.location_count_text(len(locations))
 
     def populate_location_rows(self):
         self.item_locations_table.setSortingEnabled(False)
