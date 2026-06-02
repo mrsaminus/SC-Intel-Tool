@@ -1,6 +1,6 @@
 # SC Intel Tool Roadmap
 
-Last updated: 2026-05-29
+Last updated: 2026-06-03
 
 SC Intel Tool is a Star Citizen intelligence and utility app for player lookup,
 organization intel, mining and salvage planning, item finding, and later OCR/chat
@@ -437,6 +437,10 @@ Dependencies/decisions needed:
 
 Important before the app grows much more:
 
+- Repository hygiene pass completed:
+  - generated Python caches ignored/cleaned
+  - local databases, build output, archives, and private reference/context files ignored
+  - `ROADMAP.md` and build scripts remain tracked/public
 - Split `app/gui.py` into smaller UI modules:
   - main_window.py
   - player_lookup_tab.py
@@ -452,6 +456,7 @@ Important before the app grows much more:
   - ore_finder_widget.py
   - rock_breaker_widget.py
   - equipment_widget.py
+- Split `app/gui/item_finder_tab.py` after Mining & Salvage internals, keeping current behavior
 - Move network calls out of direct GUI execution and into worker threads
 - Add release/build automation for standalone downloads
 - Add update-check service against GitHub Releases

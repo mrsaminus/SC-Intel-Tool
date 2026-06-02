@@ -9,9 +9,18 @@ venv/
 
 # VS Code
 .vscode/
+.idea/
 
 # Local database
 sc_intel.db
+*.db
+*.sqlite
+*.sqlite3
+cache/
+logs/
+exports/
+backups/
+temp/
 
 # Local project context
 PROJECT_CONTEXT.md
@@ -22,9 +31,13 @@ reference_material/
 # OS junk
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Temporary
 *.log
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # Build/release artifacts
 build/

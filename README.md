@@ -58,6 +58,10 @@ The Settings tab shows the active user data folder and database path.
 
 Early alpha builds are unsigned, so Windows may show an "Unknown publisher" SmartScreen warning. Reducing this for normal users requires Authenticode code signing with a trusted certificate and release reputation over time.
 
+## License And Reuse
+
+The repository source is visible for transparency and project collaboration. No open-source license is currently granted, so the code, assets, and packaged builds may not be reused, redistributed, or republished without permission.
+
 ## Build A Windows Release
 
 From the repository root:
