@@ -38,7 +38,7 @@ downloads the newest Windows executable, closes itself, replaces the old
 executable, and starts again. Source/developer installs should update with git
 manually using `git pull`.
 
-Packaged builds store user data outside the install folder, so updates should preserve notes and lookup history.
+User data is stored outside the install folder by default, so updates should preserve notes, lookup history, Wikelo checklist state, settings, and future local data.
 
 ## Privacy
 
@@ -48,11 +48,32 @@ The app only makes outbound requests to public Star Citizen-related data sources
 
 ## User Data
 
-Packaged Windows builds store user data outside the app install folder so updates do not remove notes or history.
+SC Intel Tool stores local user data outside the app install folder by default so updates do not remove notes, lookup history, Wikelo checklist state, settings, or future local data.
 
-Source/development runs use the workspace `sc_intel.db` by default.
+On Windows, the default user data folder is:
 
-The Settings tab shows the active user data folder and database path.
+```text
+%LOCALAPPDATA%\SC-Intel-Tool\
+```
+
+The SQLite database is stored there as:
+
+```text
+sc_intel.db
+```
+
+The Settings tab shows the active user data folder and database path. No local database data is sent to the developer.
+
+To back up your data manually, close the app and copy the `SC-Intel-Tool` folder from `%LOCALAPPDATA%`. Restoring is the reverse: close the app, then copy the backed-up folder back to `%LOCALAPPDATA%`.
+
+Advanced users and tests can override paths with environment variables:
+
+```powershell
+$env:SC_INTEL_DATA_DIR = "D:\SC-Intel-Tool-Data"
+$env:SC_INTEL_DB_PATH = "D:\SC-Intel-Tool-Data\sc_intel.db"
+```
+
+`SC_INTEL_DB_PATH` takes precedence for the SQLite database. These overrides are local only and do not enable telemetry or cloud sync.
 
 ## Windows SmartScreen
 

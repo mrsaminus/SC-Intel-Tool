@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.database import DB_PATH
-from app.paths import get_user_data_dir, is_packaged_app
+from app.paths import get_active_data_dir, is_packaged_app
 from app.update_checker import UpdateCheckError, check_for_updates as fetch_update_info
 from app.updater import UpdateInstallError, download_update, start_update_installer
 from app.version import APP_NAME, APP_VERSION, GITHUB_RELEASES_URL, GITHUB_REPOSITORY
@@ -92,12 +92,12 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         grid = QGridLayout()
         grid.setHorizontalSpacing(18)
         grid.setVerticalSpacing(8)
-        self.add_fact(grid, 0, "User Data Folder", str(get_user_data_dir()))
-        self.add_fact(grid, 1, "Database", str(DB_PATH))
+        self.add_fact(grid, 0, "Active Data Folder", str(get_active_data_dir()))
+        self.add_fact(grid, 1, "Active Database", str(DB_PATH))
         layout.addLayout(grid)
 
         hint = QLabel(
-            "Packaged builds store user data outside the app folder so notes and history survive updates."
+            "User data is stored outside the app folder by default so notes and history survive updates."
         )
         hint.setObjectName("moduleSubtitle")
         hint.setWordWrap(True)
@@ -233,7 +233,7 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         QDesktopServices.openUrl(QUrl(self.latest_release_url or GITHUB_RELEASES_URL))
 
     def open_data_folder(self):
-        QDesktopServices.openUrl(QUrl.fromLocalFile(str(get_user_data_dir())))
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(get_active_data_dir())))
 
     def create_module_header(self, title, subtitle):
         card = QFrame()
