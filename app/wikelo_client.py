@@ -35,6 +35,7 @@ class WikeloItem:
     source_url: str
     notes: str
     updated: str
+    retired: bool = False
 
 
 FALLBACK_WIKELO_TABS = [
@@ -166,6 +167,7 @@ def parse_inline_mission_costs(tab_name, rows, title, updated, notes):
                 tab_name,
                 updated,
                 notes,
+                row_metadata=" ".join(row),
             )
             key = item_identity(item)
             if key not in seen:
@@ -199,6 +201,7 @@ def parse_cost_reward_blocks(tab_name, rows, title, updated, notes):
                 tab_name,
                 updated,
                 notes,
+                row_metadata=" ".join(row),
             )
             key = item_identity(item)
             if key not in seen:
@@ -230,6 +233,7 @@ def parse_favor_exchange(tab_name, rows, title, updated, notes):
                 tab_name,
                 updated,
                 notes,
+                row_metadata=" ".join(row),
             ))
             break
 
@@ -379,11 +383,14 @@ def clean_requirement_name(text):
     return text.strip(" -")
 
 
-def build_wikelo_item(tab_name, reward, mission, requirements, source_sheet, updated, notes):
+def build_wikelo_item(tab_name, reward, mission, requirements, source_sheet, updated, notes, row_metadata=""):
     reward_item = clean_reward_name(reward) or clean_reward_name(tab_name)
     mission_name = clean_text(mission) or clean_reward_name(tab_name)
     category, item_type = classify_wikelo_item(tab_name, reward_item, mission_name)
     method = mission_name if mission_name != reward_item else source_sheet
+    retired = is_retired_wikelo_item(
+        " ".join((reward_item, mission_name, tab_name, source_sheet, notes, row_metadata))
+    )
     return WikeloItem(
         item_id=normalized_key(f"{source_sheet}|{reward_item}|{mission_name}|{requirements}"),
         item_name=reward_item,
@@ -398,6 +405,7 @@ def build_wikelo_item(tab_name, reward, mission, requirements, source_sheet, upd
         source_url=WIKELO_SOURCE_URL,
         notes=notes,
         updated=updated,
+        retired=retired,
     )
 
 
@@ -466,6 +474,10 @@ def clean_reward_name(text):
     text = re.sub(r"\b\d+\.\d+(?:\.\d+)?\b", "", text)
     text = text.replace("Updated:", "")
     return clean_text(text.strip(" -:"))
+
+
+def is_retired_wikelo_item(text):
+    return "retired" in str(text or "").lower()
 
 
 def sheet_title(tab_name, rows):

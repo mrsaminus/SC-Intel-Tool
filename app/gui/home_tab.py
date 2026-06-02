@@ -12,8 +12,9 @@ from PySide6.QtWidgets import (
 
 
 class CountdownTimerWidget(QWidget):
-    def __init__(self, title):
+    def __init__(self, title, remove_callback=None):
         super().__init__()
+        self.remove_callback = remove_callback
         self.remaining_seconds = 0
         self.countdown_timer = QTimer(self)
         self.countdown_timer.setInterval(1000)
@@ -23,8 +24,8 @@ class CountdownTimerWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(6)
 
-        title_label = QLabel(title)
-        title_label.setObjectName("sectionTitle")
+        self.title_label = QLabel(title)
+        self.title_label.setObjectName("sectionTitle")
 
         input_row = QHBoxLayout()
         input_row.setSpacing(6)
@@ -47,17 +48,24 @@ class CountdownTimerWidget(QWidget):
         self.timer_reset_button.clicked.connect(self.reset_timer)
         button_row.addWidget(self.timer_start_button)
         button_row.addWidget(self.timer_reset_button)
+        if self.remove_callback:
+            self.timer_remove_button = QPushButton("Remove")
+            self.timer_remove_button.clicked.connect(lambda: self.remove_callback(self))
+            button_row.addWidget(self.timer_remove_button)
 
         self.timer_status_label = QLabel("Ready.")
         self.timer_status_label.setObjectName("moduleSubtitle")
         self.timer_status_label.setWordWrap(True)
 
-        layout.addWidget(title_label)
+        layout.addWidget(self.title_label)
         layout.addLayout(input_row)
         layout.addWidget(self.timer_display)
         layout.addLayout(button_row)
         layout.addWidget(self.timer_status_label)
         self.setLayout(layout)
+
+    def set_title(self, title):
+        self.title_label.setText(title)
 
     def start_timer(self):
         seconds = self.parse_duration_seconds(self.timer_input.text())
@@ -134,6 +142,7 @@ class HomeTab(QWidget):
         super().__init__()
         self.navigate_callback = navigate_callback
         self.countdown_timers = []
+        self.timer_panel_layout = None
 
         layout = QVBoxLayout()
         layout.setContentsMargins(12, 12, 12, 12)
@@ -187,11 +196,12 @@ class HomeTab(QWidget):
     def build_timer_panel(self):
         card = self.create_filter_card("COUNTDOWN TIMERS")
         layout = card.layout()
+        self.timer_panel_layout = layout
 
-        for index in range(4):
-            timer = CountdownTimerWidget(f"Timer {index + 1}")
-            self.countdown_timers.append(timer)
-            layout.addWidget(timer)
+        self.add_countdown_timer(removable=False)
+        self.add_timer_button = QPushButton("Add Timer")
+        self.add_timer_button.clicked.connect(lambda: self.add_countdown_timer(removable=True))
+        layout.addWidget(self.add_timer_button)
         layout.addStretch(1)
         return card
 
@@ -209,6 +219,37 @@ class HomeTab(QWidget):
         self.timer_status_label = first_timer.timer_status_label
         self.timer_start_button = first_timer.timer_start_button
         self.timer_reset_button = first_timer.timer_reset_button
+
+    def add_countdown_timer(self, removable=True):
+        if self.timer_panel_layout is None:
+            return
+
+        timer = CountdownTimerWidget(
+            f"Timer {len(self.countdown_timers) + 1}",
+            remove_callback=self.remove_countdown_timer if removable else None,
+        )
+        self.countdown_timers.append(timer)
+        insert_index = self.timer_panel_layout.count()
+        if hasattr(self, "add_timer_button"):
+            insert_index = self.timer_panel_layout.indexOf(self.add_timer_button)
+        self.timer_panel_layout.insertWidget(insert_index, timer)
+        self.renumber_timers()
+        self.update_first_timer_aliases()
+
+    def remove_countdown_timer(self, timer):
+        if timer not in self.countdown_timers or len(self.countdown_timers) <= 1:
+            return
+
+        timer.reset_timer()
+        self.countdown_timers.remove(timer)
+        self.timer_panel_layout.removeWidget(timer)
+        timer.deleteLater()
+        self.renumber_timers()
+        self.update_first_timer_aliases()
+
+    def renumber_timers(self):
+        for index, timer in enumerate(self.countdown_timers, start=1):
+            timer.set_title(f"Timer {index}")
 
     def start_timer(self):
         self.countdown_timers[0].start_timer()

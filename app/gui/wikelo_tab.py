@@ -1,7 +1,10 @@
+from dataclasses import dataclass
+
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QColor, QDesktopServices
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QCheckBox,
     QComboBox,
     QFrame,
     QHBoxLayout,
@@ -15,13 +18,25 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.wikelo_client import WIKELO_SOURCE_URL, fetch_wikelo_items
+from app.wikelo_client import WIKELO_SOURCE_URL, fetch_wikelo_items, normalized_key
 
 from .table_utils import configure_readable_table_columns
 from .workers import BackgroundTaskMixin
 
 
 SORT_ROLE = Qt.UserRole + 1
+
+
+@dataclass(frozen=True)
+class WikeloItemGroup:
+    item_name: str
+    category: str
+    item_type: str
+    reward_method: str
+    requirements: tuple
+    options: tuple
+    retired: bool
+    source_url: str
 
 
 class SortableTableWidgetItem(QTableWidgetItem):
@@ -80,8 +95,10 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
         self.wikelo_search_input.setPlaceholderText("Search Wikelo item, mission, material or reward...")
         self.wikelo_category_filter = QComboBox()
         self.wikelo_category_filter.addItem("All categories")
+        self.show_retired_checkbox = QCheckBox("Show retired items")
         row.addWidget(self.wikelo_search_input, 1)
         row.addWidget(self.wikelo_category_filter)
+        row.addWidget(self.show_retired_checkbox)
         layout.addLayout(row)
 
         button_row = QHBoxLayout()
@@ -141,6 +158,8 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
         layout.addLayout(button_row)
 
         self.wikelo_requirements_table = self.create_table([
+            "Option",
+            "Mission / Source",
             "Required Item / Material",
             "Qty",
             "Source",
@@ -157,6 +176,7 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
     def connect_signals(self):
         self.wikelo_search_input.textChanged.connect(self.populate_wikelo_results)
         self.wikelo_category_filter.currentTextChanged.connect(self.populate_wikelo_results)
+        self.show_retired_checkbox.stateChanged.connect(self.populate_wikelo_results)
         self.refresh_wikelo_button.clicked.connect(self.refresh_wikelo_items)
         self.open_wikelo_source_button.clicked.connect(self.open_wikelo_source)
         self.wikelo_results_table.itemSelectionChanged.connect(self.update_selected_wikelo_panel)
@@ -208,11 +228,22 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
     def populate_wikelo_results(self):
         query = self.wikelo_search_input.text().strip().lower()
         category = self.wikelo_category_filter.currentText()
-        self.visible_wikelo_items = [
+        eligible_items = [
             item
             for item in self.wikelo_items
-            if self.matches_wikelo_filters(item, query, category)
+            if self.matches_wikelo_static_filters(item, category)
         ]
+        matching_keys = {
+            self.wikelo_group_key(item)
+            for item in eligible_items
+            if self.matches_wikelo_query(item, query)
+        }
+        grouped_items = [
+            item
+            for item in eligible_items
+            if self.wikelo_group_key(item) in matching_keys
+        ]
+        self.visible_wikelo_items = self.group_wikelo_items(grouped_items)
 
         self.wikelo_results_table.setUpdatesEnabled(False)
         self.wikelo_results_table.setSortingEnabled(False)
@@ -221,7 +252,7 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
             self.wikelo_results_table.setRowCount(len(self.visible_wikelo_items))
             for row_index, item in enumerate(self.visible_wikelo_items):
                 values = [
-                    item.item_name,
+                    self.display_wikelo_group_name(item),
                     item.category,
                     item.item_type,
                     item.reward_method,
@@ -248,9 +279,15 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
         )
         self.update_selected_wikelo_panel()
 
-    def matches_wikelo_filters(self, item, query, category):
+    def matches_wikelo_static_filters(self, item, category):
         if category != "All categories" and item.category != category:
             return False
+        if item.retired and not self.show_retired_checkbox.isChecked():
+            return False
+
+        return True
+
+    def matches_wikelo_query(self, item, query):
         if not query:
             return True
 
@@ -268,6 +305,66 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
         parts.extend(requirement.name for requirement in item.requirements)
         return query in " ".join(str(part) for part in parts if part).lower()
 
+    def group_wikelo_items(self, items):
+        groups = {}
+        order = []
+        for item in items:
+            key = self.wikelo_group_key(item)
+            if key not in groups:
+                groups[key] = []
+                order.append(key)
+            groups[key].append(item)
+
+        grouped_items = []
+        for key in order:
+            options = tuple(groups[key])
+            grouped_items.append(self.build_wikelo_group(options))
+
+        return grouped_items
+
+    def build_wikelo_group(self, options):
+        primary = sorted(
+            options,
+            key=lambda item: (item.retired, item.category, item.item_name.lower(), item.source_sheet.lower()),
+        )[0]
+        requirements = self.unique_group_requirements(options)
+        reward_method = primary.reward_method
+        if len(options) > 1:
+            reward_method = f"{len(options)} trade-in options"
+
+        return WikeloItemGroup(
+            item_name=primary.item_name,
+            category=primary.category,
+            item_type=primary.item_type,
+            reward_method=reward_method,
+            requirements=tuple(requirements),
+            options=options,
+            retired=all(option.retired for option in options),
+            source_url=primary.source_url,
+        )
+
+    def unique_group_requirements(self, options):
+        requirements = []
+        seen = set()
+        for item in options:
+            for requirement in item.requirements:
+                key = (requirement.name.strip().lower(), requirement.quantity.strip().lower())
+                if key in seen:
+                    continue
+                seen.add(key)
+                requirements.append(requirement)
+
+        return requirements
+
+    def wikelo_group_key(self, item):
+        return normalized_key(item.item_name.strip())
+
+    def display_wikelo_group_name(self, item):
+        name = item.item_name.strip()
+        if item.retired and "retired" not in name.lower():
+            return f"{name} (Retired)"
+        return name
+
     def update_selected_wikelo_panel(self):
         item = self.selected_wikelo_item()
         self.open_selected_wikelo_source_button.setEnabled(item is not None)
@@ -281,33 +378,54 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
             self.wikelo_notes_label.setText("")
             return
 
-        self.selected_wikelo_name_label.setText(item.item_name)
+        self.selected_wikelo_name_label.setText(self.display_wikelo_group_name(item))
+        option_count = len(item.options)
+        retired_text = " | Retired" if item.retired else ""
         self.selected_wikelo_meta_label.setText(
-            f"{item.category} | {item.item_type} | Source: {item.source_sheet}"
+            f"{item.category} | {item.item_type} | {option_count} option{'s' if option_count != 1 else ''}{retired_text}"
         )
-        self.selected_wikelo_mission_label.setText(f"Mission: {item.mission_name or 'N/A'}")
-        self.selected_wikelo_reward_label.setText(f"Reward item: {item.reward_item or item.item_name}")
-        location_text = f"Location/System: {item.location}"
-        if item.updated:
-            location_text = f"{location_text} | Updated: {item.updated}"
+        self.selected_wikelo_mission_label.setText(f"Trade-in options: {option_count}")
+        self.selected_wikelo_reward_label.setText(f"Reward item: {self.display_wikelo_group_name(item)}")
+        locations = self.unique_option_values(item.options, "location")
+        updates = self.unique_option_values(item.options, "updated")
+        location_text = f"Location/System: {', '.join(locations) if locations else 'N/A'}"
+        if updates:
+            location_text = f"{location_text} | Updated: {', '.join(updates[:3])}"
         self.selected_wikelo_location_label.setText(location_text)
         self.populate_requirement_rows(item)
-        self.wikelo_notes_label.setText(item.notes[:900] if item.notes else "")
+        self.wikelo_notes_label.setText(self.group_notes_text(item))
 
     def populate_requirement_rows(self, item):
         self.wikelo_requirements_table.setSortingEnabled(False)
-        self.wikelo_requirements_table.setRowCount(len(item.requirements))
-        for row_index, requirement in enumerate(item.requirements):
-            values = [
-                requirement.name,
-                requirement.quantity,
-                requirement.source or "N/A",
-            ]
+        rows = []
+        for option_index, option in enumerate(item.options, start=1):
+            option_label = f"{option_index}."
+            mission = option.mission_name or option.source_sheet
+            source = option.source_sheet
+            if option.updated:
+                source = f"{source} | {option.updated}"
+            if option.retired:
+                source = f"{source} | Retired"
+            if not option.requirements:
+                rows.append((option_label, mission, "N/A", "", source))
+                continue
+
+            for requirement in option.requirements:
+                rows.append((
+                    option_label,
+                    mission,
+                    requirement.name,
+                    requirement.quantity,
+                    requirement.source or source,
+                ))
+
+        self.wikelo_requirements_table.setRowCount(len(rows))
+        for row_index, values in enumerate(rows):
             for column_index, value in enumerate(values):
                 table_item = QTableWidgetItem(str(value))
                 table_item.setFlags(table_item.flags() & ~Qt.ItemIsEditable)
                 table_item.setToolTip(str(value))
-                if column_index == 1:
+                if column_index == 3:
                     table_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 self.wikelo_requirements_table.setItem(row_index, column_index, table_item)
 
@@ -318,6 +436,43 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
             stretch_last=True,
         )
         self.wikelo_requirements_table.setSortingEnabled(True)
+
+    def unique_option_values(self, options, field_name):
+        values = []
+        seen = set()
+        for option in options:
+            value = str(getattr(option, field_name, "") or "").strip()
+            key = value.lower()
+            if not value or key in seen:
+                continue
+            seen.add(key)
+            values.append(value)
+        return values
+
+    def group_notes_text(self, item):
+        lines = []
+        for option_index, option in enumerate(item.options, start=1):
+            requirements = ", ".join(
+                f"{requirement.quantity} {requirement.name}"
+                for requirement in option.requirements
+            ) or "No required materials parsed"
+            suffix = " (Retired)" if option.retired else ""
+            lines.append(f"{option_index}. {option.mission_name or option.source_sheet}{suffix}: {requirements}")
+
+        notes = []
+        seen = set()
+        for option in item.options:
+            note = str(option.notes or "").strip()
+            key = note.lower()
+            if not note or key in seen:
+                continue
+            seen.add(key)
+            notes.append(note)
+
+        text = "\n".join(lines)
+        if notes:
+            text = f"{text}\n\nNotes: {notes[0]}"
+        return text[:1200]
 
     def selected_wikelo_item(self):
         row = self.wikelo_results_table.currentRow()
