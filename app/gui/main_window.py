@@ -7,6 +7,7 @@ from app.database import init_db
 from app.paths import bundled_path
 from app.version import APP_VERSION
 
+from .home_tab import HomeTab
 from .item_finder_tab import ItemFinderTab
 from .mining_tab import MiningTab
 from .notes_tab import NotesTab
@@ -36,6 +37,7 @@ class MainWindow(QMainWindow):
 
         self.tabs = QTabWidget()
 
+        self.home_tab = HomeTab(self.open_tab)
         self.history_tab = SearchHistoryTab()
         self.player_tab = PlayerLookupTab(on_lookup_saved=self.history_tab.refresh_history)
         self.mining_tab = MiningTab()
@@ -44,6 +46,7 @@ class MainWindow(QMainWindow):
         self.notes_tab = NotesTab()
         self.settings_tab = SettingsTab()
 
+        self.tabs.addTab(self.home_tab, "Home")
         self.tabs.addTab(self.player_tab, "Player Lookup")
         self.tabs.addTab(self.history_tab, "Search History")
         self.tabs.addTab(self.mining_tab, "Mining & Salvage")
@@ -53,6 +56,12 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.settings_tab, "Settings")
 
         self.setCentralWidget(self.tabs)
+
+    def open_tab(self, tab_name):
+        for index in range(self.tabs.count()):
+            if self.tabs.tabText(index) == tab_name:
+                self.tabs.setCurrentIndex(index)
+                return
 
 
 def run_app():

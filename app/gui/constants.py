@@ -128,3 +128,17 @@ REFINERY_METHOD_YIELD_FALLBACKS = {
     "Cormack Method": 0.315,
     "XCR Reaction": 0.315,
 }
+
+SALVAGE_REFINERY_METHOD_YIELD_FALLBACKS = {
+    "Cormack Method": 0.14,
+    "XCR Reaction": 0.14,
+    "Kazen Winnowing": 0.14,
+    "Thermonatic Deposition": 0.17,
+    "Thermodeposition": 0.17,
+    "Electrostarolysis": 0.17,
+    "Electrostarlosis": 0.17,
+    "Gaskin Process": 0.17,
+    "Dinyx Solventation": 0.20,
+    "Pyrometric Chromalysis": 0.20,
+    "Ferron Exchange": 0.20,
+}

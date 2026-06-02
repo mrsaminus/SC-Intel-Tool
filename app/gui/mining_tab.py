@@ -33,6 +33,7 @@ from .constants import (
     REFINERY_METHOD_YIELD_FALLBACKS,
     REFINERY_STATIONS,
     SALVAGE_REFINERY_DETAILS,
+    SALVAGE_REFINERY_METHOD_YIELD_FALLBACKS,
     SALVAGE_REFINERY_MATERIALS,
     SHIP_ORE_MATERIALS,
     SHIP_REFINERY_MATERIALS,
@@ -1939,6 +1940,9 @@ class MiningTab(BackgroundTaskMixin, QWidget):
     def is_gem_selling_material(self, material):
         return any(candidate == material for _, candidate in GEM_SELLING_MATERIALS)
 
+    def is_salvage_refinery_material(self, material):
+        return material in SALVAGE_REFINERY_DETAILS
+
     def is_no_refinery_session(self, session=None):
         if session is not None:
             station_text = session.get("station", "")
@@ -1973,11 +1977,7 @@ class MiningTab(BackgroundTaskMixin, QWidget):
         if qty <= 0 or self.is_sell_only_refinery_material(material):
             return 0.0
 
-        method = self.selected_refinery_method()
-        method_yield = method.yield_factor if method else REFINERY_METHOD_YIELD_FALLBACKS.get(
-            self.refinery_method_filter.currentText(),
-            0.0,
-        )
+        method_yield = self.refinery_method_yield_for_material(material)
         if method_yield <= 0:
             return 0.0
 
@@ -1985,6 +1985,23 @@ class MiningTab(BackgroundTaskMixin, QWidget):
         bonus = station.bonuses.get(self.canonical_refinery_material(material), 0.0) if station else 0.0
         salvage_multiplier = SALVAGE_REFINERY_DETAILS.get(material, {}).get("yield_multiplier", 1.0)
         return max(0.0, float(round(qty * method_yield * (1 + bonus) * salvage_multiplier)))
+
+    def refinery_method_yield_for_material(self, material):
+        if self.is_salvage_refinery_material(material):
+            method_key = self.refinery_option_key(self.refinery_method_filter.currentText())
+            for method_name, yield_factor in SALVAGE_REFINERY_METHOD_YIELD_FALLBACKS.items():
+                if self.refinery_option_key(method_name) == method_key:
+                    return yield_factor
+            return 0.0
+
+        method = self.selected_refinery_method()
+        if method:
+            return method.yield_factor
+
+        return REFINERY_METHOD_YIELD_FALLBACKS.get(
+            self.refinery_method_filter.currentText(),
+            0.0,
+        )
 
     def selected_refinery_station(self):
         return self.refinery_station_lookup.get(

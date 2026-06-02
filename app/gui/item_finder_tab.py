@@ -37,6 +37,7 @@ from app.scfocus_client import (
     WIKELO_CATEGORY,
     fetch_scfocus_ship_items,
 )
+from app.ship_metadata import ship_metadata_for
 
 from .table_utils import configure_readable_table_columns
 from .workers import BackgroundTaskMixin
@@ -171,11 +172,15 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
         self.selected_item_name_label.setObjectName("orgName")
         self.selected_item_category_label = QLabel("")
         self.selected_item_category_label.setObjectName("moduleSubtitle")
+        self.selected_ship_metadata_label = QLabel("")
+        self.selected_ship_metadata_label.setObjectName("moduleSubtitle")
+        self.selected_ship_metadata_label.setWordWrap(True)
         self.selected_item_effect_label = QLabel("")
         self.selected_item_effect_label.setObjectName("valueText")
         self.selected_item_effect_label.setWordWrap(True)
         layout.addWidget(self.selected_item_name_label)
         layout.addWidget(self.selected_item_category_label)
+        layout.addWidget(self.selected_ship_metadata_label)
         layout.addWidget(self.selected_item_effect_label)
 
         button_row = QHBoxLayout()
@@ -801,6 +806,8 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
             self.current_finder_item_id = None
             self.selected_item_name_label.setText("No item selected")
             self.selected_item_category_label.setText("")
+            self.selected_ship_metadata_label.setText("")
+            self.selected_ship_metadata_label.setVisible(False)
             self.selected_item_effect_label.setText("")
             self.finder_locations = []
             self.item_locations_table.setRowCount(0)
@@ -819,8 +826,28 @@ class ItemFinderTab(BackgroundTaskMixin, QWidget):
         self.selected_item_category_label.setText(
             f"{item.category} | {item.item_type} | {self.display_item_availability(item)} | Source: {item.source}"
         )
+        self.selected_ship_metadata_label.setVisible(self.is_ship_item(item))
+        self.selected_ship_metadata_label.setText(self.ship_metadata_text(item) if self.is_ship_item(item) else "")
         self.selected_item_effect_label.setText(item.effect)
         self.update_location_action_state()
+
+    def ship_metadata_text(self, item):
+        metadata = ship_metadata_for(item.name)
+        if not metadata:
+            return "Crew: N/A | Cargo: N/A"
+
+        crew = "N/A"
+        if metadata.min_crew is not None and metadata.max_crew is not None:
+            if metadata.min_crew == metadata.max_crew:
+                crew = str(metadata.min_crew)
+            else:
+                crew = f"{metadata.min_crew}-{metadata.max_crew}"
+
+        cargo = "N/A"
+        if metadata.cargo_scu is not None:
+            cargo = f"{metadata.cargo_scu:,} SCU"
+
+        return f"Crew: {crew} | Cargo: {cargo}"
 
     def load_selected_item_locations(self):
         item = self.selected_item()
