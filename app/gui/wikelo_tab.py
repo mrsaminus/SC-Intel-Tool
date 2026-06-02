@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.database import get_wikelo_checklist_state, set_wikelo_checklist_state
 from app.wikelo_client import WIKELO_SOURCE_URL, fetch_wikelo_items, normalized_key
 
 from .table_utils import configure_readable_table_columns
@@ -25,6 +26,7 @@ from .workers import BackgroundTaskMixin
 
 
 SORT_ROLE = Qt.UserRole + 1
+CHECKLIST_ROLE = Qt.UserRole + 2
 
 
 @dataclass(frozen=True)
@@ -64,6 +66,7 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
         self.wikelo_items = []
         self.visible_wikelo_items = []
         self.wikelo_refresh_running = False
+        self.loading_wikelo_requirements_table = False
 
         layout = QVBoxLayout()
         layout.setContentsMargins(12, 12, 12, 12)
@@ -158,12 +161,12 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
         layout.addLayout(button_row)
 
         self.wikelo_requirements_table = self.create_table([
-            "Option",
-            "Mission / Source",
-            "Required Item / Material",
+            "Done",
             "Qty",
+            "Required Item / Material",
             "Source",
         ])
+        self.wikelo_requirements_table.setSortingEnabled(False)
         configure_readable_table_columns(self.wikelo_requirements_table, min_width=110, max_width=420, stretch_last=True)
         layout.addWidget(self.wikelo_requirements_table, 1)
 
@@ -180,6 +183,7 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
         self.refresh_wikelo_button.clicked.connect(self.refresh_wikelo_items)
         self.open_wikelo_source_button.clicked.connect(self.open_wikelo_source)
         self.wikelo_results_table.itemSelectionChanged.connect(self.update_selected_wikelo_panel)
+        self.wikelo_requirements_table.itemChanged.connect(self.on_wikelo_requirement_item_changed)
 
     def refresh_wikelo_items(self, silent=False):
         if self.wikelo_refresh_running:
@@ -396,36 +400,52 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
         self.wikelo_notes_label.setText(self.group_notes_text(item))
 
     def populate_requirement_rows(self, item):
-        self.wikelo_requirements_table.setSortingEnabled(False)
-        rows = []
-        for option_index, option in enumerate(item.options, start=1):
-            option_label = f"{option_index}."
-            mission = option.mission_name or option.source_sheet
-            source = option.source_sheet
-            if option.updated:
-                source = f"{source} | {option.updated}"
-            if option.retired:
-                source = f"{source} | Retired"
-            if not option.requirements:
-                rows.append((option_label, mission, "N/A", "", source))
+        self.loading_wikelo_requirements_table = True
+        self.wikelo_requirements_table.clearContents()
+        if hasattr(self.wikelo_requirements_table, "clearSpans"):
+            self.wikelo_requirements_table.clearSpans()
+        reward_key = self.checklist_reward_key(item)
+        checklist_state = get_wikelo_checklist_state(reward_key)
+        rows = self.grouped_requirement_rows(item, reward_key, checklist_state)
+        self.wikelo_requirements_table.setRowCount(len(rows))
+        for row_index, row in enumerate(rows):
+            if row["type"] == "option":
+                option_item = QTableWidgetItem(row["label"])
+                option_item.setFlags(option_item.flags() & ~Qt.ItemIsEditable)
+                option_item.setForeground(QColor("#33dfff"))
+                self.wikelo_requirements_table.setItem(row_index, 0, option_item)
+                self.wikelo_requirements_table.setSpan(row_index, 0, 1, 4)
                 continue
 
-            for requirement in option.requirements:
-                rows.append((
-                    option_label,
-                    mission,
-                    requirement.name,
-                    requirement.quantity,
-                    requirement.source or source,
-                ))
+            if row["type"] == "empty":
+                values = ["", "", row["name"], row["source"]]
+                for column_index, value in enumerate(values):
+                    table_item = QTableWidgetItem(str(value))
+                    table_item.setFlags(table_item.flags() & ~Qt.ItemIsEditable)
+                    table_item.setToolTip(str(value))
+                    self.wikelo_requirements_table.setItem(row_index, column_index, table_item)
+                continue
 
-        self.wikelo_requirements_table.setRowCount(len(rows))
-        for row_index, values in enumerate(rows):
-            for column_index, value in enumerate(values):
+            check_item = QTableWidgetItem("")
+            check_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsUserCheckable)
+            check_item.setCheckState(Qt.Checked if row["checked"] else Qt.Unchecked)
+            check_item.setData(CHECKLIST_ROLE, (
+                row["reward_key"],
+                row["option_key"],
+                row["material_key"],
+            ))
+            self.wikelo_requirements_table.setItem(row_index, 0, check_item)
+
+            values = [
+                row["quantity"],
+                row["name"],
+                row["source"],
+            ]
+            for column_index, value in enumerate(values, start=1):
                 table_item = QTableWidgetItem(str(value))
                 table_item.setFlags(table_item.flags() & ~Qt.ItemIsEditable)
                 table_item.setToolTip(str(value))
-                if column_index == 3:
+                if column_index == 1:
                     table_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 self.wikelo_requirements_table.setItem(row_index, column_index, table_item)
 
@@ -435,7 +455,76 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
             max_width=420,
             stretch_last=True,
         )
-        self.wikelo_requirements_table.setSortingEnabled(True)
+        self.loading_wikelo_requirements_table = False
+
+    def grouped_requirement_rows(self, item, reward_key, checklist_state):
+        rows = []
+        for option_index, option in enumerate(item.options, start=1):
+            mission = option.mission_name or option.source_sheet
+            source = option.source_sheet
+            if option.updated:
+                source = f"{source} | {option.updated}"
+            if option.retired:
+                source = f"{source} | Retired"
+            option_key = self.checklist_option_key(option)
+            option_label = f"Option {option_index} - {mission}"
+            if source:
+                option_label = f"{option_label} ({source})"
+            rows.append({
+                "type": "option",
+                "label": option_label,
+            })
+            if not option.requirements:
+                rows.append({
+                    "type": "empty",
+                    "name": "No required materials parsed",
+                    "source": source,
+                })
+                continue
+
+            for requirement in option.requirements:
+                material_key = self.checklist_material_key(requirement)
+                rows.append({
+                    "type": "material",
+                    "reward_key": reward_key,
+                    "option_key": option_key,
+                    "material_key": material_key,
+                    "quantity": requirement.quantity,
+                    "name": requirement.name,
+                    "source": requirement.source or source,
+                    "checked": checklist_state.get((option_key, material_key), False),
+                })
+
+        return rows
+
+    def on_wikelo_requirement_item_changed(self, item):
+        if self.loading_wikelo_requirements_table or item.column() != 0:
+            return
+
+        checklist_keys = item.data(CHECKLIST_ROLE)
+        if not checklist_keys:
+            return
+
+        reward_key, option_key, material_key = checklist_keys
+        set_wikelo_checklist_state(
+            reward_key,
+            option_key,
+            material_key,
+            item.checkState() == Qt.Checked,
+        )
+
+    def checklist_reward_key(self, item):
+        return normalized_key(item.item_name)
+
+    def checklist_option_key(self, option):
+        return normalized_key("|".join((
+            option.mission_name,
+            option.source_sheet,
+            option.updated,
+        )))
+
+    def checklist_material_key(self, requirement):
+        return normalized_key(f"{requirement.quantity}|{requirement.name}")
 
     def unique_option_values(self, options, field_name):
         values = []

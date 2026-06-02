@@ -15,6 +15,7 @@ class CountdownTimerWidget(QWidget):
     def __init__(self, title, remove_callback=None):
         super().__init__()
         self.remove_callback = remove_callback
+        self.default_title = title
         self.remaining_seconds = 0
         self.countdown_timer = QTimer(self)
         self.countdown_timer.setInterval(1000)
@@ -31,6 +32,7 @@ class CountdownTimerWidget(QWidget):
         input_row.setSpacing(6)
         self.label_input = QLineEdit()
         self.label_input.setPlaceholderText("Label")
+        self.label_input.textChanged.connect(self.update_title_from_label)
         self.timer_input = QLineEdit()
         self.timer_input.setPlaceholderText("10m, 90s or HH:MM:SS")
         input_row.addWidget(self.label_input, 1)
@@ -65,6 +67,11 @@ class CountdownTimerWidget(QWidget):
         self.setLayout(layout)
 
     def set_title(self, title):
+        self.default_title = title
+        self.update_title_from_label(self.label_input.text())
+
+    def update_title_from_label(self, label_text):
+        title = str(label_text or "").strip() or self.default_title
         self.title_label.setText(title)
 
     def start_timer(self):

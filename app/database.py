@@ -41,6 +41,7 @@ def init_db():
         ensure_column(cur, "lookup_history", "org_sid", "TEXT")
         ensure_column(cur, "lookup_history", "org_piracy", "INTEGER DEFAULT 0")
         ensure_column(cur, "lookup_history", "any_org_piracy", "INTEGER DEFAULT 0")
+        ensure_wikelo_checklist_table(cur)
         cur.execute("""
         UPDATE lookup_history
         SET any_org_piracy = 1
@@ -57,6 +58,60 @@ def ensure_column(cursor, table, column, definition):
     columns = {row[1] for row in cursor.fetchall()}
     if column not in columns:
         cursor.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+
+
+def ensure_wikelo_checklist_table(cursor):
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS wikelo_checklist_state (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        reward_key TEXT NOT NULL,
+        option_key TEXT NOT NULL,
+        material_key TEXT NOT NULL,
+        checked INTEGER NOT NULL DEFAULT 0,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(reward_key, option_key, material_key)
+    )
+    """)
+
+
+def get_wikelo_checklist_state(reward_key):
+    with get_connection() as conn:
+        cur = conn.cursor()
+        ensure_wikelo_checklist_table(cur)
+        cur.execute("""
+        SELECT option_key, material_key, checked
+        FROM wikelo_checklist_state
+        WHERE reward_key = ?
+        """, (reward_key,))
+        return {
+            (option_key, material_key): bool(checked)
+            for option_key, material_key, checked in cur.fetchall()
+        }
+
+
+def set_wikelo_checklist_state(reward_key, option_key, material_key, checked):
+    with get_connection() as conn:
+        cur = conn.cursor()
+        ensure_wikelo_checklist_table(cur)
+        cur.execute("""
+        INSERT INTO wikelo_checklist_state (
+            reward_key,
+            option_key,
+            material_key,
+            checked
+        )
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(reward_key, option_key, material_key)
+        DO UPDATE SET
+            checked = excluded.checked,
+            updated_at = CURRENT_TIMESTAMP
+        """, (
+            reward_key,
+            option_key,
+            material_key,
+            1 if checked else 0,
+        ))
+        conn.commit()
 
 
 def save_lookup(
