@@ -519,6 +519,7 @@ class MiningTab(BackgroundTaskMixin, QWidget):
         self.refinery_table.setEditTriggers(
             QAbstractItemView.DoubleClicked
             | QAbstractItemView.SelectedClicked
+            | QAbstractItemView.AnyKeyPressed
             | QAbstractItemView.EditKeyPressed
         )
         input_layout.addWidget(self.refinery_table, 1)

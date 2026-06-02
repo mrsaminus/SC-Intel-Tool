@@ -11,89 +11,36 @@ from PySide6.QtWidgets import (
 )
 
 
-class HomeTab(QWidget):
-    NAV_ITEMS = [
-        ("Player Lookup", "Look up RSI citizen profiles and local intel notes."),
-        ("Search History", "Review previous lookups and open saved profile details."),
-        ("Mining & Salvage", "Plan mining, salvage, refining, scan IDs and equipment."),
-        ("Trading", "Trading tools and market planning space."),
-        ("Item Finder", "Find gear, ships and buy/rental locations."),
-        ("Wikelo Items", "Browse Wikelo missions, required materials and rewards."),
-        ("Notes", "App notes, changelog and local reference notes."),
-        ("Settings", "Update checks, privacy notes and local app settings."),
-    ]
-
-    def __init__(self, navigate_callback=None):
+class CountdownTimerWidget(QWidget):
+    def __init__(self, title):
         super().__init__()
-        self.navigate_callback = navigate_callback
         self.remaining_seconds = 0
         self.countdown_timer = QTimer(self)
         self.countdown_timer.setInterval(1000)
         self.countdown_timer.timeout.connect(self.tick_timer)
 
         layout = QVBoxLayout()
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(12)
-
-        layout.addWidget(self.create_module_header(
-            "SC Intel Tool",
-            "Quick navigation for player intel, mining, trading, item lookup and notes.",
-        ))
-
-        content = QHBoxLayout()
-        content.setSpacing(12)
-        content.addWidget(self.build_navigation_panel(), 3)
-        content.addWidget(self.build_timer_panel(), 1)
-        layout.addLayout(content, 1)
-
-        self.setLayout(layout)
-        self.update_timer_display()
-
-    def build_navigation_panel(self):
-        card = self.create_filter_card("QUICK NAVIGATION")
-        grid = QGridLayout()
-        grid.setContentsMargins(0, 0, 0, 0)
-        grid.setHorizontalSpacing(10)
-        grid.setVerticalSpacing(10)
-
-        for index, (title, description) in enumerate(self.NAV_ITEMS):
-            grid.addWidget(self.create_nav_card(title, description), index // 2, index % 2)
-
-        card.layout().addLayout(grid)
-        return card
-
-    def create_nav_card(self, title, description):
-        card = QFrame()
-        card.setObjectName("sectionCard")
-        layout = QVBoxLayout()
-        layout.setContentsMargins(12, 10, 12, 12)
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(6)
 
-        button = QPushButton(title)
-        button.clicked.connect(lambda checked=False, target=title: self.open_target_tab(target))
-        description_label = QLabel(description)
-        description_label.setObjectName("moduleSubtitle")
-        description_label.setWordWrap(True)
+        title_label = QLabel(title)
+        title_label.setObjectName("sectionTitle")
 
-        layout.addWidget(button)
-        layout.addWidget(description_label)
-        card.setLayout(layout)
-        return card
-
-    def build_timer_panel(self):
-        card = self.create_filter_card("COUNTDOWN TIMER")
-        layout = card.layout()
-
+        input_row = QHBoxLayout()
+        input_row.setSpacing(6)
+        self.label_input = QLineEdit()
+        self.label_input.setPlaceholderText("Label")
         self.timer_input = QLineEdit()
-        self.timer_input.setPlaceholderText("Minutes, seconds or HH:MM:SS")
+        self.timer_input.setPlaceholderText("10m, 90s or HH:MM:SS")
+        input_row.addWidget(self.label_input, 1)
+        input_row.addWidget(self.timer_input, 1)
+
         self.timer_display = QLabel("00:00:00")
         self.timer_display.setObjectName("orgName")
         self.timer_display.setAlignment(Qt.AlignCenter)
-        self.timer_status_label = QLabel("Enter a duration and press Start.")
-        self.timer_status_label.setObjectName("moduleSubtitle")
-        self.timer_status_label.setWordWrap(True)
 
         button_row = QHBoxLayout()
+        button_row.setSpacing(6)
         self.timer_start_button = QPushButton("Start")
         self.timer_reset_button = QPushButton("Reset")
         self.timer_start_button.clicked.connect(self.start_timer)
@@ -101,16 +48,16 @@ class HomeTab(QWidget):
         button_row.addWidget(self.timer_start_button)
         button_row.addWidget(self.timer_reset_button)
 
-        layout.addWidget(self.timer_input)
+        self.timer_status_label = QLabel("Ready.")
+        self.timer_status_label.setObjectName("moduleSubtitle")
+        self.timer_status_label.setWordWrap(True)
+
+        layout.addWidget(title_label)
+        layout.addLayout(input_row)
         layout.addWidget(self.timer_display)
         layout.addLayout(button_row)
         layout.addWidget(self.timer_status_label)
-        layout.addStretch(1)
-        return card
-
-    def open_target_tab(self, target):
-        if self.navigate_callback:
-            self.navigate_callback(target)
+        self.setLayout(layout)
 
     def start_timer(self):
         seconds = self.parse_duration_seconds(self.timer_input.text())
@@ -169,6 +116,114 @@ class HomeTab(QWidget):
             return max(0, int(float(value) * 60))
         except ValueError:
             return 0
+
+
+class HomeTab(QWidget):
+    NAV_ITEMS = [
+        ("Player Lookup", "Look up RSI citizen profiles and local intel notes."),
+        ("Search History", "Review previous lookups and open saved profile details."),
+        ("Mining & Salvage", "Plan mining, salvage, refining, scan IDs and equipment."),
+        ("Trading", "Trading tools and market planning space."),
+        ("Item Finder", "Find gear, ships and buy/rental locations."),
+        ("Wikelo Items", "Browse Wikelo missions, required materials and rewards."),
+        ("Notes", "App notes, changelog and local reference notes."),
+        ("Settings", "Update checks, privacy notes and local app settings."),
+    ]
+
+    def __init__(self, navigate_callback=None):
+        super().__init__()
+        self.navigate_callback = navigate_callback
+        self.countdown_timers = []
+
+        layout = QVBoxLayout()
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(12)
+
+        layout.addWidget(self.create_module_header(
+            "SC Intel Tool",
+            "Quick navigation for player intel, mining, trading, item lookup and notes.",
+        ))
+
+        content = QHBoxLayout()
+        content.setSpacing(12)
+        content.addWidget(self.build_navigation_panel(), 3)
+        content.addWidget(self.build_timer_panel(), 1)
+        layout.addLayout(content, 1)
+
+        self.setLayout(layout)
+        self.update_first_timer_aliases()
+
+    def build_navigation_panel(self):
+        card = self.create_filter_card("QUICK NAVIGATION")
+        grid = QGridLayout()
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setHorizontalSpacing(10)
+        grid.setVerticalSpacing(10)
+
+        for index, (title, description) in enumerate(self.NAV_ITEMS):
+            grid.addWidget(self.create_nav_card(title, description), index // 2, index % 2)
+
+        card.layout().addLayout(grid)
+        return card
+
+    def create_nav_card(self, title, description):
+        card = QFrame()
+        card.setObjectName("sectionCard")
+        layout = QVBoxLayout()
+        layout.setContentsMargins(12, 10, 12, 12)
+        layout.setSpacing(6)
+
+        button = QPushButton(title)
+        button.clicked.connect(lambda checked=False, target=title: self.open_target_tab(target))
+        description_label = QLabel(description)
+        description_label.setObjectName("moduleSubtitle")
+        description_label.setWordWrap(True)
+
+        layout.addWidget(button)
+        layout.addWidget(description_label)
+        card.setLayout(layout)
+        return card
+
+    def build_timer_panel(self):
+        card = self.create_filter_card("COUNTDOWN TIMERS")
+        layout = card.layout()
+
+        for index in range(4):
+            timer = CountdownTimerWidget(f"Timer {index + 1}")
+            self.countdown_timers.append(timer)
+            layout.addWidget(timer)
+        layout.addStretch(1)
+        return card
+
+    def open_target_tab(self, target):
+        if self.navigate_callback:
+            self.navigate_callback(target)
+
+    def update_first_timer_aliases(self):
+        if not self.countdown_timers:
+            return
+
+        first_timer = self.countdown_timers[0]
+        self.timer_input = first_timer.timer_input
+        self.timer_display = first_timer.timer_display
+        self.timer_status_label = first_timer.timer_status_label
+        self.timer_start_button = first_timer.timer_start_button
+        self.timer_reset_button = first_timer.timer_reset_button
+
+    def start_timer(self):
+        self.countdown_timers[0].start_timer()
+
+    def reset_timer(self):
+        self.countdown_timers[0].reset_timer()
+
+    def tick_timer(self):
+        self.countdown_timers[0].tick_timer()
+
+    def update_timer_display(self):
+        self.countdown_timers[0].update_timer_display()
+
+    def parse_duration_seconds(self, text):
+        return self.countdown_timers[0].parse_duration_seconds(text)
 
     def create_module_header(self, title, subtitle):
         card = QFrame()
