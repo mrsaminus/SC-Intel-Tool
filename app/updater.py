@@ -167,6 +167,11 @@ function Unblock-IfPossible {
     }
 }
 
+function Quote-Argument {
+    param([string]$Value)
+    return '"' + ($Value -replace '"', '\"') + '"'
+}
+
 try {
     Write-UpdateLog "Waiting for process $ProcessId to exit."
     $Process = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
@@ -232,11 +237,114 @@ try {
     Move-Item -LiteralPath $InstallCandidate -Destination $Target -Force
     Unblock-IfPossible -Path $Target
 
-    Start-Sleep -Seconds 2
+    $RestartScript = Join-Path (Split-Path -Parent $Source) "restart_update.ps1"
+    $RestartScriptContent = @'
+param(
+    [int]$UpdaterProcessId,
+    [string]$Target,
+    [string]$Backup,
+    [string]$LogPath,
+    [int]$FileReadyTimeoutSeconds = 60,
+    [int]$LaunchHealthSeconds = 15
+)
+
+$ErrorActionPreference = "Stop"
+
+function Write-UpdateLog {
+    param([string]$Message)
+    $Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    Add-Content -LiteralPath $LogPath -Value "[$Timestamp] $Message"
+}
+
+function Wait-FileReady {
+    param(
+        [string]$Path,
+        [int]$TimeoutSeconds
+    )
+
+    $Deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    $LastLength = -1
+    $StableReads = 0
+
+    while ((Get-Date) -lt $Deadline) {
+        if (Test-Path -LiteralPath $Path) {
+            try {
+                $Item = Get-Item -LiteralPath $Path
+                $Stream = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::None)
+                $Stream.Close()
+
+                if ($Item.Length -eq $LastLength) {
+                    $StableReads += 1
+                }
+                else {
+                    $LastLength = $Item.Length
+                    $StableReads = 1
+                }
+
+                if ($StableReads -ge 2) {
+                    return
+                }
+            }
+            catch {
+                $StableReads = 0
+            }
+        }
+
+        Start-Sleep -Milliseconds 500
+    }
+
+    throw "Updated executable was not ready to launch: ${Path}"
+}
+
+try {
+    Write-UpdateLog "Restart helper waiting for installer process $UpdaterProcessId to exit."
+    $UpdaterProcess = Get-Process -Id $UpdaterProcessId -ErrorAction SilentlyContinue
+    if ($UpdaterProcess) {
+        [void]$UpdaterProcess.WaitForExit(60000)
+    }
+
+    Wait-FileReady -Path $Target -TimeoutSeconds $FileReadyTimeoutSeconds
+
     $WorkingDirectory = Split-Path -Parent $Target
-    Write-UpdateLog "Starting updated app."
+    Write-UpdateLog "Starting updated app from $Target."
     $StartedProcess = Start-Process -FilePath $Target -WorkingDirectory $WorkingDirectory -PassThru
-    Write-UpdateLog "Started updated app with process id $($StartedProcess.Id)."
+    Write-UpdateLog "Started updated app with process id $($StartedProcess.Id); waiting for startup health check."
+
+    Start-Sleep -Seconds $LaunchHealthSeconds
+    $StartedProcess.Refresh()
+    if (-not $StartedProcess.HasExited) {
+        if (Test-Path -LiteralPath $Backup) {
+            Write-UpdateLog "Updated app passed startup health check; removing backup $Backup."
+            Remove-Item -LiteralPath $Backup -Force
+        }
+        else {
+            Write-UpdateLog "Updated app passed startup health check; no backup file was present."
+        }
+    }
+    else {
+        Write-UpdateLog "Updated app exited during startup health check with code $($StartedProcess.ExitCode); leaving backup $Backup for rollback."
+    }
+}
+catch {
+    Write-UpdateLog "Restart helper failed: $($_.Exception.Message)"
+}
+'@
+    Set-Content -LiteralPath $RestartScript -Value $RestartScriptContent -Encoding UTF8
+
+    $RestartArguments = @(
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-WindowStyle", "Hidden",
+        "-File", (Quote-Argument $RestartScript),
+        "-UpdaterProcessId", "$PID",
+        "-Target", (Quote-Argument $Target),
+        "-Backup", (Quote-Argument $Backup),
+        "-LogPath", (Quote-Argument $LogPath)
+    ) -join " "
+
+    Write-UpdateLog "Starting delayed restart helper."
+    Start-Process -FilePath "powershell" -ArgumentList $RestartArguments -WindowStyle Hidden
+    Write-UpdateLog "Delayed restart helper started; installer exiting."
 }
 catch {
     Write-UpdateLog "Update failed: $($_.Exception.Message)"
