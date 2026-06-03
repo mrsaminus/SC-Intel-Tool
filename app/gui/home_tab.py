@@ -1,3 +1,6 @@
+from app.paths import is_packaged_app
+from app.version import APP_VERSION
+
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QFrame,
@@ -14,15 +17,14 @@ from PySide6.QtWidgets import (
 
 
 class NavigationCard(QFrame):
-    def __init__(self, title, description, open_callback):
+    def __init__(self, title, description, open_callback, target=None, eyebrow=None):
         super().__init__()
-        self.target_title = title
+        self.target_title = target or title
         self.open_callback = open_callback
 
         self.setObjectName("homeNavCard")
         self.setCursor(Qt.PointingHandCursor)
-        self.setMinimumHeight(72)
-        self.setMaximumHeight(86)
+        self.setMinimumHeight(118)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.setStyleSheet("""
             QFrame#homeNavCard {
@@ -37,11 +39,16 @@ class NavigationCard(QFrame):
         """)
 
         layout = QVBoxLayout()
-        layout.setContentsMargins(11, 8, 11, 8)
-        layout.setSpacing(3)
+        layout.setContentsMargins(14, 12, 14, 12)
+        layout.setSpacing(5)
+
+        if eyebrow:
+            eyebrow_label = QLabel(eyebrow.upper())
+            eyebrow_label.setObjectName("sectionTitle")
+            layout.addWidget(eyebrow_label)
 
         title_label = QLabel(title)
-        title_label.setStyleSheet("color: #f5fdff; font-size: 11pt; font-weight: 700;")
+        title_label.setStyleSheet("color: #f5fdff; font-size: 13pt; font-weight: 700;")
         description_label = QLabel(description)
         description_label.setObjectName("moduleSubtitle")
         description_label.setWordWrap(True)
@@ -184,29 +191,42 @@ class CountdownTimerWidget(QWidget):
 
 
 class HomeTab(QWidget):
-    NAV_SECTIONS = [
+    CAPABILITY_CARDS = [
         (
+            "Player Intel",
+            "RSI lookup, organizations, affiliations, local tags and notes.",
+            "Player Lookup",
             "Intel",
-            [
-                ("Player Lookup", "RSI profiles and local intel notes."),
-                ("Search History", "Previous lookups and saved profile details."),
-            ],
         ),
         (
-            "Industrial Tools",
-            [
-                ("Mining & Salvage", "Mining, salvage, refining and scan tools."),
-                ("Item Finder", "Gear, ships and buy/rental locations."),
-                ("Wikelo Items", "Wikelo missions, materials and rewards."),
-                ("Trading", "Market planning and trading workspace."),
-            ],
+            "Mining & Salvage",
+            "Ore finder, refinery tools, scan IDs and salvage resources.",
+            "Mining & Salvage",
+            "Industrial",
         ),
         (
-            "Utility",
-            [
-                ("Notes", "Changelog and local reference notes."),
-                ("Settings", "Updates, privacy and app settings."),
-            ],
+            "Item Finder",
+            "Gear, ships, buy/rental locations and live source lookup.",
+            "Item Finder",
+            "Lookup",
+        ),
+        (
+            "Wikelo Tracking",
+            "Missions, required materials and reward checklist progress.",
+            "Wikelo Items",
+            "Progress",
+        ),
+        (
+            "Trading",
+            "Market planning and future commodity workflow.",
+            "Trading",
+            "Market",
+        ),
+        (
+            "Local Tools",
+            "Notes, history, settings and AppData persistence.",
+            "Notes",
+            "Local",
         ),
     ]
 
@@ -227,21 +247,19 @@ class HomeTab(QWidget):
 
         page = QWidget()
         page_layout = QVBoxLayout()
-        page_layout.setContentsMargins(12, 12, 12, 12)
-        page_layout.setSpacing(10)
+        page_layout.setContentsMargins(14, 14, 14, 14)
+        page_layout.setSpacing(12)
 
-        page_layout.addWidget(self.create_module_header(
-            "SC Intel Tool",
-            "One operational companion app for Star Citizen.",
-        ))
+        page_layout.addWidget(self.create_hero_panel())
 
         main_layout = QHBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(10)
+        main_layout.setSpacing(12)
         main_layout.addWidget(self.build_navigation_panel(), 3)
         main_layout.addWidget(self.build_side_panel(), 1, Qt.AlignTop)
 
         page_layout.addLayout(main_layout)
+        page_layout.addWidget(self.build_feedback_note())
         page.setLayout(page_layout)
         scroll_area.setWidget(page)
         layout.addWidget(scroll_area)
@@ -249,8 +267,8 @@ class HomeTab(QWidget):
         self.setLayout(layout)
         self.update_first_timer_aliases()
 
-    def create_nav_card(self, title, description):
-        return NavigationCard(title, description, self.open_target_tab)
+    def create_nav_card(self, title, description, target=None, eyebrow=None):
+        return NavigationCard(title, description, self.open_target_tab, target=target, eyebrow=eyebrow)
 
     def build_navigation_panel(self):
         panel = QWidget()
@@ -261,48 +279,40 @@ class HomeTab(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
 
-        for section_title, items in self.NAV_SECTIONS:
-            layout.addWidget(self.create_nav_section(section_title, items))
-
-        panel.setLayout(layout)
-        return panel
-
-    def create_nav_section(self, section_title, items):
-        section = QFrame()
-        section.setObjectName("sectionCard")
-        section_layout = QVBoxLayout()
-        section_layout.setContentsMargins(10, 8, 10, 10)
-        section_layout.setSpacing(6)
-
-        title_label = QLabel(section_title.upper())
+        title_label = QLabel("CAPABILITY OVERVIEW")
         title_label.setObjectName("sectionTitle")
-        section_layout.addWidget(title_label)
+        layout.addWidget(title_label)
 
         grid = QGridLayout()
         grid.setContentsMargins(0, 0, 0, 0)
-        grid.setHorizontalSpacing(7)
-        grid.setVerticalSpacing(7)
+        grid.setHorizontalSpacing(8)
+        grid.setVerticalSpacing(8)
         for column in range(2):
             grid.setColumnStretch(column, 1)
 
-        for index, (title, description) in enumerate(items):
-            grid.addWidget(self.create_nav_card(title, description), index // 2, index % 2)
+        for index, (title, description, target, eyebrow) in enumerate(self.CAPABILITY_CARDS):
+            grid.addWidget(
+                self.create_nav_card(title, description, target=target, eyebrow=eyebrow),
+                index // 2,
+                index % 2,
+            )
 
-        section_layout.addLayout(grid)
-        section.setLayout(section_layout)
-        return section
+        layout.addLayout(grid)
+        panel.setLayout(layout)
+        return panel
 
     def build_side_panel(self):
         panel = QWidget()
-        panel.setMinimumWidth(320)
-        panel.setMaximumWidth(420)
+        panel.setMinimumWidth(340)
+        panel.setMaximumWidth(440)
         panel.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
 
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(10)
-        layout.addWidget(self.build_timer_panel())
+        layout.setSpacing(12)
+        layout.addWidget(self.build_status_panel())
         layout.addWidget(self.build_privacy_panel())
+        layout.addWidget(self.build_timer_panel())
         panel.setLayout(layout)
         return panel
 
@@ -320,13 +330,12 @@ class HomeTab(QWidget):
         return card
 
     def build_privacy_panel(self):
-        card = self.create_filter_card("LOCAL STATUS")
-        card.setMinimumHeight(82)
-        card.setMaximumHeight(116)
+        card = self.create_filter_card("PRIVACY / TRUST")
         layout = card.layout()
 
         privacy_lines = [
             "No telemetry",
+            "No analytics",
             "No tracking",
             "Local data stays local",
         ]
@@ -337,6 +346,66 @@ class HomeTab(QWidget):
             layout.addWidget(label)
 
         return card
+
+    def build_status_panel(self):
+        card = self.create_filter_card("OPERATIONAL STATUS")
+        layout = card.layout()
+
+        build_type = "Packaged build" if is_packaged_app() else "Source/dev run"
+        status_rows = [
+            ("Version", APP_VERSION),
+            ("Runtime", build_type),
+            ("Data storage", "AppData / local user data"),
+            ("Updates", "GitHub Releases"),
+        ]
+        for label, value in status_rows:
+            layout.addWidget(self.create_status_row(label, value))
+
+        return card
+
+    def build_feedback_note(self):
+        card = QFrame()
+        card.setObjectName("sectionCard")
+        card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        layout = QHBoxLayout()
+        layout.setContentsMargins(12, 8, 12, 8)
+        layout.setSpacing(8)
+
+        title = QLabel("ALPHA FEEDBACK")
+        title.setObjectName("sectionTitle")
+        note = QLabel("Report bugs and feature requests through GitHub Issues.")
+        note.setObjectName("moduleSubtitle")
+        note.setWordWrap(True)
+
+        layout.addWidget(title)
+        layout.addWidget(note, 1)
+        card.setLayout(layout)
+        return card
+
+    def create_status_row(self, label, value):
+        row = QFrame()
+        row.setObjectName("statusRow")
+        row.setStyleSheet("""
+            QFrame#statusRow {
+                background: #071118;
+                border: 1px solid #153441;
+                border-radius: 4px;
+            }
+        """)
+        layout = QVBoxLayout()
+        layout.setContentsMargins(8, 6, 8, 6)
+        layout.setSpacing(2)
+
+        label_widget = QLabel(label.upper())
+        label_widget.setObjectName("labelText")
+        value_widget = QLabel(str(value))
+        value_widget.setObjectName("valueText")
+        value_widget.setWordWrap(True)
+
+        layout.addWidget(label_widget)
+        layout.addWidget(value_widget)
+        row.setLayout(layout)
+        return row
 
     def open_target_tab(self, target):
         if self.navigate_callback:
@@ -399,27 +468,56 @@ class HomeTab(QWidget):
     def parse_duration_seconds(self, text):
         return self.countdown_timers[0].parse_duration_seconds(text)
 
-    def create_module_header(self, title, subtitle, secondary_text=None):
+    def create_hero_panel(self):
         card = QFrame()
         card.setObjectName("playerCard")
         card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
         layout = QVBoxLayout()
-        layout.setContentsMargins(14, 10, 14, 10)
-        layout.setSpacing(3)
-        title_label = QLabel(title)
+        layout.setContentsMargins(16, 12, 16, 12)
+        layout.setSpacing(7)
+
+        title_label = QLabel("SC Intel Tool")
         title_label.setObjectName("moduleHeading")
-        subtitle_label = QLabel(subtitle)
+        subtitle_label = QLabel("One operational companion app for Star Citizen.")
         subtitle_label.setObjectName("moduleSubtitle")
         subtitle_label.setWordWrap(True)
+        mission_label = QLabel(
+            "Player intel, organization context, mining, salvage, trading, item lookup, "
+            "Wikelo tracking and local notes - in one place."
+        )
+        mission_label.setObjectName("valueText")
+        mission_label.setWordWrap(True)
+
+        chip_row = QHBoxLayout()
+        chip_row.setSpacing(6)
+        chip_row.addWidget(self.create_chip("Alpha Build"))
+        chip_row.addWidget(self.create_chip("Tracking-Free"))
+        chip_row.addWidget(self.create_chip("Local Data"))
+        chip_row.addWidget(self.create_chip("Operational Tool"))
+        chip_row.addStretch(1)
+
         layout.addWidget(title_label)
         layout.addWidget(subtitle_label)
-        if secondary_text:
-            secondary_label = QLabel(secondary_text)
-            secondary_label.setObjectName("valueText")
-            secondary_label.setWordWrap(True)
-            layout.addWidget(secondary_label)
+        layout.addWidget(mission_label)
+        layout.addLayout(chip_row)
         card.setLayout(layout)
         return card
+
+    def create_chip(self, text):
+        label = QLabel(text)
+        label.setObjectName("statusChip")
+        label.setStyleSheet("""
+            QLabel#statusChip {
+                background: #0d2530;
+                border: 1px solid #2b7386;
+                border-radius: 10px;
+                color: #8ff4ff;
+                font-size: 8pt;
+                font-weight: 700;
+                padding: 3px 8px;
+            }
+        """)
+        return label
 
     def create_filter_card(self, title):
         card = QFrame()
