@@ -220,6 +220,28 @@ class HomeTab(QWidget):
             "One operational companion app for Star Citizen.",
         ))
 
+        main_layout = QHBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(10)
+        main_layout.addWidget(self.build_navigation_panel(), 3)
+        main_layout.addWidget(self.build_timer_panel(), 1, Qt.AlignTop)
+
+        page_layout.addLayout(main_layout)
+        page.setLayout(page_layout)
+        scroll_area.setWidget(page)
+        layout.addWidget(scroll_area)
+
+        self.setLayout(layout)
+        self.update_first_timer_aliases()
+
+    def create_nav_card(self, title, description):
+        return NavigationCard(title, description, self.open_target_tab)
+
+    def build_navigation_panel(self):
+        panel = QWidget()
+        panel.setMinimumWidth(720)
+        panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+
         dashboard_grid = QGridLayout()
         dashboard_grid.setContentsMargins(0, 0, 0, 0)
         dashboard_grid.setHorizontalSpacing(8)
@@ -231,20 +253,14 @@ class HomeTab(QWidget):
             dashboard_grid.addWidget(self.create_nav_card(title, description), index // 3, index % 3)
         dashboard_grid.addWidget(self.build_privacy_panel(), 2, 2)
 
-        page_layout.addLayout(dashboard_grid)
-        page_layout.addWidget(self.build_timer_panel())
-        page.setLayout(page_layout)
-        scroll_area.setWidget(page)
-        layout.addWidget(scroll_area)
-
-        self.setLayout(layout)
-        self.update_first_timer_aliases()
-
-    def create_nav_card(self, title, description):
-        return NavigationCard(title, description, self.open_target_tab)
+        panel.setLayout(dashboard_grid)
+        return panel
 
     def build_timer_panel(self):
         card = self.create_filter_card("COUNTDOWN TIMERS")
+        card.setMinimumWidth(320)
+        card.setMaximumWidth(420)
+        card.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
         layout = card.layout()
         layout.setSpacing(7)
         self.timer_panel_layout = layout
