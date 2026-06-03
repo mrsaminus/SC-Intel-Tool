@@ -346,17 +346,26 @@ class HomeTab(QWidget):
         build_type = "Packaged build" if is_packaged_app() else "Source/dev run"
         title = QLabel("OPERATIONAL STATUS")
         title.setObjectName("sectionTitle")
-        status = QLabel(
-            f"Version: {APP_VERSION} | Runtime: {build_type} | "
-            "Data: AppData/local | Source: GitHub Releases"
-        )
-        status.setObjectName("moduleSubtitle")
-        status.setWordWrap(True)
+        info_panel = QWidget()
+        info_panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        info_layout = QVBoxLayout()
+        info_layout.setContentsMargins(0, 0, 0, 0)
+        info_layout.setSpacing(2)
+
+        runtime_status = QLabel(f"Version: {APP_VERSION} | Runtime: {build_type}")
+        runtime_status.setObjectName("moduleSubtitle")
+        runtime_status.setWordWrap(True)
+        data_status = QLabel("Data: AppData/local | Updates: GitHub Releases")
+        data_status.setObjectName("moduleSubtitle")
+        data_status.setWordWrap(True)
+
+        info_layout.addWidget(runtime_status)
+        info_layout.addWidget(data_status)
+        info_panel.setLayout(info_layout)
 
         layout.addWidget(title)
-        layout.addWidget(status)
+        layout.addWidget(info_panel, 1)
         layout.addWidget(self.create_update_status_chip(), 0, Qt.AlignVCenter)
-        layout.addStretch(1)
         card.setLayout(layout)
 
         return card
