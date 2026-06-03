@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.8.3 - 2026-06-03
+
+- Fixed Settings update UI availability detection so `Install Update` enables when a newer prerelease exists.
+
 ## 0.1.0-alpha.8.2 - 2026-06-03
 
 - Fixed prerelease update detection so dot-chain alpha versions such as `alpha.8.1` and `alpha.8.2` compare correctly against `alpha.8`.
