@@ -130,24 +130,25 @@ def version_key(value):
         numbers.append(0)
 
     release_rank = 0 if suffix else 1
-    suffix_rank = prerelease_rank(suffix)
-    return (*numbers[:3], release_rank, suffix_rank)
+    prerelease_key = prerelease_rank(suffix)
+    return (*numbers[:3], release_rank, prerelease_key)
 
 
 def prerelease_rank(suffix):
     if not suffix:
-        return 999999
+        return (999999, ())
 
-    numbers = [int(match.group(0)) for match in re.finditer(r"\d+", suffix)]
-    number = numbers[0] if numbers else 0
+    numbers = tuple(int(match.group(0)) for match in re.finditer(r"\d+", suffix))
 
     if "dev" in suffix:
-        return number
-    if "alpha" in suffix:
-        return 100 + number
-    if "beta" in suffix:
-        return 200 + number
-    if "rc" in suffix:
-        return 300 + number
+        stage_rank = 0
+    elif "alpha" in suffix:
+        stage_rank = 1
+    elif "beta" in suffix:
+        stage_rank = 2
+    elif "rc" in suffix:
+        stage_rank = 3
+    else:
+        stage_rank = 4
 
-    return 10 + number
+    return (stage_rank, numbers)
