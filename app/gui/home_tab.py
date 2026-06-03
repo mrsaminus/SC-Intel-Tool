@@ -236,6 +236,7 @@ class HomeTab(QWidget):
         self.navigate_callback = navigate_callback
         self.countdown_timers = []
         self.timer_panel_layout = None
+        self.update_status_chip = None
         self.update_status_dot = None
         self.update_status_text = None
 
@@ -319,8 +320,8 @@ class HomeTab(QWidget):
 
     def build_timer_panel(self):
         card = self.create_filter_card("COUNTDOWN TIMERS")
-        card.setMinimumWidth(320)
-        card.setMaximumWidth(410)
+        card.setMinimumWidth(300)
+        card.setMaximumWidth(380)
         card.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
         layout = card.layout()
         layout.setSpacing(9)
@@ -339,8 +340,8 @@ class HomeTab(QWidget):
         layout = card.layout()
         if layout is None:
             layout = QHBoxLayout()
-            layout.setContentsMargins(12, 8, 12, 8)
-            layout.setSpacing(8)
+            layout.setContentsMargins(12, 7, 12, 7)
+            layout.setSpacing(7)
 
         build_type = "Packaged build" if is_packaged_app() else "Source/dev run"
         title = QLabel("OPERATIONAL STATUS")
@@ -353,8 +354,9 @@ class HomeTab(QWidget):
         status.setWordWrap(True)
 
         layout.addWidget(title)
-        layout.addWidget(status, 1)
-        layout.addWidget(self.create_update_status_chip())
+        layout.addWidget(status)
+        layout.addWidget(self.create_update_status_chip(), 0, Qt.AlignVCenter)
+        layout.addStretch(1)
         card.setLayout(layout)
 
         return card
@@ -362,50 +364,59 @@ class HomeTab(QWidget):
     def create_update_status_chip(self):
         chip = QFrame()
         chip.setObjectName("updateStatusChip")
+        chip.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        chip.setMaximumHeight(22)
         chip_layout = QHBoxLayout()
-        chip_layout.setContentsMargins(8, 3, 8, 3)
+        chip_layout.setContentsMargins(6, 2, 7, 2)
         chip_layout.setSpacing(5)
 
         self.update_status_dot = QFrame()
-        self.update_status_dot.setFixedSize(8, 8)
+        self.update_status_dot.setFixedSize(7, 7)
         self.update_status_text = QLabel()
         self.update_status_text.setObjectName("updateStatusText")
 
         chip_layout.addWidget(self.update_status_dot)
         chip_layout.addWidget(self.update_status_text)
         chip.setLayout(chip_layout)
+        self.update_status_chip = chip
         self.set_update_status("Not checked", "neutral")
         return chip
 
     def set_update_status(self, text, state="neutral"):
-        if not self.update_status_dot or not self.update_status_text:
+        if not self.update_status_chip or not self.update_status_dot or not self.update_status_text:
             return
 
         colors = {
-            "neutral": ("#6f9ead", "#153441", "#0b1820"),
-            "checking": ("#44e6ff", "#1e5060", "#081b24"),
-            "current": ("#68e6a5", "#1b5b48", "#0b1c18"),
-            "available": ("#ffb86b", "#68411f", "#1f160d"),
-            "error": ("#ff8c6b", "#68411f", "#1f160d"),
+            "neutral": ("#83a9b8", "#18333d", "#081820"),
+            "checking": ("#55d6e8", "#18333d", "#081820"),
+            "current": ("#70dfaa", "#1b4e43", "#0a1d19"),
+            "available": ("#ffb56a", "#5d3c20", "#1b130c"),
+            "error": ("#e48168", "#4a2d23", "#1a1110"),
         }
         color, border, background = colors.get(state, colors["neutral"])
+        self.update_status_chip.setStyleSheet(f"""
+            QFrame#updateStatusChip {{
+                background: {background};
+                border: 1px solid {border};
+                border-radius: 9px;
+            }}
+        """)
         self.update_status_dot.setStyleSheet(f"""
             QFrame {{
                 background: {color};
-                border: 1px solid {border};
-                border-radius: 4px;
+                border: none;
+                border-radius: 3px;
             }}
         """)
-        self.update_status_text.setText(f"Update: {text}")
+        self.update_status_text.setText(text)
         self.update_status_text.setStyleSheet(f"""
             QLabel#updateStatusText {{
-                background: {background};
-                border: 1px solid {border};
-                border-radius: 10px;
+                background: transparent;
+                border: none;
                 color: {color};
                 font-size: 8pt;
                 font-weight: 700;
-                padding: 3px 8px;
+                padding: 0;
             }}
         """)
 
@@ -418,7 +429,7 @@ class HomeTab(QWidget):
             result.current_version,
         )
         if update_available:
-            self.set_update_status(f"Available {result.latest_version}", "available")
+            self.set_update_status(f"Update available {chr(8226)} {result.latest_version}", "available")
         else:
             self.set_update_status("Up to date", "current")
 
