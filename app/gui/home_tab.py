@@ -316,31 +316,17 @@ class HomeTab(QWidget):
 
     def build_timer_panel(self):
         card = self.create_filter_card("COUNTDOWN TIMERS")
-        card.setMinimumWidth(340)
-        card.setMaximumWidth(440)
+        card.setMinimumWidth(320)
+        card.setMaximumWidth(410)
         card.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
-        outer_layout = card.layout()
-        outer_layout.setSpacing(7)
-
-        timer_scroll = QScrollArea()
-        timer_scroll.setWidgetResizable(True)
-        timer_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        timer_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        timer_scroll.setMinimumHeight(210)
-        timer_scroll.setMaximumHeight(420)
-
-        timer_content = QWidget()
-        self.timer_panel_layout = QVBoxLayout()
-        self.timer_panel_layout.setContentsMargins(0, 0, 0, 0)
-        self.timer_panel_layout.setSpacing(10)
-        timer_content.setLayout(self.timer_panel_layout)
-        timer_scroll.setWidget(timer_content)
-        outer_layout.addWidget(timer_scroll)
+        layout = card.layout()
+        layout.setSpacing(9)
+        self.timer_panel_layout = layout
 
         self.add_countdown_timer(removable=False)
         self.add_timer_button = QPushButton("Add Timer")
         self.add_timer_button.clicked.connect(lambda: self.add_countdown_timer(removable=True))
-        outer_layout.addWidget(self.add_timer_button)
+        layout.addWidget(self.add_timer_button)
         return card
 
     def build_status_strip(self):
@@ -358,16 +344,38 @@ class HomeTab(QWidget):
         title.setObjectName("sectionTitle")
         status = QLabel(
             f"Version: {APP_VERSION} | Runtime: {build_type} | "
-            "Data: AppData/local | Updates: GitHub Releases"
+            "Data: AppData/local | Source: GitHub Releases"
         )
         status.setObjectName("moduleSubtitle")
         status.setWordWrap(True)
 
         layout.addWidget(title)
         layout.addWidget(status, 1)
+        layout.addWidget(self.create_update_status_chip("Not checked", "neutral"))
         card.setLayout(layout)
 
         return card
+
+    def create_update_status_chip(self, text, state="neutral"):
+        colors = {
+            "neutral": ("#6f9ead", "#153441", "#0b1820"),
+            "available": ("#ffb86b", "#68411f", "#1f160d"),
+            "current": ("#68e6a5", "#1b5b48", "#0b1c18"),
+        }
+        color, border, background = colors.get(state, colors["neutral"])
+        label = QLabel(f"Update: {text}")
+        label.setStyleSheet(f"""
+            QLabel {{
+                background: {background};
+                border: 1px solid {border};
+                border-radius: 10px;
+                color: {color};
+                font-size: 8pt;
+                font-weight: 700;
+                padding: 3px 8px;
+            }}
+        """)
+        return label
 
     def build_trust_line(self):
         card = QFrame()
