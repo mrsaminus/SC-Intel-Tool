@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.8.2 - 2026-06-03
+
+- Fixed prerelease update detection so dot-chain alpha versions such as `alpha.8.1` and `alpha.8.2` compare correctly against `alpha.8`.
+
 ## 0.1.0-alpha.8.1 - 2026-06-03
 
 - Fixed a PowerShell syntax error in the generated update installer script by using safe `${Path}:` variable interpolation.
