@@ -352,8 +352,16 @@ class PlayerLookupTab(BackgroundTaskMixin, QWidget):
             "fluency": data["fluency"],
         })
 
-        self.main_org_name.setText(data["main_org"])
-        self.main_org_sid.setText(f"SID: {data['org_sid']}")
+        main_org_redacted = bool(data.get("main_org_redacted"))
+        if main_org_redacted:
+            self.main_org_name.setText("REDACTED")
+            self.main_org_name.setStyleSheet("color: #ffb86b; letter-spacing: 2px;")
+            self.main_org_sid.setText("Hidden organization affiliation")
+        else:
+            self.main_org_name.setText(data["main_org"])
+            self.main_org_name.setStyleSheet("")
+            self.main_org_sid.setText(f"SID: {data['org_sid']}")
+
         self.set_fact_values(self.main_org_facts, {
             "rank": data["org_rank"],
             "member_count": data["org_member_count"],
@@ -361,7 +369,10 @@ class PlayerLookupTab(BackgroundTaskMixin, QWidget):
             "commitment": data["org_commitment"],
             "exclusivity": data["org_exclusivity"],
         })
-        self.set_piracy_badge(self.main_org_piracy, data["org_piracy"])
+        if main_org_redacted:
+            self.set_piracy_unknown(self.main_org_piracy)
+        else:
+            self.set_piracy_badge(self.main_org_piracy, data["org_piracy"])
 
         self.load_avatar(data["avatar"])
         self.load_image_into_label(
@@ -369,21 +380,29 @@ class PlayerLookupTab(BackgroundTaskMixin, QWidget):
             data.get("org_logo"),
             "ORG\nLOGO",
         )
-        self.render_affiliations(data["affiliations"])
+        self.render_affiliations(data["affiliations"], data.get("affiliations_redacted", False))
         self.set_actions_enabled(True)
 
     def set_fact_values(self, registry, values):
         for key, value in values.items():
             registry[key].setText(str(value or "N/A"))
 
-    def render_affiliations(self, affiliations):
+    def render_affiliations(self, affiliations, redacted=False):
         self.clear_layout(self.affiliations_grid)
 
         if not affiliations:
-            self.affiliation_count_label.setText("0 linked orgs")
+            if redacted:
+                self.affiliation_count_label.setText("REDACTED")
+                self.affiliations_empty.setText("Organization affiliations are REDACTED by RSI.")
+                self.affiliations_empty.setStyleSheet("color: #ffb86b; font-weight: 700;")
+            else:
+                self.affiliation_count_label.setText("0 linked orgs")
+                self.affiliations_empty.setText("No affiliations loaded.")
+                self.affiliations_empty.setStyleSheet("")
             self.affiliations_empty.show()
             return
 
+        self.affiliations_empty.setStyleSheet("")
         self.affiliations_empty.hide()
         self.affiliation_count_label.setText(f"{len(affiliations)} linked orgs")
 
@@ -508,6 +527,10 @@ class PlayerLookupTab(BackgroundTaskMixin, QWidget):
         else:
             label.setText("Piracy: No")
             label.setStyleSheet("color: #68e6a5; font-weight: 700;")
+
+    def set_piracy_unknown(self, label):
+        label.setText("Piracy: Unknown")
+        label.setStyleSheet("color: #ffb86b; font-weight: 700;")
 
     def set_actions_enabled(self, enabled):
         self.copy_handle_button.setEnabled(enabled)

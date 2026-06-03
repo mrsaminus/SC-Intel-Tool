@@ -23,7 +23,10 @@ HEADERS = {
 _SESSION = requests.Session()
 _SESSION.headers.update(HEADERS)
 
-_RE_REDACTED = re.compile(r"This information has been redacted", re.IGNORECASE)
+_RE_REDACTED = re.compile(
+    r"(This information has been redacted|\bREDACTED\b)",
+    re.IGNORECASE,
+)
 _RE_NO_MAIN_ORG = re.compile(r"NO MAIN ORG FOUND IN PUBLIC RECORDS", re.IGNORECASE)
 _RE_MAIN_ORG = re.compile(r"Main organization", re.IGNORECASE)
 _RE_SPECTRUM_ID = re.compile(r"Spectrum Identification", re.IGNORECASE)
@@ -34,6 +37,7 @@ _ORG_TYPE_VALUES = {"Organization", "Syndicate", "Corporation", "PMC", "Club", "
 _COMMITMENT_VALUES = {"Casual", "Regular", "Hardcore"}
 _EXCLUSIVITY_VALUES = {"Exclusive", "Affiliate"}
 _EMPTY_ORG_VALUES = {"", "n/a", "not found", "none", "redacted", "no main org"}
+_REDACTED_ORG_NAME = "REDACTED"
 
 
 @lru_cache(maxsize=200)
@@ -47,18 +51,23 @@ def lookup_player(handle: str) -> dict:
     soup = BeautifulSoup(response.text, "lxml")
 
     profile_org = extract_main_org(soup)
-    organizations = fetch_player_organizations(handle)
+    organizations_data = fetch_player_organizations(handle)
+    organizations = organizations_data["organizations"]
+    organizations_redacted = organizations_data["redacted"]
 
     main_org = next(
         (org for org in organizations if org["relationship"] == "Main organization"),
         None,
     )
     if not main_org:
-        main_org = {
-            **profile_org,
-            "relationship": "Main organization",
-            "member_count": "N/A",
-        }
+        if profile_org.get("redacted") or organizations_redacted:
+            main_org = redacted_org_result("Main organization")
+        else:
+            main_org = {
+                **profile_org,
+                "relationship": "Main organization",
+                "member_count": "N/A",
+            }
 
     main_org = enrich_organization(main_org)
     affiliations = [
@@ -66,7 +75,11 @@ def lookup_player(handle: str) -> dict:
         for org in organizations
         if org["relationship"] == "Affiliation"
     ]
-    any_org_piracy = main_org["piracy"] or any(org["piracy"] for org in affiliations)
+    main_org_redacted = bool(main_org.get("redacted"))
+    affiliations_redacted = bool(organizations_redacted and not affiliations)
+    main_org_piracy = False if main_org_redacted else main_org["piracy"]
+    affiliation_piracy = False if affiliations_redacted else any(org["piracy"] for org in affiliations)
+    any_org_piracy = main_org_piracy or affiliation_piracy
 
     return {
         "handle": handle,
@@ -88,6 +101,9 @@ def lookup_player(handle: str) -> dict:
         "org_url": main_org["url"],
         "org_logo": main_org["logo_url"],
         "affiliations": affiliations,
+        "main_org_redacted": main_org_redacted,
+        "affiliations_redacted": affiliations_redacted,
+        "organizations_redacted": organizations_redacted,
         "organizations_url": f"{BASE_URL}/en/citizens/{quote(handle, safe='')}/organizations",
         "profile_url": profile_url,
     }
@@ -239,7 +255,7 @@ def extract_main_org(soup):
         return {"name": "No Main Org", "sid": "N/A", "rank": "N/A"}
 
     if soup.find(string=_RE_REDACTED):
-        return {"name": "Redacted", "sid": "Redacted", "rank": "Redacted"}
+        return redacted_org_result("Main organization")
 
     main_org = extract_label_value(soup, "Main organization", default="")
     if main_org:
@@ -262,21 +278,23 @@ def fetch_player_organizations(handle):
     try:
         response = request_with_retry(url)
     except RSILookupError:
-        return []
+        return {"organizations": [], "redacted": False}
 
     if response.status_code != 200:
-        return []
+        return {"organizations": [], "redacted": False}
 
     soup = BeautifulSoup(response.text, "lxml")
+    redacted = bool(soup.find(string=_RE_REDACTED))
     cards = soup.select("div.box-content.org")
     if cards:
-        return [
+        organizations = [
             org
             for org in (extract_organization_card(card) for card in cards)
             if org["name"] != "None" or org["sid"] != "N/A"
         ]
+        return {"organizations": organizations, "redacted": redacted}
 
-    return extract_organizations_from_lines(soup)
+    return {"organizations": extract_organizations_from_lines(soup), "redacted": redacted}
 
 
 def extract_organization_card(card):
@@ -371,7 +389,23 @@ def enrich_organization(org):
         "piracy": False,
         "url": None,
         "logo_url": org.get("logo_url"),
+        "redacted": bool(org.get("redacted")),
     }
+
+    if enriched["redacted"]:
+        enriched.update({
+            "name": _REDACTED_ORG_NAME,
+            "sid": "N/A",
+            "rank": "Hidden organization affiliation",
+            "member_count": "N/A",
+            "type": "REDACTED",
+            "commitment": "REDACTED",
+            "exclusivity": "REDACTED",
+            "piracy": False,
+            "url": None,
+            "logo_url": None,
+        })
+        return enriched
 
     details = fetch_org_details(enriched["sid"])
     for key in ("type", "commitment", "exclusivity", "member_count", "url", "logo_url"):
@@ -456,6 +490,7 @@ def normalize_org_result(result):
     result["member_count"] = result.get("member_count", "N/A") or "N/A"
     result["relationship"] = result.get("relationship", "Affiliation")
     result["logo_url"] = result.get("logo_url")
+    result["redacted"] = bool(result.get("redacted"))
 
     if not result["name"] or result["name"].lower() in {"unknown", "none"}:
         result["name"] = "None"
@@ -467,6 +502,18 @@ def normalize_org_result(result):
         result["rank"] = "N/A"
 
     return result
+
+
+def redacted_org_result(relationship):
+    return {
+        "relationship": relationship,
+        "name": _REDACTED_ORG_NAME,
+        "sid": "N/A",
+        "rank": "Hidden organization affiliation",
+        "member_count": "N/A",
+        "logo_url": None,
+        "redacted": True,
+    }
 
 
 def extract_org_sid_from_links(element):

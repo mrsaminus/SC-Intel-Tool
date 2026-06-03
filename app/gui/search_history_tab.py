@@ -162,6 +162,7 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         })
 
         self.detail_main_org_name.setText("No main organization loaded")
+        self.detail_main_org_name.setStyleSheet("")
         self.detail_main_org_sid.setText("SID: N/A")
         self.set_fact_values(self.detail_org_facts, {
             "rank": "N/A",
@@ -178,6 +179,7 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         self.clear_layout(self.detail_affiliations_grid)
         self.detail_affiliation_count_label.setText("0 linked orgs")
         self.detail_affiliations_empty.setText("No profile selected.")
+        self.detail_affiliations_empty.setStyleSheet("")
         self.detail_affiliations_empty.show()
         self.set_detail_actions_enabled(False)
 
@@ -584,8 +586,16 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
             "location": data["location"],
             "fluency": data["fluency"],
         })
-        self.detail_main_org_name.setText(data["main_org"])
-        self.detail_main_org_sid.setText(f"SID: {data['org_sid']}")
+        main_org_redacted = bool(data.get("main_org_redacted"))
+        if main_org_redacted:
+            self.detail_main_org_name.setText("REDACTED")
+            self.detail_main_org_name.setStyleSheet("color: #ffb86b; letter-spacing: 2px;")
+            self.detail_main_org_sid.setText("Hidden organization affiliation")
+        else:
+            self.detail_main_org_name.setText(data["main_org"])
+            self.detail_main_org_name.setStyleSheet("")
+            self.detail_main_org_sid.setText(f"SID: {data['org_sid']}")
+
         self.set_fact_values(self.detail_org_facts, {
             "rank": data["org_rank"],
             "member_count": data["org_member_count"],
@@ -593,14 +603,17 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
             "commitment": data["org_commitment"],
             "exclusivity": data["org_exclusivity"],
         })
-        self.set_piracy_badge(self.detail_main_org_piracy, data["org_piracy"])
+        if main_org_redacted:
+            self.set_piracy_unknown(self.detail_main_org_piracy)
+        else:
+            self.set_piracy_badge(self.detail_main_org_piracy, data["org_piracy"])
         self.load_image_into_label(self.detail_avatar, data.get("avatar"), "NO\nIMAGE")
         self.load_image_into_label(
             self.detail_main_org_logo,
             data.get("org_logo"),
             "ORG\nLOGO",
         )
-        self.render_detail_affiliations(data["affiliations"])
+        self.render_detail_affiliations(data["affiliations"], data.get("affiliations_redacted", False))
         self.set_detail_actions_enabled(True)
 
     def update_stored_history_detail(self, data):
@@ -629,8 +642,15 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
             "location": "N/A",
             "fluency": "N/A",
         })
-        self.detail_main_org_name.setText(row.get("main_org") or "N/A")
-        self.detail_main_org_sid.setText(f"SID: {row.get('org_sid') or 'N/A'}")
+        stored_main_org = row.get("main_org") or "N/A"
+        if stored_main_org.upper() == "REDACTED":
+            self.detail_main_org_name.setText("REDACTED")
+            self.detail_main_org_name.setStyleSheet("color: #ffb86b; letter-spacing: 2px;")
+            self.detail_main_org_sid.setText("Hidden organization affiliation")
+        else:
+            self.detail_main_org_name.setText(stored_main_org)
+            self.detail_main_org_name.setStyleSheet("")
+            self.detail_main_org_sid.setText(f"SID: {row.get('org_sid') or 'N/A'}")
         self.set_fact_values(self.detail_org_facts, {
             "rank": "N/A",
             "member_count": "N/A",
@@ -642,6 +662,7 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         self.clear_layout(self.detail_affiliations_grid)
         self.detail_affiliation_count_label.setText("0 linked orgs")
         self.detail_affiliations_empty.setText("Live lookup failed; showing stored history only.")
+        self.detail_affiliations_empty.setStyleSheet("")
         self.detail_affiliations_empty.show()
         self.load_image_into_label(self.detail_avatar, None, "NO\nIMAGE")
         self.load_image_into_label(self.detail_main_org_logo, None, "ORG\nLOGO")
@@ -663,15 +684,22 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         for key, value in values.items():
             registry[key].setText(str(value or "N/A"))
 
-    def render_detail_affiliations(self, affiliations):
+    def render_detail_affiliations(self, affiliations, redacted=False):
         self.clear_layout(self.detail_affiliations_grid)
 
         if not affiliations:
-            self.detail_affiliation_count_label.setText("0 linked orgs")
-            self.detail_affiliations_empty.setText("No affiliations loaded.")
+            if redacted:
+                self.detail_affiliation_count_label.setText("REDACTED")
+                self.detail_affiliations_empty.setText("Organization affiliations are REDACTED by RSI.")
+                self.detail_affiliations_empty.setStyleSheet("color: #ffb86b; font-weight: 700;")
+            else:
+                self.detail_affiliation_count_label.setText("0 linked orgs")
+                self.detail_affiliations_empty.setText("No affiliations loaded.")
+                self.detail_affiliations_empty.setStyleSheet("")
             self.detail_affiliations_empty.show()
             return
 
+        self.detail_affiliations_empty.setStyleSheet("")
         self.detail_affiliations_empty.hide()
         self.detail_affiliation_count_label.setText(f"{len(affiliations)} linked orgs")
 
@@ -765,6 +793,10 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         else:
             label.setText("Piracy: No")
             label.setStyleSheet("color: #68e6a5; font-weight: 700;")
+
+    def set_piracy_unknown(self, label):
+        label.setText("Piracy: Unknown")
+        label.setStyleSheet("color: #ffb86b; font-weight: 700;")
 
     def set_detail_actions_enabled(self, enabled):
         self.detail_open_profile_button.setEnabled(enabled and bool(self.current_profile_url))
