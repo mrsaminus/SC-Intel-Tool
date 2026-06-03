@@ -13,6 +13,52 @@ from PySide6.QtWidgets import (
 )
 
 
+class NavigationCard(QFrame):
+    def __init__(self, title, description, open_callback):
+        super().__init__()
+        self.target_title = title
+        self.open_callback = open_callback
+
+        self.setObjectName("homeNavCard")
+        self.setCursor(Qt.PointingHandCursor)
+        self.setMinimumHeight(74)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.setStyleSheet("""
+            QFrame#homeNavCard {
+                background: #0b1820;
+                border: 1px solid #1e5060;
+                border-radius: 6px;
+            }
+            QFrame#homeNavCard:hover {
+                background: #102735;
+                border-color: #34d8f5;
+            }
+        """)
+
+        layout = QVBoxLayout()
+        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setSpacing(4)
+
+        title_label = QLabel(title)
+        title_label.setStyleSheet("color: #f5fdff; font-size: 11pt; font-weight: 700;")
+        description_label = QLabel(description)
+        description_label.setObjectName("moduleSubtitle")
+        description_label.setWordWrap(True)
+
+        layout.addWidget(title_label)
+        layout.addWidget(description_label)
+        self.setLayout(layout)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.open_target()
+        super().mousePressEvent(event)
+
+    def open_target(self):
+        if self.open_callback:
+            self.open_callback(self.target_title)
+
+
 class CountdownTimerWidget(QWidget):
     def __init__(self, title, remove_callback=None):
         super().__init__()
@@ -43,6 +89,7 @@ class CountdownTimerWidget(QWidget):
         self.timer_display = QLabel("00:00:00")
         self.timer_display.setObjectName("orgName")
         self.timer_display.setAlignment(Qt.AlignCenter)
+        self.timer_display.setStyleSheet("font-size: 14pt;")
 
         button_row = QHBoxLayout()
         button_row.setSpacing(6)
@@ -179,8 +226,8 @@ class HomeTab(QWidget):
 
         page = QWidget()
         page_layout = QVBoxLayout()
-        page_layout.setContentsMargins(14, 14, 14, 14)
-        page_layout.setSpacing(12)
+        page_layout.setContentsMargins(12, 12, 12, 12)
+        page_layout.setSpacing(10)
 
         page_layout.addWidget(self.create_module_header(
             "SC Intel Tool",
@@ -189,7 +236,7 @@ class HomeTab(QWidget):
         ))
 
         content = QHBoxLayout()
-        content.setSpacing(12)
+        content.setSpacing(14)
         content.addWidget(self.build_navigation_column(), 2)
         content.addWidget(self.build_side_column(), 1)
         page_layout.addLayout(content)
@@ -206,7 +253,7 @@ class HomeTab(QWidget):
         column.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(12)
+        layout.setSpacing(10)
 
         for section_title, items in self.NAV_SECTIONS:
             layout.addWidget(self.create_nav_section(section_title, items))
@@ -215,7 +262,15 @@ class HomeTab(QWidget):
         return column
 
     def create_nav_section(self, section_title, items):
-        card = self.create_filter_card(section_title.upper())
+        section = QWidget()
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(7)
+
+        title_label = QLabel(section_title.upper())
+        title_label.setObjectName("sectionTitle")
+        layout.addWidget(title_label)
+
         grid = QGridLayout()
         grid.setContentsMargins(0, 0, 0, 0)
         grid.setHorizontalSpacing(8)
@@ -224,36 +279,21 @@ class HomeTab(QWidget):
         for index, (title, description) in enumerate(items):
             grid.addWidget(self.create_nav_card(title, description), index // 2, index % 2)
 
-        card.layout().addLayout(grid)
-        return card
+        layout.addLayout(grid)
+        section.setLayout(layout)
+        return section
 
     def create_nav_card(self, title, description):
-        card = QFrame()
-        card.setObjectName("sectionCard")
-        card.setMinimumHeight(96)
-        layout = QVBoxLayout()
-        layout.setContentsMargins(12, 10, 12, 12)
-        layout.setSpacing(6)
-
-        button = QPushButton(title)
-        button.clicked.connect(lambda checked=False, target=title: self.open_target_tab(target))
-        description_label = QLabel(description)
-        description_label.setObjectName("moduleSubtitle")
-        description_label.setWordWrap(True)
-
-        layout.addWidget(button)
-        layout.addWidget(description_label)
-        card.setLayout(layout)
-        return card
+        return NavigationCard(title, description, self.open_target_tab)
 
     def build_side_column(self):
         column = QWidget()
         column.setMinimumWidth(320)
-        column.setMaximumWidth(460)
+        column.setMaximumWidth(420)
         column.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(12)
+        layout.setSpacing(10)
         layout.addWidget(self.build_timer_panel())
         layout.addWidget(self.build_privacy_panel())
         column.setLayout(layout)
@@ -262,7 +302,7 @@ class HomeTab(QWidget):
     def build_timer_panel(self):
         card = self.create_filter_card("COUNTDOWN TIMERS")
         layout = card.layout()
-        layout.setSpacing(8)
+        layout.setSpacing(7)
         self.timer_panel_layout = layout
 
         self.add_countdown_timer(removable=False)
@@ -276,9 +316,9 @@ class HomeTab(QWidget):
         layout = card.layout()
 
         privacy_lines = [
-            "No telemetry.",
-            "No tracking.",
-            "Local data stays local.",
+            "No telemetry",
+            "No tracking",
+            "Local data stays local",
         ]
         for line in privacy_lines:
             label = QLabel(line)
@@ -352,9 +392,10 @@ class HomeTab(QWidget):
     def create_module_header(self, title, subtitle, secondary_text=None):
         card = QFrame()
         card.setObjectName("playerCard")
+        card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
         layout = QVBoxLayout()
-        layout.setContentsMargins(16, 14, 16, 14)
-        layout.setSpacing(4)
+        layout.setContentsMargins(14, 10, 14, 10)
+        layout.setSpacing(3)
         title_label = QLabel(title)
         title_label.setObjectName("moduleHeading")
         subtitle_label = QLabel(subtitle)
@@ -374,8 +415,8 @@ class HomeTab(QWidget):
         card = QFrame()
         card.setObjectName("sectionCard")
         layout = QVBoxLayout()
-        layout.setContentsMargins(16, 14, 16, 16)
-        layout.setSpacing(10)
+        layout.setContentsMargins(14, 12, 14, 12)
+        layout.setSpacing(8)
         title_label = QLabel(title)
         title_label.setObjectName("sectionTitle")
         layout.addWidget(title_label)
