@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.8 - 2026-06-03
+
+- Moved local user data to `%LOCALAPPDATA%\SC-Intel-Tool\` by default with safe migration from the old local database.
+- Added persistent Wikelo checklist progress and reset controls.
+- Improved Wikelo reward grouping, retired-item filtering and required-material display.
+- Improved Home countdown timers with dynamic naming and multiple independent timers.
+- Improved Item Finder table usability, ship price display, duplicate handling and single-location display.
+- Improved Refinery editing, small-window usability and salvage refinery yield handling.
+- Expanded repository hygiene, privacy/user-data documentation and local artifact ignores.
+
 ## 0.1.0-alpha.7 - 2026-05-30
 
 - Improved table readability across Player Intel, Mining & Salvage and Item Finder views.
