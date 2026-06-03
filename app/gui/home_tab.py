@@ -6,6 +6,8 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QScrollArea,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -134,15 +136,30 @@ class CountdownTimerWidget(QWidget):
 
 
 class HomeTab(QWidget):
-    NAV_ITEMS = [
-        ("Player Lookup", "Look up RSI citizen profiles and local intel notes."),
-        ("Search History", "Review previous lookups and open saved profile details."),
-        ("Mining & Salvage", "Plan mining, salvage, refining, scan IDs and equipment."),
-        ("Trading", "Trading tools and market planning space."),
-        ("Item Finder", "Find gear, ships and buy/rental locations."),
-        ("Wikelo Items", "Browse Wikelo missions, required materials and rewards."),
-        ("Notes", "App notes, changelog and local reference notes."),
-        ("Settings", "Update checks, privacy notes and local app settings."),
+    NAV_SECTIONS = [
+        (
+            "Intel",
+            [
+                ("Player Lookup", "Look up RSI citizen profiles and local intel notes."),
+                ("Search History", "Review previous lookups and open saved profile details."),
+            ],
+        ),
+        (
+            "Industrial Tools",
+            [
+                ("Mining & Salvage", "Plan mining, salvage, refining, scan IDs and equipment."),
+                ("Item Finder", "Find gear, ships and buy/rental locations."),
+                ("Wikelo Items", "Browse Wikelo missions, required materials and rewards."),
+                ("Trading", "Trading tools and market planning space."),
+            ],
+        ),
+        (
+            "Utility",
+            [
+                ("Notes", "App notes, changelog and local reference notes."),
+                ("Settings", "Update checks, privacy notes and local app settings."),
+            ],
+        ),
     ]
 
     def __init__(self, navigate_callback=None):
@@ -152,31 +169,59 @@ class HomeTab(QWidget):
         self.timer_panel_layout = None
 
         layout = QVBoxLayout()
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(12)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        layout.addWidget(self.create_module_header(
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
+        page = QWidget()
+        page_layout = QVBoxLayout()
+        page_layout.setContentsMargins(14, 14, 14, 14)
+        page_layout.setSpacing(12)
+
+        page_layout.addWidget(self.create_module_header(
             "SC Intel Tool",
-            "Quick navigation for player intel, mining, trading, item lookup and notes.",
+            "One operational companion app for Star Citizen.",
+            "Player intel, mining, salvage, trading, item lookup and local notes in one place.",
         ))
 
         content = QHBoxLayout()
         content.setSpacing(12)
-        content.addWidget(self.build_navigation_panel(), 3)
-        content.addWidget(self.build_timer_panel(), 1)
-        layout.addLayout(content, 1)
+        content.addWidget(self.build_navigation_column(), 2)
+        content.addWidget(self.build_side_column(), 1)
+        page_layout.addLayout(content)
+        page.setLayout(page_layout)
+        scroll_area.setWidget(page)
+        layout.addWidget(scroll_area)
 
         self.setLayout(layout)
         self.update_first_timer_aliases()
 
-    def build_navigation_panel(self):
-        card = self.create_filter_card("QUICK NAVIGATION")
+    def build_navigation_column(self):
+        column = QWidget()
+        column.setMinimumWidth(520)
+        column.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(12)
+
+        for section_title, items in self.NAV_SECTIONS:
+            layout.addWidget(self.create_nav_section(section_title, items))
+
+        column.setLayout(layout)
+        return column
+
+    def create_nav_section(self, section_title, items):
+        card = self.create_filter_card(section_title.upper())
         grid = QGridLayout()
         grid.setContentsMargins(0, 0, 0, 0)
-        grid.setHorizontalSpacing(10)
-        grid.setVerticalSpacing(10)
+        grid.setHorizontalSpacing(8)
+        grid.setVerticalSpacing(8)
 
-        for index, (title, description) in enumerate(self.NAV_ITEMS):
+        for index, (title, description) in enumerate(items):
             grid.addWidget(self.create_nav_card(title, description), index // 2, index % 2)
 
         card.layout().addLayout(grid)
@@ -185,6 +230,7 @@ class HomeTab(QWidget):
     def create_nav_card(self, title, description):
         card = QFrame()
         card.setObjectName("sectionCard")
+        card.setMinimumHeight(96)
         layout = QVBoxLayout()
         layout.setContentsMargins(12, 10, 12, 12)
         layout.setSpacing(6)
@@ -200,16 +246,46 @@ class HomeTab(QWidget):
         card.setLayout(layout)
         return card
 
+    def build_side_column(self):
+        column = QWidget()
+        column.setMinimumWidth(320)
+        column.setMaximumWidth(460)
+        column.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(12)
+        layout.addWidget(self.build_timer_panel())
+        layout.addWidget(self.build_privacy_panel())
+        column.setLayout(layout)
+        return column
+
     def build_timer_panel(self):
         card = self.create_filter_card("COUNTDOWN TIMERS")
         layout = card.layout()
+        layout.setSpacing(8)
         self.timer_panel_layout = layout
 
         self.add_countdown_timer(removable=False)
         self.add_timer_button = QPushButton("Add Timer")
         self.add_timer_button.clicked.connect(lambda: self.add_countdown_timer(removable=True))
         layout.addWidget(self.add_timer_button)
-        layout.addStretch(1)
+        return card
+
+    def build_privacy_panel(self):
+        card = self.create_filter_card("LOCAL STATUS")
+        layout = card.layout()
+
+        privacy_lines = [
+            "No telemetry.",
+            "No tracking.",
+            "Local data stays local.",
+        ]
+        for line in privacy_lines:
+            label = QLabel(line)
+            label.setObjectName("moduleSubtitle")
+            label.setWordWrap(True)
+            layout.addWidget(label)
+
         return card
 
     def open_target_tab(self, target):
@@ -273,7 +349,7 @@ class HomeTab(QWidget):
     def parse_duration_seconds(self, text):
         return self.countdown_timers[0].parse_duration_seconds(text)
 
-    def create_module_header(self, title, subtitle):
+    def create_module_header(self, title, subtitle, secondary_text=None):
         card = QFrame()
         card.setObjectName("playerCard")
         layout = QVBoxLayout()
@@ -286,6 +362,11 @@ class HomeTab(QWidget):
         subtitle_label.setWordWrap(True)
         layout.addWidget(title_label)
         layout.addWidget(subtitle_label)
+        if secondary_text:
+            secondary_label = QLabel(secondary_text)
+            secondary_label.setObjectName("valueText")
+            secondary_label.setWordWrap(True)
+            layout.addWidget(secondary_label)
         card.setLayout(layout)
         return card
 
