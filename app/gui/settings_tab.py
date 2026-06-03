@@ -14,7 +14,11 @@ from PySide6.QtWidgets import (
 
 from app.database import DB_PATH
 from app.paths import get_active_data_dir, is_packaged_app
-from app.update_checker import UpdateCheckError, check_for_updates as fetch_update_info
+from app.update_checker import (
+    UpdateCheckError,
+    check_for_updates as fetch_update_info,
+    is_newer_version,
+)
 from app.updater import UpdateInstallError, download_update, start_update_installer
 from app.version import APP_NAME, APP_VERSION, GITHUB_RELEASES_URL, GITHUB_REPOSITORY
 
@@ -131,7 +135,11 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
 
     def on_update_check_finished(self, result):
         self.latest_release_url = result.release_url or GITHUB_RELEASES_URL
-        if result.update_available:
+        update_available = result.update_available or is_newer_version(
+            result.latest_version,
+            result.current_version,
+        )
+        if update_available:
             self.latest_update_info = result
             if result.asset_url:
                 self.install_update_button.setEnabled(True)
