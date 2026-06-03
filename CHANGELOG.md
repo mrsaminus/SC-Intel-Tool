@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.8.1 - 2026-06-03
+
+- Fixed a PowerShell syntax error in the generated update installer script by using safe `${Path}:` variable interpolation.
 - Changed Windows release builds to use the stable executable filename `SC-Intel-Tool.exe` while keeping versioning in tags, release notes and app metadata.
 - Updated the in-app updater to prefer `SC-Intel-Tool.exe` release assets while still supporting legacy versioned Windows executable assets.
 
