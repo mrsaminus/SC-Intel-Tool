@@ -26,9 +26,11 @@ from .workers import BackgroundTaskMixin
 
 
 class SettingsTab(BackgroundTaskMixin, QWidget):
-    def __init__(self):
+    def __init__(self, update_status_callback=None, update_error_callback=None):
         super().__init__()
 
+        self.update_status_callback = update_status_callback
+        self.update_error_callback = update_error_callback
         self.update_check_running = False
         self.update_install_running = False
         self.latest_release_url = GITHUB_RELEASES_URL
@@ -134,7 +136,13 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         )
 
     def on_update_check_finished(self, result):
+        self.apply_update_check_result(result)
+
+    def apply_update_check_result(self, result, notify=True):
         self.latest_release_url = result.release_url or GITHUB_RELEASES_URL
+        if notify and self.update_status_callback:
+            self.update_status_callback(result)
+
         update_available = result.update_available or is_newer_version(
             result.latest_version,
             result.current_version,
@@ -163,13 +171,19 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         )
 
     def on_update_check_error(self, exc):
+        self.apply_update_check_error(exc)
+
+    def apply_update_check_error(self, exc, show_popup=True, notify=True):
         if isinstance(exc, UpdateCheckError):
             message = str(exc)
         else:
             message = f"Update check failed: {exc}"
 
         self.update_status_label.setText(message)
-        QMessageBox.warning(self, "Update check failed", message)
+        if notify and self.update_error_callback:
+            self.update_error_callback(exc)
+        if show_popup:
+            QMessageBox.warning(self, "Update check failed", message)
 
     def finish_update_check(self):
         self.update_check_running = False

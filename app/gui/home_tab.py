@@ -1,4 +1,5 @@
 from app.paths import is_packaged_app
+from app.update_checker import is_newer_version
 from app.version import APP_VERSION
 
 from PySide6.QtCore import Qt, QTimer
@@ -235,6 +236,8 @@ class HomeTab(QWidget):
         self.navigate_callback = navigate_callback
         self.countdown_timers = []
         self.timer_panel_layout = None
+        self.update_status_dot = None
+        self.update_status_text = None
 
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
@@ -351,21 +354,51 @@ class HomeTab(QWidget):
 
         layout.addWidget(title)
         layout.addWidget(status, 1)
-        layout.addWidget(self.create_update_status_chip("Not checked", "neutral"))
+        layout.addWidget(self.create_update_status_chip())
         card.setLayout(layout)
 
         return card
 
-    def create_update_status_chip(self, text, state="neutral"):
+    def create_update_status_chip(self):
+        chip = QFrame()
+        chip.setObjectName("updateStatusChip")
+        chip_layout = QHBoxLayout()
+        chip_layout.setContentsMargins(8, 3, 8, 3)
+        chip_layout.setSpacing(5)
+
+        self.update_status_dot = QFrame()
+        self.update_status_dot.setFixedSize(8, 8)
+        self.update_status_text = QLabel()
+        self.update_status_text.setObjectName("updateStatusText")
+
+        chip_layout.addWidget(self.update_status_dot)
+        chip_layout.addWidget(self.update_status_text)
+        chip.setLayout(chip_layout)
+        self.set_update_status("Not checked", "neutral")
+        return chip
+
+    def set_update_status(self, text, state="neutral"):
+        if not self.update_status_dot or not self.update_status_text:
+            return
+
         colors = {
             "neutral": ("#6f9ead", "#153441", "#0b1820"),
-            "available": ("#ffb86b", "#68411f", "#1f160d"),
+            "checking": ("#44e6ff", "#1e5060", "#081b24"),
             "current": ("#68e6a5", "#1b5b48", "#0b1c18"),
+            "available": ("#ffb86b", "#68411f", "#1f160d"),
+            "error": ("#ff8c6b", "#68411f", "#1f160d"),
         }
         color, border, background = colors.get(state, colors["neutral"])
-        label = QLabel(f"Update: {text}")
-        label.setStyleSheet(f"""
-            QLabel {{
+        self.update_status_dot.setStyleSheet(f"""
+            QFrame {{
+                background: {color};
+                border: 1px solid {border};
+                border-radius: 4px;
+            }}
+        """)
+        self.update_status_text.setText(f"Update: {text}")
+        self.update_status_text.setStyleSheet(f"""
+            QLabel#updateStatusText {{
                 background: {background};
                 border: 1px solid {border};
                 border-radius: 10px;
@@ -375,7 +408,22 @@ class HomeTab(QWidget):
                 padding: 3px 8px;
             }}
         """)
-        return label
+
+    def set_update_checking(self):
+        self.set_update_status("Checking...", "checking")
+
+    def apply_update_check_result(self, result):
+        update_available = result.update_available or is_newer_version(
+            result.latest_version,
+            result.current_version,
+        )
+        if update_available:
+            self.set_update_status(f"Available {result.latest_version}", "available")
+        else:
+            self.set_update_status("Up to date", "current")
+
+    def apply_update_check_error(self, _exc):
+        self.set_update_status("Check failed", "error")
 
     def build_trust_line(self):
         card = QFrame()
