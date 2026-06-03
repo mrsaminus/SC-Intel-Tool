@@ -24,7 +24,7 @@ class NavigationCard(QFrame):
 
         self.setObjectName("homeNavCard")
         self.setCursor(Qt.PointingHandCursor)
-        self.setMinimumHeight(118)
+        self.setMinimumHeight(108)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.setStyleSheet("""
             QFrame#homeNavCard {
@@ -251,15 +251,15 @@ class HomeTab(QWidget):
         page_layout.setSpacing(12)
 
         page_layout.addWidget(self.create_hero_panel())
+        page_layout.addWidget(self.build_status_strip())
 
         main_layout = QHBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(12)
-        main_layout.addWidget(self.build_navigation_panel(), 3)
-        main_layout.addWidget(self.build_side_panel(), 1, Qt.AlignTop)
+        main_layout.addWidget(self.build_left_panel(), 3, Qt.AlignTop)
+        main_layout.addWidget(self.build_timer_panel(), 1, Qt.AlignTop)
 
         page_layout.addLayout(main_layout)
-        page_layout.addWidget(self.build_feedback_note())
         page.setLayout(page_layout)
         scroll_area.setWidget(page)
         layout.addWidget(scroll_area)
@@ -270,13 +270,26 @@ class HomeTab(QWidget):
     def create_nav_card(self, title, description, target=None, eyebrow=None):
         return NavigationCard(title, description, self.open_target_tab, target=target, eyebrow=eyebrow)
 
-    def build_navigation_panel(self):
+    def build_left_panel(self):
         panel = QWidget()
         panel.setMinimumWidth(640)
-        panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
 
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+
+        layout.addWidget(self.build_navigation_panel())
+        layout.addWidget(self.build_trust_line())
+        layout.addWidget(self.build_feedback_note())
+        panel.setLayout(layout)
+        return panel
+
+    def build_navigation_panel(self):
+        card = QFrame()
+        card.setObjectName("sectionCard")
+        layout = QVBoxLayout()
+        layout.setContentsMargins(12, 10, 12, 12)
         layout.setSpacing(8)
 
         title_label = QLabel("CAPABILITY OVERVIEW")
@@ -298,69 +311,81 @@ class HomeTab(QWidget):
             )
 
         layout.addLayout(grid)
-        panel.setLayout(layout)
-        return panel
-
-    def build_side_panel(self):
-        panel = QWidget()
-        panel.setMinimumWidth(340)
-        panel.setMaximumWidth(440)
-        panel.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
-
-        layout = QVBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(12)
-        layout.addWidget(self.build_status_panel())
-        layout.addWidget(self.build_privacy_panel())
-        layout.addWidget(self.build_timer_panel())
-        panel.setLayout(layout)
-        return panel
+        card.setLayout(layout)
+        return card
 
     def build_timer_panel(self):
         card = self.create_filter_card("COUNTDOWN TIMERS")
+        card.setMinimumWidth(340)
+        card.setMaximumWidth(440)
         card.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
-        layout = card.layout()
-        layout.setSpacing(7)
-        self.timer_panel_layout = layout
+        outer_layout = card.layout()
+        outer_layout.setSpacing(7)
+
+        timer_scroll = QScrollArea()
+        timer_scroll.setWidgetResizable(True)
+        timer_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        timer_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        timer_scroll.setMinimumHeight(210)
+        timer_scroll.setMaximumHeight(420)
+
+        timer_content = QWidget()
+        self.timer_panel_layout = QVBoxLayout()
+        self.timer_panel_layout.setContentsMargins(0, 0, 0, 0)
+        self.timer_panel_layout.setSpacing(10)
+        timer_content.setLayout(self.timer_panel_layout)
+        timer_scroll.setWidget(timer_content)
+        outer_layout.addWidget(timer_scroll)
 
         self.add_countdown_timer(removable=False)
         self.add_timer_button = QPushButton("Add Timer")
         self.add_timer_button.clicked.connect(lambda: self.add_countdown_timer(removable=True))
-        layout.addWidget(self.add_timer_button)
+        outer_layout.addWidget(self.add_timer_button)
         return card
 
-    def build_privacy_panel(self):
-        card = self.create_filter_card("PRIVACY / TRUST")
+    def build_status_strip(self):
+        card = QFrame()
+        card.setObjectName("sectionCard")
+        card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
         layout = card.layout()
-
-        privacy_lines = [
-            "No telemetry",
-            "No analytics",
-            "No tracking",
-            "Local data stays local",
-        ]
-        for line in privacy_lines:
-            label = QLabel(line)
-            label.setObjectName("moduleSubtitle")
-            label.setWordWrap(True)
-            layout.addWidget(label)
-
-        return card
-
-    def build_status_panel(self):
-        card = self.create_filter_card("OPERATIONAL STATUS")
-        layout = card.layout()
+        if layout is None:
+            layout = QHBoxLayout()
+            layout.setContentsMargins(12, 8, 12, 8)
+            layout.setSpacing(8)
 
         build_type = "Packaged build" if is_packaged_app() else "Source/dev run"
-        status_rows = [
-            ("Version", APP_VERSION),
-            ("Runtime", build_type),
-            ("Data storage", "AppData / local user data"),
-            ("Updates", "GitHub Releases"),
-        ]
-        for label, value in status_rows:
-            layout.addWidget(self.create_status_row(label, value))
+        title = QLabel("OPERATIONAL STATUS")
+        title.setObjectName("sectionTitle")
+        status = QLabel(
+            f"Version: {APP_VERSION} | Runtime: {build_type} | "
+            "Data: AppData/local | Updates: GitHub Releases"
+        )
+        status.setObjectName("moduleSubtitle")
+        status.setWordWrap(True)
 
+        layout.addWidget(title)
+        layout.addWidget(status, 1)
+        card.setLayout(layout)
+
+        return card
+
+    def build_trust_line(self):
+        card = QFrame()
+        card.setObjectName("sectionCard")
+        card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        layout = QHBoxLayout()
+        layout.setContentsMargins(12, 8, 12, 8)
+        layout.setSpacing(8)
+
+        title = QLabel("TRUST")
+        title.setObjectName("sectionTitle")
+        trust = QLabel("No telemetry | No analytics | No tracking | Local data stays local")
+        trust.setObjectName("moduleSubtitle")
+        trust.setWordWrap(True)
+
+        layout.addWidget(title)
+        layout.addWidget(trust, 1)
+        card.setLayout(layout)
         return card
 
     def build_feedback_note(self):
@@ -381,31 +406,6 @@ class HomeTab(QWidget):
         layout.addWidget(note, 1)
         card.setLayout(layout)
         return card
-
-    def create_status_row(self, label, value):
-        row = QFrame()
-        row.setObjectName("statusRow")
-        row.setStyleSheet("""
-            QFrame#statusRow {
-                background: #071118;
-                border: 1px solid #153441;
-                border-radius: 4px;
-            }
-        """)
-        layout = QVBoxLayout()
-        layout.setContentsMargins(8, 6, 8, 6)
-        layout.setSpacing(2)
-
-        label_widget = QLabel(label.upper())
-        label_widget.setObjectName("labelText")
-        value_widget = QLabel(str(value))
-        value_widget.setObjectName("valueText")
-        value_widget.setWordWrap(True)
-
-        layout.addWidget(label_widget)
-        layout.addWidget(value_widget)
-        row.setLayout(layout)
-        return row
 
     def open_target_tab(self, target):
         if self.navigate_callback:
@@ -433,7 +433,9 @@ class HomeTab(QWidget):
         self.countdown_timers.append(timer)
         insert_index = self.timer_panel_layout.count()
         if hasattr(self, "add_timer_button"):
-            insert_index = self.timer_panel_layout.indexOf(self.add_timer_button)
+            add_button_index = self.timer_panel_layout.indexOf(self.add_timer_button)
+            if add_button_index >= 0:
+                insert_index = add_button_index
         self.timer_panel_layout.insertWidget(insert_index, timer)
         self.renumber_timers()
         self.update_first_timer_aliases()
