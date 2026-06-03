@@ -2,6 +2,54 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.8.4 - 2026-06-03
+
+### Home / UX
+
+- Redesigned Home into a command-board style landing page.
+- Added an operational status section with version, runtime, data path and update source.
+- Added a compact update status indicator on Home.
+- Added automatic background update checking on launch without blocking the UI.
+- Improved Home countdown timer layout, panel balance and natural growth behavior.
+- Polished capability overview cards and Home spacing.
+
+### Updater
+
+- Fixed PowerShell variable interpolation in the generated update installer script.
+- Hardened the updater restart flow for packaged PyInstaller builds.
+- Added safer restart verification before considering an update successful.
+- Added rollback-safe behavior if the updated app fails to launch.
+- Added cleanup of `.previous` after successful updated-app startup.
+- Standardized Windows release artifacts on the stable filename `SC-Intel-Tool.exe`.
+
+### Updates
+
+- Fixed prerelease version comparison for alpha dot-chain versions.
+- Fixed alpha.8.1 to alpha.8.2 update detection.
+- Improved Home and Settings update availability consistency.
+- Kept legacy versioned Windows executable assets as update fallback.
+
+### Player Lookup
+
+- Added support for RSI REDACTED organization data.
+- Hidden main organizations now display as hidden/redacted instead of empty.
+- Hidden affiliations now show redacted messaging instead of "No affiliations loaded."
+- Piracy is shown as Unknown when organization data is hidden.
+
+### Wikelo
+
+- Added persistent Wikelo checklist state.
+- Added reset controls for selected reward and all Wikelo progress.
+- Improved Wikelo reward grouping and details display.
+- Added retired item filtering.
+
+### Data
+
+- Moved user data to `%LOCALAPPDATA%\SC-Intel-Tool\` by default.
+- Added safe migration from the old local app-folder database.
+- AppData database is preferred when both old and new databases exist.
+- Settings now shows active data and database paths.
+
 ## 0.1.0-alpha.8.3 - 2026-06-03
 
 - Fixed Settings update UI availability detection so `Install Update` enables when a newer prerelease exists.
