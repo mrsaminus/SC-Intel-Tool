@@ -161,7 +161,7 @@ function Unblock-IfPossible {
         Unblock-File -LiteralPath $Path -ErrorAction SilentlyContinue
     }
     catch {
-        Write-UpdateLog "Unblock skipped for $Path: $($_.Exception.Message)"
+        Write-UpdateLog "Unblock skipped for ${Path}: $($_.Exception.Message)"
     }
 }
 
