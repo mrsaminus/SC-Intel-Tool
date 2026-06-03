@@ -143,7 +143,7 @@ try {
     New-Item -ItemType Directory -Force -Path "dist" | Out-Null
 
     if ($Package -eq "OneFile") {
-        $Artifact = Join-Path "dist" "SC-Intel-Tool-$Version-windows.exe"
+        $Artifact = Join-Path "dist" "SC-Intel-Tool.exe"
         if (Test-Path $Artifact) {
             Remove-Item -LiteralPath $Artifact
         }

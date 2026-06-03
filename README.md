@@ -20,7 +20,7 @@ Full Mining & Salvage reference data expects the local `reference_material/minin
 
 ### Packaged Release
 
-Download the packaged release from [GitHub Releases](https://github.com/mrsaminus/SC-Intel-Tool/releases). For portable ZIP releases, extract the ZIP and run the executable inside the extracted folder. For current single-executable alpha releases, download and run the Windows executable directly.
+Download the packaged release from [GitHub Releases](https://github.com/mrsaminus/SC-Intel-Tool/releases). For portable ZIP releases, extract the ZIP and run the executable inside the extracted folder. For current single-executable alpha releases, download and run `SC-Intel-Tool.exe` directly.
 
 ## Updates
 
@@ -106,7 +106,7 @@ Release checklist:
 3. Run smoke tests locally.
 4. Run `.\scripts\build_windows.ps1`.
 5. Create a GitHub Release with a matching tag, for example `v0.1.0-alpha.6`.
-6. Upload the Windows executable and include the SHA256 checksum in the release notes.
+6. Upload `SC-Intel-Tool.exe` and include the SHA256 checksum in the release notes.
 
 ## Roadmap
 

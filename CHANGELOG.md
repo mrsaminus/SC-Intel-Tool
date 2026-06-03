@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Changed Windows release builds to use the stable executable filename `SC-Intel-Tool.exe` while keeping versioning in tags, release notes and app metadata.
+- Updated the in-app updater to prefer `SC-Intel-Tool.exe` release assets while still supporting legacy versioned Windows executable assets.
+
 ## 0.1.0-alpha.8 - 2026-06-03
 
 - Moved local user data to `%LOCALAPPDATA%\SC-Intel-Tool\` by default with safe migration from the old local database.

@@ -9,6 +9,8 @@ import requests
 
 from .paths import get_user_data_dir, is_packaged_app
 
+WINDOWS_EXECUTABLE_NAME = "SC-Intel-Tool.exe"
+
 
 class UpdateInstallError(Exception):
     pass
@@ -85,6 +87,7 @@ def start_update_installer(downloaded_update):
     current_exe = Path(sys.executable).resolve()
     if not current_exe.exists():
         raise UpdateInstallError("Could not find the running app executable.")
+    target_exe = current_exe.with_name(WINDOWS_EXECUTABLE_NAME)
 
     script_path = get_user_data_dir() / "updates" / "install_update.ps1"
     script_path.write_text(update_script(), encoding="utf-8")
@@ -104,7 +107,7 @@ def start_update_installer(downloaded_update):
             "-Source",
             str(downloaded_update.path),
             "-Target",
-            str(current_exe),
+            str(target_exe),
             "-ExpectedSize",
             str(downloaded_update.size),
             "-ExpectedSha256",
@@ -117,8 +120,7 @@ def start_update_installer(downloaded_update):
 def safe_asset_name(asset_name, version):
     name = Path(str(asset_name or "")).name
     if not name.lower().endswith(".exe"):
-        version_text = str(version or "latest").strip().removeprefix("v")
-        name = f"SC-Intel-Tool-{version_text}-windows.exe"
+        name = WINDOWS_EXECUTABLE_NAME
 
     return name
 

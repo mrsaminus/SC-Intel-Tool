@@ -5,6 +5,8 @@ import requests
 
 from .version import APP_VERSION, GITHUB_RELEASES_API, GITHUB_RELEASES_URL
 
+WINDOWS_EXECUTABLE_NAME = "SC-Intel-Tool.exe"
+
 
 class UpdateCheckError(Exception):
     pass
@@ -78,6 +80,10 @@ def find_windows_asset(release):
         for asset in assets
         if str(asset.get("name") or "").lower().endswith(".exe")
     ]
+    for asset in executable_assets:
+        if str(asset.get("name") or "").lower() == WINDOWS_EXECUTABLE_NAME.lower():
+            return asset
+
     for asset in executable_assets:
         name = str(asset.get("name") or "").lower()
         if "windows" in name:
