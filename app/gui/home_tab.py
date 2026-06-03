@@ -21,8 +21,8 @@ class NavigationCard(QFrame):
 
         self.setObjectName("homeNavCard")
         self.setCursor(Qt.PointingHandCursor)
-        self.setMinimumHeight(82)
-        self.setMaximumHeight(96)
+        self.setMinimumHeight(72)
+        self.setMaximumHeight(86)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.setStyleSheet("""
             QFrame#homeNavCard {
@@ -37,8 +37,8 @@ class NavigationCard(QFrame):
         """)
 
         layout = QVBoxLayout()
-        layout.setContentsMargins(12, 10, 12, 10)
-        layout.setSpacing(4)
+        layout.setContentsMargins(11, 8, 11, 8)
+        layout.setSpacing(3)
 
         title_label = QLabel(title)
         title_label.setStyleSheet("color: #f5fdff; font-size: 11pt; font-weight: 700;")
@@ -184,15 +184,30 @@ class CountdownTimerWidget(QWidget):
 
 
 class HomeTab(QWidget):
-    NAV_ITEMS = [
-        ("Player Lookup", "RSI profiles and local intel notes."),
-        ("Mining & Salvage", "Mining, salvage, refining and scan tools."),
-        ("Item Finder", "Gear, ships and buy/rental locations."),
-        ("Search History", "Previous lookups and saved profile details."),
-        ("Wikelo Items", "Wikelo missions, materials and rewards."),
-        ("Trading", "Market planning and trading workspace."),
-        ("Notes", "Changelog and local reference notes."),
-        ("Settings", "Updates, privacy and app settings."),
+    NAV_SECTIONS = [
+        (
+            "Intel",
+            [
+                ("Player Lookup", "RSI profiles and local intel notes."),
+                ("Search History", "Previous lookups and saved profile details."),
+            ],
+        ),
+        (
+            "Industrial Tools",
+            [
+                ("Mining & Salvage", "Mining, salvage, refining and scan tools."),
+                ("Item Finder", "Gear, ships and buy/rental locations."),
+                ("Wikelo Items", "Wikelo missions, materials and rewards."),
+                ("Trading", "Market planning and trading workspace."),
+            ],
+        ),
+        (
+            "Utility",
+            [
+                ("Notes", "Changelog and local reference notes."),
+                ("Settings", "Updates, privacy and app settings."),
+            ],
+        ),
     ]
 
     def __init__(self, navigate_callback=None):
@@ -224,7 +239,7 @@ class HomeTab(QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(10)
         main_layout.addWidget(self.build_navigation_panel(), 3)
-        main_layout.addWidget(self.build_timer_panel(), 1, Qt.AlignTop)
+        main_layout.addWidget(self.build_side_panel(), 1, Qt.AlignTop)
 
         page_layout.addLayout(main_layout)
         page.setLayout(page_layout)
@@ -239,27 +254,60 @@ class HomeTab(QWidget):
 
     def build_navigation_panel(self):
         panel = QWidget()
-        panel.setMinimumWidth(720)
+        panel.setMinimumWidth(640)
         panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
-        dashboard_grid = QGridLayout()
-        dashboard_grid.setContentsMargins(0, 0, 0, 0)
-        dashboard_grid.setHorizontalSpacing(8)
-        dashboard_grid.setVerticalSpacing(8)
-        for column in range(3):
-            dashboard_grid.setColumnStretch(column, 1)
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
 
-        for index, (title, description) in enumerate(self.NAV_ITEMS):
-            dashboard_grid.addWidget(self.create_nav_card(title, description), index // 3, index % 3)
-        dashboard_grid.addWidget(self.build_privacy_panel(), 2, 2)
+        for section_title, items in self.NAV_SECTIONS:
+            layout.addWidget(self.create_nav_section(section_title, items))
 
-        panel.setLayout(dashboard_grid)
+        panel.setLayout(layout)
+        return panel
+
+    def create_nav_section(self, section_title, items):
+        section = QFrame()
+        section.setObjectName("sectionCard")
+        section_layout = QVBoxLayout()
+        section_layout.setContentsMargins(10, 8, 10, 10)
+        section_layout.setSpacing(6)
+
+        title_label = QLabel(section_title.upper())
+        title_label.setObjectName("sectionTitle")
+        section_layout.addWidget(title_label)
+
+        grid = QGridLayout()
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setHorizontalSpacing(7)
+        grid.setVerticalSpacing(7)
+        for column in range(2):
+            grid.setColumnStretch(column, 1)
+
+        for index, (title, description) in enumerate(items):
+            grid.addWidget(self.create_nav_card(title, description), index // 2, index % 2)
+
+        section_layout.addLayout(grid)
+        section.setLayout(section_layout)
+        return section
+
+    def build_side_panel(self):
+        panel = QWidget()
+        panel.setMinimumWidth(320)
+        panel.setMaximumWidth(420)
+        panel.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(10)
+        layout.addWidget(self.build_timer_panel())
+        layout.addWidget(self.build_privacy_panel())
+        panel.setLayout(layout)
         return panel
 
     def build_timer_panel(self):
         card = self.create_filter_card("COUNTDOWN TIMERS")
-        card.setMinimumWidth(320)
-        card.setMaximumWidth(420)
         card.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
         layout = card.layout()
         layout.setSpacing(7)
