@@ -1,6 +1,6 @@
 # SC Intel Tool Roadmap
 
-Last updated: 2026-06-04
+Last updated: 2026-06-05
 
 SC Intel Tool is a Star Citizen intelligence and utility app for player lookup,
 organization context, mining and salvage planning, item finding, Wikelo
@@ -64,6 +64,13 @@ Remaining optional cleanup:
 
 Goal: build a simple commodity trading workflow first.
 
+Current status:
+
+- Phase 1 complete: UEX live data loading and basic buy/sell comparison table.
+- Phase 2 complete: cargo capacity, optional max investment, profit per SCU,
+  estimated buy cost, estimated total profit, filtering and numeric sorting.
+- Phase 3 remains focused on route quality polish and saved/favorite routes.
+
 Scope:
 
 - Commodity list
@@ -95,20 +102,31 @@ Implementation phases:
 
 Phase 1:
 
-- Data model and source loading
-- Trading tab table layout
-- Simple buy/sell comparison
+- Data model and source loading - complete
+- Trading tab table layout - complete
+- Simple buy/sell comparison - complete
 
 Phase 2:
 
-- Cargo capacity input
-- Profit calculations
-- Filters and sorting
+- Cargo capacity input - complete
+- Profit calculations - complete
+- Filters and sorting - complete
 
 Phase 3:
 
 - Route quality polish
 - Saved/favorite routes later
+
+Trading data source notes:
+
+- Current MVP source: UEX commodity price data.
+- SC Trade Tools API research completed; see `docs/trading_data_sources.md`.
+- Recommendation: keep UEX as the primary MVP data source for now.
+- SC Trade Tools is best treated as a future route-optimization source or
+  optional secondary source because its most useful route/transaction endpoints
+  require a token.
+- Token-free SC Trade Tools endpoints may still be useful for commodity,
+  location, ship and crowdsourced listing metadata.
 
 ### 2. Player Intel Expansion
 
@@ -239,11 +257,12 @@ Needs work:
 
 ### Trading
 
-Status: placeholder/shell.
+Status: early usable MVP.
 
 Near-term goal:
 
-- Build a small useful commodity route/profit workflow first.
+- Improve the small commodity route/profit workflow without jumping straight
+  to full route optimization.
 - Avoid trying to solve every market scenario in the first pass.
 
 MVP inputs and outputs:
@@ -264,9 +283,21 @@ MVP filters:
 
 First implementation phases:
 
-- Phase 1: data loading, table layout and simple buy/sell comparison.
-- Phase 2: cargo capacity, profit calculations, filters and sorting.
+- Phase 1: data loading, table layout and simple buy/sell comparison - complete.
+- Phase 2: cargo capacity, profit calculations, filters and sorting - complete.
 - Phase 3: route quality polish and saved/favorite routes later.
+
+Trading Data Sources:
+
+- UEX remains the primary MVP source because it currently supports token-free
+  live commodity price loading in the app.
+- SC Trade Tools has useful public metadata endpoints for commodities, shops,
+  locations, ships and crowdsourced commodity listings.
+- SC Trade Tools route-planning, buyer-finder, itinerary, commodity transaction
+  and commodity report endpoints require a token, so they are not a drop-in
+  replacement for the current UEX MVP.
+- Future path: consider SC Trade Tools as an opt-in/token-backed source for
+  route optimization once the basic Trading workflow is stable.
 
 Out of scope for MVP:
 
