@@ -14,6 +14,7 @@ class UEXError(Exception):
 @dataclass(frozen=True)
 class UEXCommodityPrice:
     commodity_name: str
+    price_buy: float | None
     price_sell: float | None
     terminal_name: str
     star_system_name: str
@@ -46,6 +47,20 @@ def fetch_commodity_sell_prices(commodity_name):
     return prices
 
 
+def fetch_all_commodity_prices():
+    response = requests.get(
+        f"{UEX_API_BASE}/commodities_prices_all",
+        timeout=UEX_TIMEOUT_SECONDS,
+    )
+    response.raise_for_status()
+
+    payload = response.json()
+    return [
+        normalize_price_record(record)
+        for record in extract_records(payload)
+    ]
+
+
 def extract_records(payload):
     if isinstance(payload, list):
         return payload
@@ -72,6 +87,7 @@ def extract_records(payload):
 def normalize_price_record(record):
     return UEXCommodityPrice(
         commodity_name=str(record.get("commodity_name") or "Unknown"),
+        price_buy=parse_number(record.get("price_buy")),
         price_sell=parse_number(record.get("price_sell")),
         terminal_name=str(record.get("terminal_name") or "N/A"),
         star_system_name=str(record.get("star_system_name") or "N/A"),
