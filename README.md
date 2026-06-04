@@ -34,9 +34,10 @@ The in-app update check uses GitHub's public Releases API, so the repository or
 release metadata must be public for normal users.
 
 Packaged Windows builds can install updates from the Settings tab. The app
-downloads the newest Windows executable, closes itself, replaces the old
-executable, and starts again. Source/developer installs should update with git
-manually using `git pull`.
+downloads the newest Windows executable, closes itself, and replaces the old
+executable. When the installer reports success, start `SC-Intel-Tool.exe`
+manually. Source/developer installs should update with git manually using
+`git pull`.
 
 User data is stored outside the install folder by default, so updates should preserve notes, lookup history, Wikelo checklist state, settings, and future local data.
 

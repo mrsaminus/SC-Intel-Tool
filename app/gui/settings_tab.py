@@ -154,7 +154,7 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
                 self.update_status_label.setText(
                     f"Update available: {result.latest_version}. "
                     f"Current version: {result.current_version}. Click Install Update to download, "
-                    "replace this app and restart."
+                    "replace this app. When the installer finishes, start SC-Intel-Tool.exe manually."
                 )
             else:
                 self.update_status_label.setText(
@@ -207,7 +207,8 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
             self,
             "Install update",
             f"Download and install {self.latest_update_info.latest_version}? "
-            "SC Intel Tool will close and restart automatically.",
+            "SC Intel Tool will close so the updater can replace it. "
+            "When the installer finishes, start SC-Intel-Tool.exe manually.",
         )
         if answer != QMessageBox.Yes:
             return
@@ -234,7 +235,10 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
             self.on_update_install_error(exc)
             return
 
-        self.update_status_label.setText("Update downloaded. Closing app so the updater can finish...")
+        self.update_status_label.setText(
+            "Update downloaded. Closing app so the updater can finish. "
+            "Start SC-Intel-Tool.exe manually when the installer completes."
+        )
         app = QApplication.instance()
         if app:
             app.quit()

@@ -167,9 +167,25 @@ function Unblock-IfPossible {
     }
 }
 
-function Quote-Argument {
-    param([string]$Value)
-    return '"' + ($Value -replace '"', '\"') + '"'
+function Show-UpdateMessage {
+    param(
+        [string]$Title,
+        [string]$Message,
+        [string]$Icon = "Information"
+    )
+
+    try {
+        Add-Type -AssemblyName System.Windows.Forms
+        [System.Windows.Forms.MessageBox]::Show(
+            $Message,
+            $Title,
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::$Icon
+        ) | Out-Null
+    }
+    catch {
+        Write-UpdateLog "Message display failed: $($_.Exception.Message)"
+    }
 }
 
 try {
@@ -237,122 +253,49 @@ try {
     Move-Item -LiteralPath $InstallCandidate -Destination $Target -Force
     Unblock-IfPossible -Path $Target
 
-    $RestartScript = Join-Path (Split-Path -Parent $Source) "restart_update.ps1"
-    $RestartScriptContent = @'
-param(
-    [int]$UpdaterProcessId,
-    [string]$Target,
-    [string]$Backup,
-    [string]$LogPath,
-    [int]$FileReadyTimeoutSeconds = 60,
-    [int]$LaunchHealthSeconds = 15
-)
-
-$ErrorActionPreference = "Stop"
-
-function Write-UpdateLog {
-    param([string]$Message)
-    $Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    Add-Content -LiteralPath $LogPath -Value "[$Timestamp] $Message"
-}
-
-function Wait-FileReady {
-    param(
-        [string]$Path,
-        [int]$TimeoutSeconds
-    )
-
-    $Deadline = (Get-Date).AddSeconds($TimeoutSeconds)
-    $LastLength = -1
-    $StableReads = 0
-
-    while ((Get-Date) -lt $Deadline) {
-        if (Test-Path -LiteralPath $Path) {
-            try {
-                $Item = Get-Item -LiteralPath $Path
-                $Stream = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::None)
-                $Stream.Close()
-
-                if ($Item.Length -eq $LastLength) {
-                    $StableReads += 1
-                }
-                else {
-                    $LastLength = $Item.Length
-                    $StableReads = 1
-                }
-
-                if ($StableReads -ge 2) {
-                    return
-                }
-            }
-            catch {
-                $StableReads = 0
-            }
+    if ($ExpectedSize -gt 0) {
+        $TargetSize = (Get-Item -LiteralPath $Target).Length
+        if ($TargetSize -ne $ExpectedSize) {
+            throw "Installed executable size mismatch. Expected $ExpectedSize bytes, got $TargetSize bytes."
         }
-
-        Start-Sleep -Milliseconds 500
     }
 
-    throw "Updated executable was not ready to launch: ${Path}"
-}
-
-try {
-    Write-UpdateLog "Restart helper waiting for installer process $UpdaterProcessId to exit."
-    $UpdaterProcess = Get-Process -Id $UpdaterProcessId -ErrorAction SilentlyContinue
-    if ($UpdaterProcess) {
-        [void]$UpdaterProcess.WaitForExit(60000)
+    if ($ExpectedSha256) {
+        $TargetHash = Get-Sha256 -Path $Target
+        if ($TargetHash -ne $ExpectedSha256.ToUpperInvariant()) {
+            throw "Installed executable hash mismatch."
+        }
     }
 
-    Wait-FileReady -Path $Target -TimeoutSeconds $FileReadyTimeoutSeconds
-
-    $WorkingDirectory = Split-Path -Parent $Target
-    Write-UpdateLog "Starting updated app from $Target."
-    $StartedProcess = Start-Process -FilePath $Target -WorkingDirectory $WorkingDirectory -PassThru
-    Write-UpdateLog "Started updated app with process id $($StartedProcess.Id); waiting for startup health check."
-
-    Start-Sleep -Seconds $LaunchHealthSeconds
-    $StartedProcess.Refresh()
-    if (-not $StartedProcess.HasExited) {
-        if (Test-Path -LiteralPath $Backup) {
-            Write-UpdateLog "Updated app passed startup health check; removing backup $Backup."
-            Remove-Item -LiteralPath $Backup -Force
-        }
-        else {
-            Write-UpdateLog "Updated app passed startup health check; no backup file was present."
-        }
+    if (Test-Path -LiteralPath $Backup) {
+        Write-UpdateLog "Update installed successfully; removing backup $Backup."
+        Remove-Item -LiteralPath $Backup -Force
     }
     else {
-        Write-UpdateLog "Updated app exited during startup health check with code $($StartedProcess.ExitCode); leaving backup $Backup for rollback."
+        Write-UpdateLog "Update installed successfully; no backup file was present."
     }
-}
-catch {
-    Write-UpdateLog "Restart helper failed: $($_.Exception.Message)"
-}
-'@
-    Set-Content -LiteralPath $RestartScript -Value $RestartScriptContent -Encoding UTF8
 
-    $RestartArguments = @(
-        "-NoProfile",
-        "-ExecutionPolicy", "Bypass",
-        "-WindowStyle", "Hidden",
-        "-File", (Quote-Argument $RestartScript),
-        "-UpdaterProcessId", "$PID",
-        "-Target", (Quote-Argument $Target),
-        "-Backup", (Quote-Argument $Backup),
-        "-LogPath", (Quote-Argument $LogPath)
-    ) -join " "
-
-    Write-UpdateLog "Starting delayed restart helper."
-    Start-Process -FilePath "powershell" -ArgumentList $RestartArguments -WindowStyle Hidden
-    Write-UpdateLog "Delayed restart helper started; installer exiting."
+    Show-UpdateMessage `
+        -Title "SC Intel Tool updated" `
+        -Message "SC Intel Tool was updated successfully.`nPlease start SC-Intel-Tool.exe manually."
 }
 catch {
     Write-UpdateLog "Update failed: $($_.Exception.Message)"
     if (Test-Path -LiteralPath "$Target.new") {
         Remove-Item -LiteralPath "$Target.new" -Force
     }
-    if ((Test-Path -LiteralPath "$Target.previous") -and -not (Test-Path -LiteralPath $Target)) {
-        Copy-Item -LiteralPath "$Target.previous" -Destination $Target -Force
+    if (Test-Path -LiteralPath "$Target.previous") {
+        try {
+            Copy-Item -LiteralPath "$Target.previous" -Destination $Target -Force
+            Write-UpdateLog "Rollback restored $Target from $Target.previous."
+        }
+        catch {
+            Write-UpdateLog "Rollback restore failed: $($_.Exception.Message)"
+        }
     }
+    Show-UpdateMessage `
+        -Title "SC Intel Tool update failed" `
+        -Message "SC Intel Tool update failed.`n$($_.Exception.Message)`nThe previous executable was preserved for rollback." `
+        -Icon "Error"
 }
 '''
