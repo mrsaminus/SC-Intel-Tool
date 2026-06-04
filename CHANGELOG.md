@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.8.4.1 - 2026-06-04
+
 - Disabled automatic app restart after update install to avoid PyInstaller OneFile restart failures.
 - Updater now asks users to start `SC-Intel-Tool.exe` manually after a successful replacement.
 
