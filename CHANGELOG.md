@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.8.4.2 - 2026-06-04
+
+### Fixed
+
+- Fixed live RSI REDACTED affiliation detection.
+- Player Lookup now correctly detects hidden/redacted affiliations from real RSI markup.
+- REDACTED affiliations no longer show as `0 linked orgs`.
+- REDACTED affiliations no longer show as `No affiliations loaded`.
+- Search History details now correctly display REDACTED affiliation state.
+- Piracy now shows as `Unknown` when affiliation data is hidden.
+
+### Updater Reliability
+
+- Update install now finishes and asks users to manually start `SC-Intel-Tool.exe`.
+- Disabled automatic restart after update install to avoid PyInstaller OneFile `_MEI/python312.dll` startup failures.
+- Improved update reliability for alpha builds.
+
+### Home / UX
+
+- Final Home command-board polish.
+- Improved Operational Status strip layout.
+- Improved Home update status indicator.
+- Automatic background update checks remain non-blocking.
+- Improved timer panel behavior and layout stability.
+
 ## 0.1.0-alpha.8.4.1 - 2026-06-04
 
 - Disabled automatic app restart after update install to avoid PyInstaller OneFile restart failures.

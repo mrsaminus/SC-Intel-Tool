@@ -1,6 +1,6 @@
 # SC Intel Tool Roadmap
 
-Last updated: 2026-06-03
+Last updated: 2026-06-04
 
 SC Intel Tool is a Star Citizen intelligence and utility app for player lookup,
 organization context, mining and salvage planning, item finding, Wikelo
@@ -18,7 +18,7 @@ requests transparent.
 - ✓ Update system stabilization
 - ✓ AppData user data persistence and safe database migration
 - ✓ Wikelo checklist persistence and reset controls
-- ✓ RSI REDACTED organization support
+- ✓ RSI REDACTED organization support, including live visibility-restriction markup
 - ✓ Updater reliability improvements
 - ✓ Stable Windows executable filename: `SC-Intel-Tool.exe`
 - ✓ GUI split into focused top-level tab modules
