@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Maintenance
+
+- Split Mining & Salvage GUI into focused modules.
+- Split Item Finder GUI into focused modules.
+- Kept compatibility wrappers for existing imports.
+- No behavior changes intended.
+- Improves maintainability before Trading and Watchlists expansion.
+
 ## 0.1.0-alpha.8.4.2 - 2026-06-04
 
 ### Fixed

@@ -22,6 +22,8 @@ requests transparent.
 - ✓ Updater reliability improvements
 - ✓ Stable Windows executable filename: `SC-Intel-Tool.exe`
 - ✓ GUI split into focused top-level tab modules
+- ✓ Mining & Salvage GUI split into focused modules
+- ✓ Item Finder GUI split into focused modules
 - ✓ Worker-thread pass for slow live-data workflows
 - ✓ Release pipeline with Windows build script and GitHub pre-releases
 
@@ -44,33 +46,71 @@ requests transparent.
 
 ## Near-Term Alpha Priorities
 
-### 1. Large File Split / Maintenance Refactor
+### Completed Maintenance Refactor
 
-Goal: reduce risk as the app grows.
+The first large-file maintenance pass is complete.
 
-- Split oversized GUI modules where safe, especially Mining & Salvage internals.
-- Keep behavior unchanged.
-- Preserve current UI and workflows.
-- Improve maintainability for future feature work.
-- Add focused smoke tests around split areas.
+- Mining & Salvage was split from one oversized file into focused modules.
+- Item Finder was split from one oversized file into focused modules.
+- Compatibility wrappers were kept for existing imports.
+- Behavior and workflows were preserved.
 
-Suggested targets:
+Remaining optional cleanup:
 
-- `app/gui/mining_tab.py`
-- `app/gui/item_finder_tab.py`
-- Shared table/layout helpers if they become clearer after the split
+- Player Lookup can be split later if it starts slowing feature work.
+- Additional shared helpers can be extracted when duplication becomes clearer.
 
-### 2. Trading System Improvements
+### 1. Trading MVP
 
-Goal: build the trading foundation without overpromising a giant system.
+Goal: build a simple commodity trading workflow first.
 
-- Define the first useful trading workflow.
-- Add commodity planning basics.
-- Use UEX live data where appropriate.
-- Show buy/sell comparison and profit per SCU.
-- Later connect refinery outputs and sell-location planning.
+Scope:
 
-### 3. Player Intel Expansion
+- Commodity list
+- Buy location
+- Sell location
+- Buy price
+- Sell price
+- Profit per unit
+- Profit per SCU
+- Total profit based on cargo capacity
+- Basic filters:
+  - commodity
+  - system/location
+  - minimum profit
+- Use UEX live/cached data where practical
+- Keep the first workflow simple
+
+Out of scope for the first Trading MVP:
+
+- Complex route optimization
+- Multi-stop trading
+- Risk modeling
+- Automatic best route planner
+- Fleet planning
+- Market prediction
+- OCR integration
+
+Implementation phases:
+
+Phase 1:
+
+- Data model and source loading
+- Trading tab table layout
+- Simple buy/sell comparison
+
+Phase 2:
+
+- Cargo capacity input
+- Profit calculations
+- Filters and sorting
+
+Phase 3:
+
+- Route quality polish
+- Saved/favorite routes later
+
+### 2. Player Intel Expansion
 
 Goal: make player/org context more useful for operational decisions.
 
@@ -80,7 +120,7 @@ Goal: make player/org context more useful for operational decisions.
 - Add player/org watchlists.
 - Add custom tag management.
 
-### 4. Wikelo Polish
+### 3. Wikelo Polish
 
 Goal: make Wikelo tracking smoother without turning it into a spreadsheet clone.
 
@@ -89,7 +129,7 @@ Goal: make Wikelo tracking smoother without turning it into a spreadsheet clone.
 - Consider optional export/copy tools later.
 - Keep checklist data local-only.
 
-### 5. General Polish / Bugfixes
+### 4. General Polish / Bugfixes
 
 Goal: keep alpha builds comfortable to test.
 
@@ -151,6 +191,7 @@ Implemented:
 - Sell Location Options
 - Rock Breaker
 - Equipment finder
+- Focused GUI modules for safer future maintenance
 
 Needs work:
 
@@ -158,7 +199,6 @@ Needs work:
 - Improve sell-location recommendations
 - Improve rock breaker scoring
 - Improve equipment details
-- Split large internal code safely
 
 ### Item Finder
 
@@ -171,6 +211,7 @@ Implemented:
 - Stable table sizing and readability
 - Ship deduplication and special/Wikelo handling
 - Location search by city, station and shop
+- Focused GUI modules for safer future maintenance
 
 Needs work:
 
@@ -202,8 +243,39 @@ Status: placeholder/shell.
 
 Near-term goal:
 
-- Build a small useful route/profit workflow first.
+- Build a small useful commodity route/profit workflow first.
 - Avoid trying to solve every market scenario in the first pass.
+
+MVP inputs and outputs:
+
+- Commodity
+- Buy location and buy price
+- Sell location and sell price
+- Profit per unit
+- Profit per SCU
+- Cargo capacity
+- Total profit
+
+MVP filters:
+
+- Commodity
+- System/location
+- Minimum profit
+
+First implementation phases:
+
+- Phase 1: data loading, table layout and simple buy/sell comparison.
+- Phase 2: cargo capacity, profit calculations, filters and sorting.
+- Phase 3: route quality polish and saved/favorite routes later.
+
+Out of scope for MVP:
+
+- Multi-stop route optimization
+- Risk modeling
+- Automatic best-route planning
+- Fleet planning
+- Market prediction
+- OCR integration
 
 ### Notes
 
