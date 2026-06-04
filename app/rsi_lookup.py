@@ -54,13 +54,17 @@ def lookup_player(handle: str) -> dict:
     organizations_data = fetch_player_organizations(handle)
     organizations = organizations_data["organizations"]
     organizations_redacted = organizations_data["redacted"]
+    redacted_relationships = organizations_data.get("redacted_relationships", set())
+    main_org_hidden = "Main organization" in redacted_relationships
+    affiliations_hidden = "Affiliation" in redacted_relationships
+    redacted_unknown_scope = bool(organizations_redacted and not redacted_relationships)
 
     main_org = next(
         (org for org in organizations if org["relationship"] == "Main organization"),
         None,
     )
     if not main_org:
-        if profile_org.get("redacted") or organizations_redacted:
+        if profile_org.get("redacted") or main_org_hidden or redacted_unknown_scope:
             main_org = redacted_org_result("Main organization")
         else:
             main_org = {
@@ -76,7 +80,7 @@ def lookup_player(handle: str) -> dict:
         if org["relationship"] == "Affiliation"
     ]
     main_org_redacted = bool(main_org.get("redacted"))
-    affiliations_redacted = bool(organizations_redacted and not affiliations)
+    affiliations_redacted = bool((affiliations_hidden or redacted_unknown_scope) and not affiliations)
     main_org_piracy = False if main_org_redacted else main_org["piracy"]
     affiliation_piracy = False if affiliations_redacted else any(org["piracy"] for org in affiliations)
     any_org_piracy = main_org_piracy or affiliation_piracy
@@ -278,28 +282,56 @@ def fetch_player_organizations(handle):
     try:
         response = request_with_retry(url)
     except RSILookupError:
-        return {"organizations": [], "redacted": False}
+        return {"organizations": [], "redacted": False, "redacted_relationships": set()}
 
     if response.status_code != 200:
-        return {"organizations": [], "redacted": False}
+        return {"organizations": [], "redacted": False, "redacted_relationships": set()}
 
     soup = BeautifulSoup(response.text, "lxml")
     redacted = bool(soup.find(string=_RE_REDACTED))
+    redacted_relationships = set()
     cards = soup.select("div.box-content.org")
     if cards:
-        organizations = [
-            org
-            for org in (extract_organization_card(card) for card in cards)
-            if org["name"] != "None" or org["sid"] != "N/A"
-        ]
-        return {"organizations": organizations, "redacted": redacted}
+        organizations = []
+        for card in cards:
+            org = extract_organization_card(card)
+            if org.get("redacted"):
+                redacted = True
+                redacted_relationships.add(org["relationship"])
+                continue
+            if org["name"] != "None" or org["sid"] != "N/A":
+                organizations.append(org)
 
-    return {"organizations": extract_organizations_from_lines(soup), "redacted": redacted}
+        return {
+            "organizations": organizations,
+            "redacted": redacted,
+            "redacted_relationships": redacted_relationships,
+        }
+
+    return {
+        "organizations": extract_organizations_from_lines(soup),
+        "redacted": redacted,
+        "redacted_relationships": redacted_relationships,
+    }
+
+
+def is_redacted_organization_card(card):
+    classes = {str(class_name).strip().lower() for class_name in card.get("class", [])}
+    if "visibility-r" in classes:
+        return True
+
+    if card.select_one(".member-visibility-restriction, .restriction-r"):
+        return True
+
+    return bool(card.find(string=_RE_REDACTED))
 
 
 def extract_organization_card(card):
     classes = set(card.get("class", []))
     relationship = "Affiliation" if "affiliation" in classes else "Main organization"
+
+    if is_redacted_organization_card(card):
+        return redacted_org_result(relationship)
 
     name = ""
     for link in card.find_all("a", href=True):

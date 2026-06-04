@@ -690,7 +690,12 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         if not affiliations:
             if redacted:
                 self.detail_affiliation_count_label.setText("REDACTED")
-                self.detail_affiliations_empty.setText("Organization affiliations are REDACTED by RSI.")
+                self.detail_affiliations_empty.setText(
+                    "REDACTED\n"
+                    "Hidden organization affiliation\n"
+                    "Organization affiliations are REDACTED by RSI.\n"
+                    "Piracy: Unknown"
+                )
                 self.detail_affiliations_empty.setStyleSheet("color: #ffb86b; font-weight: 700;")
             else:
                 self.detail_affiliation_count_label.setText("0 linked orgs")

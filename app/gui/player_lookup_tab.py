@@ -393,7 +393,12 @@ class PlayerLookupTab(BackgroundTaskMixin, QWidget):
         if not affiliations:
             if redacted:
                 self.affiliation_count_label.setText("REDACTED")
-                self.affiliations_empty.setText("Organization affiliations are REDACTED by RSI.")
+                self.affiliations_empty.setText(
+                    "REDACTED\n"
+                    "Hidden organization affiliation\n"
+                    "Organization affiliations are REDACTED by RSI.\n"
+                    "Piracy: Unknown"
+                )
                 self.affiliations_empty.setStyleSheet("color: #ffb86b; font-weight: 700;")
             else:
                 self.affiliation_count_label.setText("0 linked orgs")
