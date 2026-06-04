@@ -1,7 +1,11 @@
 from dataclasses import dataclass
 from datetime import datetime
+from math import floor
 
 from app.uex_client import fetch_all_commodity_prices
+
+
+UNITS_PER_SCU = 100
 
 
 @dataclass(frozen=True)
@@ -16,9 +20,54 @@ class TradingOpportunity:
     date_modified: int | None
 
 
+@dataclass(frozen=True)
+class TradingEstimate:
+    units_per_scu: int
+    cargo_scu: float
+    units_capacity: int
+    effective_units: int
+    effective_cargo_scu: float
+    estimated_buy_cost: float
+    estimated_total_profit: float
+    profit_per_scu: float
+    investment_limited: bool
+
+
 def fetch_trading_opportunities(include_unprofitable=False):
     prices = fetch_all_commodity_prices()
     return build_trading_opportunities(prices, include_unprofitable=include_unprofitable), len(prices)
+
+
+def calculate_trade_estimate(opportunity, cargo_scu, max_investment=None, units_per_scu=UNITS_PER_SCU):
+    safe_cargo_scu = max(0, cargo_scu or 0)
+    units_capacity = floor(safe_cargo_scu * units_per_scu)
+
+    investment_units = units_capacity
+    if max_investment is not None:
+        safe_investment = max(0, max_investment)
+        if opportunity.buy_price > 0:
+            investment_units = floor(safe_investment / opportunity.buy_price)
+        else:
+            investment_units = 0
+
+    effective_units = max(0, min(units_capacity, investment_units))
+    effective_cargo_scu = effective_units / units_per_scu if units_per_scu else 0
+    estimated_buy_cost = opportunity.buy_price * effective_units
+    estimated_total_profit = opportunity.profit_per_unit * effective_units
+    profit_per_scu = opportunity.profit_per_unit * units_per_scu
+    investment_limited = max_investment is not None and investment_units < units_capacity
+
+    return TradingEstimate(
+        units_per_scu=units_per_scu,
+        cargo_scu=safe_cargo_scu,
+        units_capacity=units_capacity,
+        effective_units=effective_units,
+        effective_cargo_scu=effective_cargo_scu,
+        estimated_buy_cost=estimated_buy_cost,
+        estimated_total_profit=estimated_total_profit,
+        profit_per_scu=profit_per_scu,
+        investment_limited=investment_limited,
+    )
 
 
 def build_trading_opportunities(prices, include_unprofitable=False):

@@ -13,7 +13,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.trading_data import fetch_trading_opportunities, format_trade_age
+from app.trading_data import (
+    UNITS_PER_SCU,
+    calculate_trade_estimate,
+    fetch_trading_opportunities,
+    format_trade_age,
+)
 
 from .table_utils import configure_readable_table_columns
 from .workers import BackgroundTaskMixin
@@ -48,6 +53,7 @@ class TradingTab(BackgroundTaskMixin, QWidget):
         self.trading_refresh_running = False
         self.all_opportunities = []
         self.visible_opportunities = []
+        self.price_row_count = 0
 
         self.build_ui()
         self.connect_signals()
@@ -60,7 +66,7 @@ class TradingTab(BackgroundTaskMixin, QWidget):
         layout.addWidget(self.create_header())
         layout.addWidget(self.create_controls())
 
-        self.trade_table = QTableWidget(0, 8)
+        self.trade_table = QTableWidget(0, 11)
         self.trade_table.setHorizontalHeaderLabels([
             "Commodity",
             "Buy Location",
@@ -68,8 +74,11 @@ class TradingTab(BackgroundTaskMixin, QWidget):
             "Sell Location",
             "Sell Price",
             "Profit / Unit",
-            "Source",
-            "Updated / Age",
+            "Profit / SCU",
+            "Cargo SCU",
+            "Total Profit",
+            "Buy Cost",
+            "Source / Updated",
         ])
         self.trade_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.trade_table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -129,18 +138,34 @@ class TradingTab(BackgroundTaskMixin, QWidget):
         self.refresh_button = QPushButton("Refresh UEX Trading Data")
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Filter commodity, system, location or terminal...")
+
+        self.cargo_input = QLineEdit()
+        self.cargo_input.setPlaceholderText("Cargo SCU (default 1)")
+        self.cargo_input.setMaximumWidth(110)
+        self.cargo_input.setToolTip(f"Cargo capacity in SCU. Phase 2 assumes 1 SCU = {UNITS_PER_SCU} units.")
+
+        self.max_investment_input = QLineEdit()
+        self.max_investment_input.setPlaceholderText("Max aUEC...")
+        self.max_investment_input.setMaximumWidth(130)
+        self.max_investment_input.setToolTip("Optional max investment. If set, totals use the affordable cargo amount.")
+
         self.min_profit_input = QLineEdit()
-        self.min_profit_input.setPlaceholderText("Min profit...")
-        self.min_profit_input.setMaximumWidth(130)
+        self.min_profit_input.setPlaceholderText("Min Profit / Unit...")
+        self.min_profit_input.setMaximumWidth(145)
         self.show_unprofitable_checkbox = QCheckBox("Show unprofitable")
 
         controls.addWidget(self.search_input, 1)
+        controls.addWidget(self.cargo_input)
+        controls.addWidget(self.max_investment_input)
         controls.addWidget(self.min_profit_input)
         controls.addWidget(self.show_unprofitable_checkbox)
         controls.addWidget(self.refresh_button)
         layout.addLayout(controls)
 
-        self.status_label = QLabel("Trading data is loaded live from UEX on demand and is not stored locally.")
+        self.status_label = QLabel(
+            f"Trading data is loaded live from UEX on demand and is not stored locally. "
+            f"Phase 2 assumes 1 SCU = {UNITS_PER_SCU} units."
+        )
         self.status_label.setObjectName("moduleSubtitle")
         self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
@@ -151,6 +176,8 @@ class TradingTab(BackgroundTaskMixin, QWidget):
     def connect_signals(self):
         self.refresh_button.clicked.connect(self.refresh_trading_data)
         self.search_input.textChanged.connect(self.populate_trade_table)
+        self.cargo_input.textChanged.connect(self.populate_trade_table)
+        self.max_investment_input.textChanged.connect(self.populate_trade_table)
         self.min_profit_input.textChanged.connect(self.populate_trade_table)
         self.show_unprofitable_checkbox.stateChanged.connect(self.populate_trade_table)
         self.trade_table.itemSelectionChanged.connect(self.update_trade_summary)
@@ -174,10 +201,7 @@ class TradingTab(BackgroundTaskMixin, QWidget):
     def on_trading_data_loaded(self, result):
         opportunities, price_row_count = result
         self.all_opportunities = opportunities
-        self.status_label.setText(
-            f"Trading data loaded: {len(opportunities)} buy/sell comparisons "
-            f"from {price_row_count} UEX price rows."
-        )
+        self.price_row_count = price_row_count
         self.populate_trade_table()
 
     def on_trading_data_error(self, exc):
@@ -196,6 +220,8 @@ class TradingTab(BackgroundTaskMixin, QWidget):
     def populate_trade_table(self):
         query = self.search_input.text().strip().lower()
         min_profit = self.parse_number(self.min_profit_input.text())
+        cargo_scu = self.parse_number(self.cargo_input.text(), default=1)
+        max_investment = self.parse_number(self.max_investment_input.text())
         show_unprofitable = self.show_unprofitable_checkbox.isChecked()
 
         self.visible_opportunities = [
@@ -209,6 +235,7 @@ class TradingTab(BackgroundTaskMixin, QWidget):
         self.trade_table.setRowCount(len(self.visible_opportunities))
 
         for row_index, opportunity in enumerate(self.visible_opportunities):
+            estimate = calculate_trade_estimate(opportunity, cargo_scu, max_investment)
             values = [
                 opportunity.commodity,
                 opportunity.buy_location,
@@ -216,8 +243,11 @@ class TradingTab(BackgroundTaskMixin, QWidget):
                 opportunity.sell_location,
                 self.format_auec(opportunity.sell_price),
                 self.format_auec(opportunity.profit_per_unit),
-                opportunity.source,
-                format_trade_age(opportunity.date_modified),
+                self.format_auec(estimate.profit_per_scu),
+                self.format_cargo_scu(estimate.effective_cargo_scu, estimate.investment_limited),
+                self.format_auec(estimate.estimated_total_profit),
+                self.format_auec(estimate.estimated_buy_cost),
+                f"{opportunity.source} | {format_trade_age(opportunity.date_modified)}",
             ]
             sort_values = [
                 opportunity.commodity,
@@ -226,20 +256,26 @@ class TradingTab(BackgroundTaskMixin, QWidget):
                 opportunity.sell_location,
                 opportunity.sell_price,
                 opportunity.profit_per_unit,
-                opportunity.source,
+                estimate.profit_per_scu,
+                estimate.effective_cargo_scu,
+                estimate.estimated_total_profit,
+                estimate.estimated_buy_cost,
                 opportunity.date_modified or 0,
             ]
             for col_index, value in enumerate(values):
                 item = SortableTableWidgetItem(str(value))
                 item.setData(SORT_ROLE, sort_values[col_index])
                 item.setData(Qt.UserRole, row_index)
-                if col_index in (2, 4, 5):
+                if estimate.investment_limited and col_index in (7, 8, 9):
+                    item.setToolTip("Limited by max investment.")
+                if col_index in (2, 4, 5, 6, 7, 8, 9):
                     item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 self.trade_table.setItem(row_index, col_index, item)
 
         self.trade_table.setSortingEnabled(sorting_enabled)
         configure_readable_table_columns(self.trade_table, min_width=110, max_width=360, stretch_last=True)
         self.empty_label.setVisible(not self.visible_opportunities)
+        self.update_status_text()
         if not self.visible_opportunities:
             self.detail_label.setText("No trading opportunities match the current filters.")
         else:
@@ -266,11 +302,24 @@ class TradingTab(BackgroundTaskMixin, QWidget):
         if not opportunity:
             return
 
+        cargo_scu = self.parse_number(self.cargo_input.text(), default=1)
+        max_investment = self.parse_number(self.max_investment_input.text())
+        estimate = calculate_trade_estimate(opportunity, cargo_scu, max_investment)
+        limit_text = ""
+        if estimate.investment_limited:
+            limit_text = " Max investment limits this route."
+
         self.detail_label.setText(
             f"Buy {opportunity.commodity} at {opportunity.buy_location} for "
             f"{self.format_auec(opportunity.buy_price)}, sell at {opportunity.sell_location} "
             f"for {self.format_auec(opportunity.sell_price)}. "
-            f"Profit: {self.format_auec(opportunity.profit_per_unit)} per unit."
+            f"Profit: {self.format_auec(opportunity.profit_per_unit)} per unit / "
+            f"{self.format_auec(estimate.profit_per_scu)} per SCU. "
+            f"Cargo used: {self.format_number(estimate.effective_cargo_scu)} SCU. "
+            f"Buy cost: {self.format_auec(estimate.estimated_buy_cost)}. "
+            f"Total profit: {self.format_auec(estimate.estimated_total_profit)}. "
+            f"Source: {opportunity.source} | {format_trade_age(opportunity.date_modified)}."
+            f"{limit_text}"
         )
 
     def selected_opportunity(self):
@@ -288,15 +337,26 @@ class TradingTab(BackgroundTaskMixin, QWidget):
 
         return self.visible_opportunities[index]
 
-    def parse_number(self, value):
-        value = (value or "").replace(",", "").strip()
+    def update_status_text(self):
+        if not self.all_opportunities:
+            return
+
+        self.status_label.setText(
+            f"Trading data loaded: showing {len(self.visible_opportunities)} of "
+            f"{len(self.all_opportunities)} buy/sell comparisons from "
+            f"{self.price_row_count} UEX price rows. "
+            f"Assumption: 1 SCU = {UNITS_PER_SCU} units."
+        )
+
+    def parse_number(self, value, default=None):
+        value = (value or "").replace(",", "").replace(" ", "").strip()
         if not value:
-            return None
+            return default
 
         try:
             return float(value)
         except ValueError:
-            return None
+            return default
 
     def format_auec(self, value):
         return f"{self.format_number(value)} aUEC"
@@ -311,3 +371,7 @@ class TradingTab(BackgroundTaskMixin, QWidget):
             return f"{int(number):,}"
 
         return f"{number:,.2f}".rstrip("0").rstrip(".")
+
+    def format_cargo_scu(self, value, investment_limited=False):
+        suffix = "*" if investment_limited else ""
+        return f"{self.format_number(value)} SCU{suffix}"
