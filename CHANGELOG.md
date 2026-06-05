@@ -25,6 +25,11 @@
 - Restored full Trading cargo metadata from the provided `SCU Kapasitet`
   spreadsheet reference, with spreadsheet values taking priority over older
   local ship metadata.
+- Added route quality indicators for UEX Trading, Trade Routes and En Route.
+- Improved Trading route/buyer summaries with clearer buy/sell, cargo, cost,
+  profit, source and warning details.
+- Added Copy Route Summary actions for Trading route-style workflows.
+- Improved no-token, empty-result and request-failure states in Trading workflows.
 - Kept UEX trading behavior, filters, live refresh and SCU calculations unchanged.
 
 ### Maintenance

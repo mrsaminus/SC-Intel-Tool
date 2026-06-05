@@ -23,6 +23,7 @@ from app.sc_trade_tools_client import (
 from ..table_utils import configure_readable_table_columns
 from ..workers import BackgroundTaskMixin
 from .reference_data import get_trading_reference_service
+from .route_quality import calculate_route_quality, copy_to_clipboard
 from .searchable_combo import configure_searchable_combo, selected_combo_text, set_combo_items
 from .ship_selection import configure_ship_combo, fill_cargo_from_ship, selected_ship_name, update_ship_combo
 
@@ -94,6 +95,10 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         self.detail_label.setObjectName("valueText")
         self.detail_label.setWordWrap(True)
         layout.addWidget(self.detail_label)
+
+        self.copy_summary_button = QPushButton("Copy Route Summary")
+        self.copy_summary_button.setEnabled(False)
+        layout.addWidget(self.copy_summary_button)
 
         self.setLayout(layout)
 
@@ -177,7 +182,7 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         return card
 
     def create_results_table(self):
-        self.routes_table = QTableWidget(0, 6)
+        self.routes_table = QTableWidget(0, 7)
         self.routes_table.setHorizontalHeaderLabels([
             "Commodity",
             "Origin",
@@ -185,6 +190,7 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
             "Profit",
             "Profit / Min",
             "Time",
+            "Quality",
         ])
         self.routes_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.routes_table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -200,6 +206,7 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         self.open_source_button.clicked.connect(self.open_source)
         self.ship_combo.currentTextChanged.connect(self.on_ship_changed)
         self.routes_table.itemSelectionChanged.connect(self.update_details)
+        self.copy_summary_button.clicked.connect(self.copy_route_summary)
 
     def on_ship_changed(self):
         fill_cargo_from_ship(self.ship_combo, self.cargo_input, self.status_label)
@@ -243,6 +250,7 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
             self.status_label.setText(
                 "SC Trade Tools token is not configured. Add it in Settings to use En Route."
             )
+            self.empty_label.setText("Token required: configure a SC Trade Tools API token in Settings, then search.")
             self.routes = []
             self.populate_routes_table()
             return
@@ -286,6 +294,8 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
             reverse=True,
         )
         self.status_label.setText(f"Loaded {len(self.routes)} en-route opportunities from SC Trade Tools.")
+        if not self.routes:
+            self.empty_label.setText("No en-route opportunities were returned for the selected route.")
         self.populate_routes_table()
 
     def finish_route_refresh(self):
@@ -295,6 +305,9 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
 
     def on_error(self, exc):
         self.status_label.setText(f"SC Trade Tools request failed: {exc}")
+        self.empty_label.setText("SC Trade Tools en-route lookup failed. Check token/network and try again.")
+        self.routes = []
+        self.populate_routes_table()
 
     def populate_routes_table(self):
         sorting_enabled = self.routes_table.isSortingEnabled()
@@ -302,6 +315,7 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         self.routes_table.setRowCount(len(self.routes))
 
         for row_index, route in enumerate(self.routes):
+            quality = self.route_quality(route)
             values = [
                 route.commodity,
                 route.origin,
@@ -309,6 +323,7 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
                 self.format_auec(route.profit),
                 self.format_auec(route.profit_per_minute),
                 self.format_seconds(route.time_seconds),
+                quality.label,
             ]
             sort_values = [
                 route.commodity,
@@ -317,11 +332,14 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
                 route.profit,
                 route.profit_per_minute,
                 route.time_seconds,
+                quality.sort_value,
             ]
             for col_index, value in enumerate(values):
                 item = SortableTableWidgetItem(str(value))
                 item.setData(SORT_ROLE, sort_values[col_index])
                 item.setData(ROW_ROLE, row_index)
+                if quality.flags and col_index == 6:
+                    item.setToolTip(" | ".join(quality.flags))
                 if col_index in (3, 4, 5):
                     item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 self.routes_table.setItem(row_index, col_index, item)
@@ -337,16 +355,43 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
             self.detail_label.setText(
                 "Itinerary results require a SC Trade Tools token. Configure it in Settings, then search a route."
             )
+            self.copy_summary_button.setEnabled(False)
             return
 
-        self.detail_label.setText(
+        self.detail_label.setText(self.build_route_summary(route))
+        self.copy_summary_button.setEnabled(True)
+
+    def build_route_summary(self, route):
+        quality = self.route_quality(route)
+        notes = list(quality.flags)
+        if not notes:
+            notes.append("SC Trade Tools itinerary data does not include buy/sell price details.")
+
+        return (
             f"Commodity: {route.commodity}\n"
-            f"Origin: {route.origin}\n"
-            f"Destination: {route.destination}\n"
+            f"Buy from: {route.origin}\n"
+            f"Sell to: {route.destination}\n"
             f"Profit: {self.format_auec(route.profit)}\n"
             f"Profit / minute: {self.format_auec(route.profit_per_minute)}\n"
             f"Estimated time: {self.format_seconds(route.time_seconds)}\n"
-            "Source: SC Trade Tools"
+            f"Quality: {quality.label}\n"
+            "Source: SC Trade Tools\n"
+            f"Notes: {', '.join(notes)}"
+        )
+
+    def copy_route_summary(self):
+        route = self.selected_route()
+        if not route:
+            return
+
+        copy_to_clipboard(self.build_route_summary(route))
+        self.status_label.setText("Route summary copied to clipboard.")
+
+    def route_quality(self, route):
+        return calculate_route_quality(
+            total_profit=route.profit,
+            profit_per_minute=route.profit_per_minute,
+            suspicious=False,
         )
 
     def selected_route(self):

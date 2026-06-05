@@ -23,6 +23,7 @@ from app.sc_trade_tools_client import (
 from ..table_utils import configure_readable_table_columns
 from ..workers import BackgroundTaskMixin
 from .reference_data import get_trading_reference_service
+from .route_quality import calculate_route_quality, copy_to_clipboard
 from .searchable_combo import configure_searchable_combo, selected_combo_text, set_combo_items
 from .ship_selection import configure_ship_combo, fill_cargo_from_ship, selected_ship_name, update_ship_combo
 
@@ -95,6 +96,10 @@ class TradeRoutesTab(BackgroundTaskMixin, QWidget):
         self.detail_label.setObjectName("valueText")
         self.detail_label.setWordWrap(True)
         layout.addWidget(self.detail_label)
+
+        self.copy_summary_button = QPushButton("Copy Route Summary")
+        self.copy_summary_button.setEnabled(False)
+        layout.addWidget(self.copy_summary_button)
 
         self.setLayout(layout)
 
@@ -173,7 +178,7 @@ class TradeRoutesTab(BackgroundTaskMixin, QWidget):
         return card
 
     def create_results_table(self):
-        self.routes_table = QTableWidget(0, 10)
+        self.routes_table = QTableWidget(0, 11)
         self.routes_table.setHorizontalHeaderLabels([
             "Commodity",
             "Buy Location",
@@ -184,6 +189,7 @@ class TradeRoutesTab(BackgroundTaskMixin, QWidget):
             "Cargo SCU",
             "Total Profit",
             "Buy Cost",
+            "Quality",
             "Source / Updated",
         ])
         self.routes_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -200,6 +206,7 @@ class TradeRoutesTab(BackgroundTaskMixin, QWidget):
         self.open_source_button.clicked.connect(self.open_source)
         self.ship_combo.currentTextChanged.connect(self.on_ship_changed)
         self.routes_table.itemSelectionChanged.connect(self.update_details)
+        self.copy_summary_button.clicked.connect(self.copy_route_summary)
 
     def on_ship_changed(self):
         fill_cargo_from_ship(self.ship_combo, self.cargo_input, self.status_label)
@@ -239,6 +246,7 @@ class TradeRoutesTab(BackgroundTaskMixin, QWidget):
         token = get_app_setting(SC_TRADE_TOOLS_TOKEN_SETTING, "")
         if not token.strip():
             self.status_label.setText("SC Trade Tools token required for Trade Routes.")
+            self.empty_label.setText("Token required: configure a SC Trade Tools API token in Settings, then search.")
             self.routes = []
             self.populate_routes_table()
             return
@@ -279,6 +287,8 @@ class TradeRoutesTab(BackgroundTaskMixin, QWidget):
             reverse=True,
         )
         self.status_label.setText(f"Loaded {len(self.routes)} trade routes from SC Trade Tools.")
+        if not self.routes:
+            self.empty_label.setText("No SC Trade Tools routes were returned for the selected filters.")
         self.populate_routes_table()
 
     def finish_routes_refresh(self):
@@ -288,6 +298,9 @@ class TradeRoutesTab(BackgroundTaskMixin, QWidget):
 
     def on_error(self, exc):
         self.status_label.setText(f"SC Trade Tools request failed: {exc}")
+        self.empty_label.setText("SC Trade Tools route lookup failed. Check token/network and try again.")
+        self.routes = []
+        self.populate_routes_table()
 
     def populate_routes_table(self):
         sorting_enabled = self.routes_table.isSortingEnabled()
@@ -295,6 +308,7 @@ class TradeRoutesTab(BackgroundTaskMixin, QWidget):
         self.routes_table.setRowCount(len(self.routes))
 
         for row_index, route in enumerate(self.routes):
+            quality = self.route_quality(route)
             values = [
                 route.commodity,
                 route.buy_location,
@@ -305,6 +319,7 @@ class TradeRoutesTab(BackgroundTaskMixin, QWidget):
                 self.format_scu(route.cargo_scu),
                 self.format_auec(route.total_profit),
                 self.format_auec(route.buy_cost),
+                quality.label,
                 "SC Trade Tools",
             ]
             sort_values = [
@@ -317,12 +332,15 @@ class TradeRoutesTab(BackgroundTaskMixin, QWidget):
                 route.cargo_scu,
                 route.total_profit,
                 route.buy_cost,
+                quality.sort_value,
                 "SC Trade Tools",
             ]
             for col_index, value in enumerate(values):
                 item = SortableTableWidgetItem(str(value))
                 item.setData(SORT_ROLE, sort_values[col_index])
                 item.setData(ROW_ROLE, row_index)
+                if quality.flags and col_index == 9:
+                    item.setToolTip(" | ".join(quality.flags))
                 if col_index in (2, 4, 5, 6, 7, 8):
                     item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 self.routes_table.setItem(row_index, col_index, item)
@@ -330,6 +348,8 @@ class TradeRoutesTab(BackgroundTaskMixin, QWidget):
         self.routes_table.setSortingEnabled(sorting_enabled)
         configure_readable_table_columns(self.routes_table, min_width=110, max_width=380, stretch_last=True)
         self.empty_label.setVisible(not self.routes)
+        if not self.routes and not self.empty_label.text():
+            self.empty_label.setText("No route results yet. Choose filters and click Find Routes.")
         self.update_details()
 
     def update_details(self):
@@ -338,18 +358,62 @@ class TradeRoutesTab(BackgroundTaskMixin, QWidget):
             self.detail_label.setText(
                 "Trade Routes requires a SC Trade Tools token. Configure it in Settings, then search routes."
             )
+            self.copy_summary_button.setEnabled(False)
             return
 
-        self.detail_label.setText(
+        self.detail_label.setText(self.build_route_summary(route))
+        self.copy_summary_button.setEnabled(True)
+
+    def build_route_summary(self, route):
+        quality = self.route_quality(route)
+        notes = list(quality.flags)
+        if not notes:
+            notes.append("None")
+
+        return (
             f"Commodity: {route.commodity}\n"
-            f"Buy: {route.buy_location} @ {self.format_auec(route.buy_price)} / SCU\n"
-            f"Sell: {route.sell_location} @ {self.format_auec(route.sell_price)} / SCU\n"
+            f"Buy from: {route.buy_location} @ {self.format_auec(route.buy_price)} / SCU\n"
+            f"Sell to: {route.sell_location} @ {self.format_auec(route.sell_price)} / SCU\n"
             f"Profit / SCU: {self.format_auec(route.profit_per_scu)}\n"
             f"Cargo used: {self.format_scu(route.cargo_scu)}\n"
-            f"Investment / buy cost: {self.format_auec(route.buy_cost)}\n"
+            f"Buy cost: {self.format_auec(route.buy_cost)}\n"
             f"Estimated total profit: {self.format_auec(route.total_profit)}\n"
-            "Source: SC Trade Tools"
+            f"Quality: {quality.label}\n"
+            "Source: SC Trade Tools\n"
+            f"Notes: {', '.join(notes)}"
         )
+
+    def copy_route_summary(self):
+        route = self.selected_route()
+        if not route:
+            return
+
+        copy_to_clipboard(self.build_route_summary(route))
+        self.status_label.setText("Route summary copied to clipboard.")
+
+    def route_quality(self, route):
+        cargo_requested = self.parse_number(self.cargo_input.text(), default=None)
+        investment = self.parse_number(self.investment_input.text(), default=None)
+        full_cargo = None
+        if cargo_requested is not None and route.cargo_scu is not None:
+            full_cargo = route.cargo_scu >= cargo_requested
+
+        affordable = None
+        if investment is not None and route.buy_cost is not None:
+            affordable = route.buy_cost <= investment
+
+        return calculate_route_quality(
+            total_profit=route.total_profit,
+            profit_per_scu=route.profit_per_scu,
+            full_cargo=full_cargo,
+            affordable=affordable,
+            suspicious=self.is_suspicious_route(route),
+        )
+
+    def is_suspicious_route(self, route):
+        if route.buy_price is None or route.sell_price is None or route.buy_price <= 0:
+            return False
+        return route.sell_price / route.buy_price > 25
 
     def selected_route(self):
         row = self.routes_table.currentRow()

@@ -86,6 +86,8 @@ Current status:
   spreadsheet reference, with older local metadata only as fallback.
 - Trade Routes, Best Buyer and En Route subtabs are token-aware and degrade
   gracefully when no token is configured.
+- Trading route results now include quality indicators, clearer summaries,
+  copy-to-clipboard support and better empty/error states.
 
 Scope:
 
@@ -316,6 +318,7 @@ First implementation phases:
 - Phase 2: cargo capacity, profit calculations, filters and sorting - complete.
 - Phase 3: route quality polish and SCU calculation cleanup - complete.
 - Phase 4: saved/favorite routes later.
+- Route summary quality/copy polish - complete.
 
 Current subtab structure:
 

@@ -23,6 +23,7 @@ from app.sc_trade_tools_client import (
 from ..table_utils import configure_readable_table_columns
 from ..workers import BackgroundTaskMixin
 from .reference_data import get_trading_reference_service
+from .route_quality import copy_to_clipboard
 from .searchable_combo import configure_searchable_combo, selected_combo_text, set_combo_items
 from .ship_selection import configure_ship_combo, fill_cargo_from_ship, update_ship_combo
 
@@ -93,6 +94,10 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
         self.detail_label.setObjectName("valueText")
         self.detail_label.setWordWrap(True)
         layout.addWidget(self.detail_label)
+
+        self.copy_summary_button = QPushButton("Copy Route Summary")
+        self.copy_summary_button.setEnabled(False)
+        layout.addWidget(self.copy_summary_button)
 
         self.setLayout(layout)
 
@@ -183,6 +188,7 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
         self.open_source_button.clicked.connect(self.open_source)
         self.ship_combo.currentTextChanged.connect(self.on_ship_changed)
         self.buyers_table.itemSelectionChanged.connect(self.update_details)
+        self.copy_summary_button.clicked.connect(self.copy_route_summary)
 
     def on_ship_changed(self):
         fill_cargo_from_ship(self.ship_combo, self.quantity_input, self.status_label)
@@ -219,6 +225,7 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
             self.status_label.setText(
                 "SC Trade Tools token is not configured. Add it in Settings to use Best Buyer."
             )
+            self.empty_label.setText("Token required: configure a SC Trade Tools API token in Settings, then search.")
             self.buyers = []
             self.populate_buyers_table()
             return
@@ -248,6 +255,8 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
             reverse=True,
         )
         self.status_label.setText(f"Loaded {len(self.buyers)} buyer results from SC Trade Tools.")
+        if not self.buyers:
+            self.empty_label.setText("No buyers were returned for the selected commodity and quantity.")
         self.populate_buyers_table()
 
     def finish_buyer_refresh(self):
@@ -257,6 +266,9 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
 
     def on_error(self, exc):
         self.status_label.setText(f"SC Trade Tools request failed: {exc}")
+        self.empty_label.setText("SC Trade Tools buyer lookup failed. Check token/network and try again.")
+        self.buyers = []
+        self.populate_buyers_table()
 
     def populate_buyers_table(self):
         sorting_enabled = self.buyers_table.isSortingEnabled()
@@ -303,11 +315,16 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
             self.detail_label.setText(
                 "Buyer results require a SC Trade Tools token. Configure it in Settings, then search a commodity."
             )
+            self.copy_summary_button.setEnabled(False)
             return
 
-        self.detail_label.setText(
+        self.detail_label.setText(self.build_route_summary(buyer))
+        self.copy_summary_button.setEnabled(True)
+
+    def build_route_summary(self, buyer):
+        return (
             f"Commodity: {buyer.item_name}\n"
-            f"Buyer: {buyer.location}\n"
+            f"Sell to: {buyer.location}\n"
             f"Shop: {buyer.shop}\n"
             f"Sell price: {self.format_auec(buyer.price)} / SCU\n"
             f"Quantity: {self.format_number(buyer.quantity_scu)} SCU"
@@ -315,8 +332,18 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
             f"Security: {buyer.security_level}\n"
             f"Faction: {buyer.faction}\n"
             f"Hidden location: {'Yes' if buyer.hidden else 'No'}\n"
-            "Source: SC Trade Tools"
+            "Quality: N/A\n"
+            "Source: SC Trade Tools\n"
+            "Notes: Best Buyer does not include buy-side cost or profit data."
         )
+
+    def copy_route_summary(self):
+        buyer = self.selected_buyer()
+        if not buyer:
+            return
+
+        copy_to_clipboard(self.build_route_summary(buyer))
+        self.status_label.setText("Buyer summary copied to clipboard.")
 
     def selected_buyer(self):
         row = self.buyers_table.currentRow()

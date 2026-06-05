@@ -24,6 +24,7 @@ from app.trading_data import (
 from ..table_utils import configure_readable_table_columns
 from ..workers import BackgroundTaskMixin
 from .reference_data import get_trading_reference_service
+from .route_quality import calculate_route_quality, copy_to_clipboard
 from .ship_selection import configure_ship_combo, fill_cargo_from_ship, update_ship_combo
 
 
@@ -81,7 +82,7 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         layout.addWidget(self.create_header())
         layout.addWidget(self.create_controls())
 
-        self.trade_table = QTableWidget(0, 10)
+        self.trade_table = QTableWidget(0, 11)
         self.trade_table.setHorizontalHeaderLabels([
             "Commodity",
             "Buy Location",
@@ -92,6 +93,7 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
             "Cargo SCU",
             "Total Profit",
             "Buy Cost",
+            "Quality",
             "Source / Updated",
         ])
         self.trade_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -111,6 +113,10 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         self.detail_label.setObjectName("valueText")
         self.detail_label.setWordWrap(True)
         layout.addWidget(self.detail_label)
+
+        self.copy_summary_button = QPushButton("Copy Route Summary")
+        self.copy_summary_button.setEnabled(False)
+        layout.addWidget(self.copy_summary_button)
 
         self.setLayout(layout)
 
@@ -217,6 +223,7 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         self.only_affordable_checkbox.stateChanged.connect(self.populate_trade_table)
         self.hide_suspicious_checkbox.stateChanged.connect(self.populate_trade_table)
         self.trade_table.itemSelectionChanged.connect(self.update_trade_summary)
+        self.copy_summary_button.clicked.connect(self.copy_route_summary)
 
     def on_ship_changed(self):
         fill_cargo_from_ship(self.ship_combo, self.cargo_input, self.status_label)
@@ -248,9 +255,11 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         self.all_opportunities = []
         self.visible_opportunities = []
         self.trade_table.setRowCount(0)
+        self.empty_label.setText("UEX trading data failed to load. Try refreshing again later.")
         self.empty_label.setVisible(True)
         self.status_label.setText(f"Failed to load trading data: {exc}")
         self.detail_label.setText("Trading data failed to load. Try refreshing again later.")
+        self.copy_summary_button.setEnabled(False)
 
     def finish_trading_refresh(self):
         self.trading_refresh_running = False
@@ -292,6 +301,7 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
 
         for row_index, opportunity in enumerate(self.visible_opportunities):
             estimate = estimates[id(opportunity)]
+            quality = self.route_quality(opportunity, estimate)
             values = [
                 opportunity.commodity,
                 opportunity.buy_location,
@@ -302,6 +312,7 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
                 self.format_cargo_scu(estimate.effective_cargo_scu, estimate.investment_limited),
                 self.format_auec(estimate.estimated_total_profit),
                 self.format_auec(estimate.estimated_buy_cost),
+                quality.label,
                 f"{opportunity.source} | {format_trade_age(opportunity.date_modified)}",
             ]
             sort_values = [
@@ -314,6 +325,7 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
                 estimate.effective_cargo_scu,
                 estimate.estimated_total_profit,
                 estimate.estimated_buy_cost,
+                quality.sort_value,
                 opportunity.date_modified or 0,
             ]
             for col_index, value in enumerate(values):
@@ -322,6 +334,8 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
                 item.setData(Qt.UserRole, row_index)
                 if estimate.investment_limited and col_index in (6, 7, 8):
                     item.setToolTip("Limited by max investment.")
+                if quality.flags and col_index == 9:
+                    item.setToolTip(" | ".join(quality.flags))
                 if col_index in (2, 4, 5, 6, 7, 8):
                     item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 self.trade_table.setItem(row_index, col_index, item)
@@ -331,7 +345,15 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         self.empty_label.setVisible(not self.visible_opportunities)
         self.update_status_text()
         if not self.visible_opportunities:
-            self.detail_label.setText("No trading opportunities match the current filters.")
+            if self.all_opportunities:
+                self.empty_label.setText(
+                    "No UEX routes match the current filters. Try lowering profit limits or relaxing filters."
+                )
+                self.detail_label.setText("No UEX routes match the current filters.")
+            else:
+                self.empty_label.setText("Refresh trading data to load UEX commodity opportunities.")
+                self.detail_label.setText("Refresh UEX Trading Data to load trade routes.")
+            self.copy_summary_button.setEnabled(False)
         else:
             self.update_trade_summary()
 
@@ -373,25 +395,49 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
     def update_trade_summary(self):
         opportunity = self.selected_opportunity()
         if not opportunity:
+            self.copy_summary_button.setEnabled(False)
             return
 
+        self.detail_label.setText(self.build_route_summary(opportunity))
+        self.copy_summary_button.setEnabled(True)
+
+    def build_route_summary(self, opportunity):
         cargo_scu = self.parse_number(self.cargo_input.text(), default=1)
         max_investment = self.parse_number(self.max_investment_input.text())
         estimate = calculate_trade_estimate(opportunity, cargo_scu, max_investment)
-        limit_text = ""
-        if estimate.investment_limited:
-            limit_text = " Max investment limits this route."
+        quality = self.route_quality(opportunity, estimate)
+        notes = list(quality.flags)
+        if not notes:
+            notes.append("None")
 
-        self.detail_label.setText(
+        return (
             f"Commodity: {opportunity.commodity}\n"
-            f"Buy: {opportunity.buy_location} @ {self.format_auec(opportunity.buy_price)} / SCU\n"
-            f"Sell: {opportunity.sell_location} @ {self.format_auec(opportunity.sell_price)} / SCU\n"
+            f"Buy from: {opportunity.buy_location} @ {self.format_auec(opportunity.buy_price)} / SCU\n"
+            f"Sell to: {opportunity.sell_location} @ {self.format_auec(opportunity.sell_price)} / SCU\n"
             f"Profit / SCU: {self.format_auec(opportunity.profit_per_scu)}\n"
             f"Cargo used: {self.format_number(estimate.effective_cargo_scu)} SCU\n"
-            f"Estimated buy cost: {self.format_auec(estimate.estimated_buy_cost)}\n"
+            f"Buy cost: {self.format_auec(estimate.estimated_buy_cost)}\n"
             f"Estimated total profit: {self.format_auec(estimate.estimated_total_profit)}\n"
-            f"Source: {opportunity.source} | {format_trade_age(opportunity.date_modified)}."
-            f"{limit_text}"
+            f"Quality: {quality.label}\n"
+            f"Source: {opportunity.source} | {format_trade_age(opportunity.date_modified)}\n"
+            f"Notes: {', '.join(notes)}"
+        )
+
+    def copy_route_summary(self):
+        opportunity = self.selected_opportunity()
+        if not opportunity:
+            return
+
+        copy_to_clipboard(self.build_route_summary(opportunity))
+        self.status_label.setText("Route summary copied to clipboard.")
+
+    def route_quality(self, opportunity, estimate):
+        return calculate_route_quality(
+            total_profit=estimate.estimated_total_profit,
+            profit_per_scu=opportunity.profit_per_scu,
+            full_cargo=not estimate.investment_limited,
+            affordable=estimate.full_cargo_affordable,
+            suspicious=is_suspicious_margin(opportunity),
         )
 
     def selected_opportunity(self):
