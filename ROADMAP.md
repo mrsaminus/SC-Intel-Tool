@@ -71,8 +71,9 @@ Current status:
 - Phase 2 complete: cargo capacity, optional max investment, profit per SCU,
   estimated buy cost, estimated total profit, filtering and numeric sorting.
 - Phase 3 complete: route quality filters and SCU-based calculations.
-- Future SC Trade Tools workflow tabs are planned for Trade Routes, Best Buyer,
-  En Route, Commodities and Shops.
+- SC Trade Tools Commodities subtab now uses token-free commodity endpoints.
+- Future SC Trade Tools workflow tabs remain planned for Trade Routes,
+  Best Buyer, En Route and Shops.
 
 Scope:
 
@@ -124,6 +125,8 @@ Trading data source notes:
 
 - Current MVP source: UEX commodity price data.
 - UEX Trading remains the active subtab for the current MVP.
+- Commodities uses token-free SC Trade Tools commodity item and item-type
+  endpoints as a reference browser.
 - SC Trade Tools API research completed; see `docs/trading_data_sources.md`.
 - Recommendation: keep UEX as the primary MVP data source for now.
 - SC Trade Tools is best treated as a future route-optimization source or
@@ -298,10 +301,10 @@ First implementation phases:
 Current subtab structure:
 
 - UEX Trading - active MVP workflow.
+- Commodities - token-free SC Trade Tools commodity reference browser.
 - Trade Routes - planned SC Trade Tools route planning workflow.
 - Best Buyer - planned SC Trade Tools buyer lookup workflow.
 - En Route - planned SC Trade Tools along-route workflow.
-- Commodities - planned SC Trade Tools commodity reference workflow.
 - Shops - planned SC Trade Tools shop/location reference workflow.
 
 Trading Data Sources:

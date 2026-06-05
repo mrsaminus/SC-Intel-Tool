@@ -1,5 +1,6 @@
 from PySide6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 
+from .commodities_tab import CommoditiesTab
 from .sc_trade_placeholder_tab import SCTradePlaceholderTab
 from .shared import SC_TRADE_WORKFLOWS
 from .uex_trading_tab import UEXTradingTab
@@ -19,11 +20,14 @@ class TradingTab(QWidget):
 
         self.sc_trade_tabs = {}
         for workflow in SC_TRADE_WORKFLOWS:
-            tab = SCTradePlaceholderTab(
-                workflow["title"],
-                workflow["purpose"],
-                workflow["url"],
-            )
+            if workflow["title"] == "Commodities":
+                tab = CommoditiesTab()
+            else:
+                tab = SCTradePlaceholderTab(
+                    workflow["title"],
+                    workflow["purpose"],
+                    workflow["url"],
+                )
             self.sc_trade_tabs[workflow["title"]] = tab
             self.tabs.addTab(tab, workflow["title"])
 

@@ -8,6 +8,7 @@
 - Moved the existing UEX commodity workflow into the `UEX Trading` subtab.
 - Added planned SC Trade Tools workflow tabs for Trade Routes, Best Buyer,
   En Route, Commodities and Shops.
+- Added a token-free SC Trade Tools Commodities browser.
 - Kept UEX trading behavior, filters, live refresh and SCU calculations unchanged.
 
 ### Maintenance
