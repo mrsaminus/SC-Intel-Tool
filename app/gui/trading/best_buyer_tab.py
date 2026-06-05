@@ -23,6 +23,8 @@ from app.sc_trade_tools_client import (
 
 from ..table_utils import configure_readable_table_columns
 from ..workers import BackgroundTaskMixin
+from .searchable_combo import configure_searchable_combo, selected_combo_text, set_combo_items
+from .ship_selection import configure_ship_combo, fill_cargo_from_ship
 
 
 SORT_ROLE = Qt.UserRole + 1
@@ -116,8 +118,10 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
         controls.setSpacing(8)
 
         self.commodity_combo = QComboBox()
-        self.commodity_combo.setEditable(True)
-        self.commodity_combo.setPlaceholderText("Commodity...")
+        configure_searchable_combo(self.commodity_combo, "Commodity...")
+        self.ship_combo = QComboBox()
+        configure_ship_combo(self.ship_combo)
+        self.ship_combo.setMaximumWidth(180)
         self.quantity_input = QLineEdit("1")
         self.quantity_input.setPlaceholderText("Quantity SCU")
         self.quantity_input.setMaximumWidth(120)
@@ -126,6 +130,7 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
         self.open_source_button = QPushButton("Open Source")
 
         controls.addWidget(self.commodity_combo, 1)
+        controls.addWidget(self.ship_combo)
         controls.addWidget(self.quantity_input)
         controls.addWidget(self.load_commodities_button)
         controls.addWidget(self.find_buyers_button)
@@ -166,7 +171,11 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
         self.load_commodities_button.clicked.connect(self.load_commodities)
         self.find_buyers_button.clicked.connect(self.find_buyers)
         self.open_source_button.clicked.connect(self.open_source)
+        self.ship_combo.currentTextChanged.connect(self.on_ship_changed)
         self.buyers_table.itemSelectionChanged.connect(self.update_details)
+
+    def on_ship_changed(self):
+        fill_cargo_from_ship(self.ship_combo, self.quantity_input, self.status_label)
 
     def load_commodities(self):
         if self.commodity_refresh_running:
@@ -186,14 +195,7 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
 
     def on_commodities_loaded(self, commodities):
         self.commodities = sorted(commodities, key=lambda item: item.name.lower())
-        current_text = self.commodity_combo.currentText().strip()
-        self.commodity_combo.blockSignals(True)
-        self.commodity_combo.clear()
-        for commodity in self.commodities:
-            self.commodity_combo.addItem(commodity.name)
-        if current_text:
-            self.commodity_combo.setCurrentText(current_text)
-        self.commodity_combo.blockSignals(False)
+        set_combo_items(self.commodity_combo, (commodity.name for commodity in self.commodities))
         self.status_label.setText(
             f"Loaded {len(self.commodities)} commodities. Buyer lookup requires a configured token."
         )
@@ -216,9 +218,9 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
             self.populate_buyers_table()
             return
 
-        commodity = self.commodity_combo.currentText().strip()
+        commodity = selected_combo_text(self.commodity_combo, allow_free_text=not self.commodities)
         if not commodity:
-            self.status_label.setText("Choose a commodity before finding buyers.")
+            self.status_label.setText("Choose a commodity from the searchable dropdown before finding buyers.")
             return
 
         quantity_scu = self.parse_number(self.quantity_input.text(), default=1)

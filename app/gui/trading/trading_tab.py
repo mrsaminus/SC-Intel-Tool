@@ -6,6 +6,7 @@ from .en_route_tab import EnRouteTab
 from .sc_trade_placeholder_tab import SCTradePlaceholderTab
 from .shared import SC_TRADE_WORKFLOWS
 from .shops_tab import ShopsTab
+from .trade_routes_tab import TradeRoutesTab
 from .uex_trading_tab import UEXTradingTab
 
 
@@ -23,7 +24,9 @@ class TradingTab(QWidget):
 
         self.sc_trade_tabs = {}
         for workflow in SC_TRADE_WORKFLOWS:
-            if workflow["title"] == "Commodities":
+            if workflow["title"] == "Trade Routes":
+                tab = TradeRoutesTab()
+            elif workflow["title"] == "Commodities":
                 tab = CommoditiesTab()
             elif workflow["title"] == "Shops":
                 tab = ShopsTab()

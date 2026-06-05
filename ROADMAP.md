@@ -74,9 +74,10 @@ Current status:
 - SC Trade Tools Commodities subtab now uses token-free commodity endpoints.
 - SC Trade Tools Shops subtab now uses token-free shop/location endpoints.
 - Optional local SC Trade Tools API token support is available in Settings.
-- Best Buyer and En Route subtabs are token-aware and degrade gracefully when
-  no token is configured.
-- Trade Routes remains planned for a later token-backed integration pass.
+- Trading selection fields use searchable/type-filterable dropdowns.
+- Ship selection can auto-fill Cargo SCU from local ship metadata where known.
+- Trade Routes, Best Buyer and En Route subtabs are token-aware and degrade
+  gracefully when no token is configured.
 
 Scope:
 
@@ -131,7 +132,7 @@ Trading data source notes:
 - Commodities uses token-free SC Trade Tools commodity item and item-type
   endpoints as a reference browser.
 - Shops uses token-free SC Trade Tools commodity shop and location endpoints.
-- Best Buyer and En Route use token-required SC Trade Tools tool endpoints
+- Trade Routes, Best Buyer and En Route use token-required SC Trade Tools tool endpoints
   when the user configures an optional token locally in Settings.
 - SC Trade Tools API research completed; see `docs/trading_data_sources.md`.
 - Recommendation: keep UEX as the primary MVP data source for now.
@@ -309,9 +310,9 @@ Current subtab structure:
 - UEX Trading - active MVP workflow.
 - Commodities - token-free SC Trade Tools commodity reference browser.
 - Shops - token-free SC Trade Tools shop/location reference browser.
+- Trade Routes - token-aware SC Trade Tools trade route workflow.
 - Best Buyer - token-aware SC Trade Tools buyer lookup workflow.
 - En Route - token-aware SC Trade Tools along-route workflow.
-- Trade Routes - planned SC Trade Tools route planning workflow.
 
 Trading Data Sources:
 
@@ -319,11 +320,11 @@ Trading Data Sources:
   live commodity price loading in the app.
 - SC Trade Tools has useful public metadata endpoints for commodities, shops,
   locations, ships and crowdsourced commodity listings.
-- SC Trade Tools buyer-finder and itinerary workflows are available when a user
-  configures an optional local API token in Settings.
-- SC Trade Tools route-planning, commodity transaction and commodity report
-  endpoints still require a token and need a focused design pass before they
-  become production workflows.
+- SC Trade Tools trade routes, buyer-finder and itinerary workflows are
+  available when a user configures an optional local API token in Settings.
+- SC Trade Tools commodity transaction and commodity report endpoints still
+  require a token and need a focused design pass before they become production
+  workflows.
 - Future path: consider SC Trade Tools as an opt-in/token-backed source for
   route optimization once the basic Trading workflow is stable.
 

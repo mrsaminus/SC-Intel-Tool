@@ -17,9 +17,8 @@ from PySide6.QtWidgets import (
 from app.database import get_app_setting
 from app.sc_trade_tools_client import (
     SC_TRADE_TOOLS_TOKEN_SETTING,
-    fetch_commodity_items,
-    fetch_commodity_shops,
-    fetch_en_route,
+    fetch_trade_route_reference,
+    fetch_trade_routes,
 )
 
 from ..table_utils import configure_readable_table_columns
@@ -30,7 +29,7 @@ from .ship_selection import configure_ship_combo, fill_cargo_from_ship
 
 SORT_ROLE = Qt.UserRole + 1
 ROW_ROLE = Qt.UserRole + 2
-SC_TRADE_EN_ROUTE_URL = "https://sc-trade.tools/en-route"
+SC_TRADE_ROUTES_URL = "https://sc-trade.tools/trade-routes"
 
 
 class SortableTableWidgetItem(QTableWidgetItem):
@@ -50,12 +49,13 @@ class SortableTableWidgetItem(QTableWidgetItem):
         return (1, str(value).lower())
 
 
-class EnRouteTab(BackgroundTaskMixin, QWidget):
+class TradeRoutesTab(BackgroundTaskMixin, QWidget):
     def __init__(self):
         super().__init__()
 
-        self.location_refresh_running = False
-        self.route_refresh_running = False
+        self.reference_refresh_running = False
+        self.routes_refresh_running = False
+        self.shops = []
         self.locations = []
         self.commodities = []
         self.routes = []
@@ -74,12 +74,12 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         layout.addWidget(self.create_controls())
         layout.addWidget(self.create_results_table(), 1)
 
-        self.empty_label = QLabel("Load lists, enter a route, then search en-route opportunities.")
+        self.empty_label = QLabel("Load lists, choose route filters, then find trade routes.")
         self.empty_label.setObjectName("emptyState")
         self.empty_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.empty_label)
 
-        self.detail_label = QLabel("Select a route opportunity to see details.")
+        self.detail_label = QLabel("Select a trade route to see details.")
         self.detail_label.setObjectName("valueText")
         self.detail_label.setWordWrap(True)
         layout.addWidget(self.detail_label)
@@ -93,11 +93,10 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         layout.setContentsMargins(16, 14, 16, 14)
         layout.setSpacing(4)
 
-        title = QLabel("En Route")
+        title = QLabel("Trade Routes")
         title.setObjectName("moduleHeading")
         subtitle = QLabel(
-            "Find SC Trade Tools itinerary opportunities between a start and destination. "
-            "This workflow requires an optional local API token."
+            "SC Trade Tools-backed profitable trade routes. Requires an optional local API token."
         )
         subtitle.setObjectName("moduleSubtitle")
         subtitle.setWordWrap(True)
@@ -120,13 +119,13 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         first_row = QHBoxLayout()
         first_row.setSpacing(8)
         self.origin_combo = QComboBox()
-        configure_searchable_combo(self.origin_combo, "Start shop...")
-        self.destination_combo = QComboBox()
-        configure_searchable_combo(self.destination_combo, "Destination shop...")
+        configure_searchable_combo(self.origin_combo, "Start shop optional...")
+        self.location_filter_combo = QComboBox()
+        configure_searchable_combo(self.location_filter_combo, "Destination/location filter optional...")
         self.commodity_combo = QComboBox()
         configure_searchable_combo(self.commodity_combo, "Commodity optional...")
         first_row.addWidget(self.origin_combo, 1)
-        first_row.addWidget(self.destination_combo, 1)
+        first_row.addWidget(self.location_filter_combo, 1)
         first_row.addWidget(self.commodity_combo, 1)
         layout.addLayout(first_row)
 
@@ -139,26 +138,22 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         self.cargo_input.setPlaceholderText("Cargo SCU")
         self.cargo_input.setMaximumWidth(100)
         self.investment_input = QLineEdit("100000")
-        self.investment_input.setPlaceholderText("Investment aUEC")
-        self.investment_input.setMaximumWidth(140)
-        self.detour_input = QLineEdit("25")
-        self.detour_input.setPlaceholderText("Detour %")
-        self.detour_input.setMaximumWidth(100)
-        self.load_locations_button = QPushButton("Load Lists")
-        self.find_routes_button = QPushButton("Find En Route")
+        self.investment_input.setPlaceholderText("Max investment aUEC")
+        self.investment_input.setMaximumWidth(160)
+        self.load_lists_button = QPushButton("Load Lists")
+        self.search_button = QPushButton("Find Routes")
         self.open_source_button = QPushButton("Open Source")
         second_row.addWidget(self.ship_combo)
         second_row.addWidget(self.cargo_input)
         second_row.addWidget(self.investment_input)
-        second_row.addWidget(self.detour_input)
-        second_row.addWidget(self.load_locations_button)
-        second_row.addWidget(self.find_routes_button)
+        second_row.addWidget(self.load_lists_button)
+        second_row.addWidget(self.search_button)
         second_row.addWidget(self.open_source_button)
         second_row.addStretch(1)
         layout.addLayout(second_row)
 
         self.status_label = QLabel(
-            "Token required for itinerary results. Configure SC Trade Tools API Token in Settings."
+            "SC Trade Tools token required for Trade Routes. Configure it in Settings."
         )
         self.status_label.setObjectName("moduleSubtitle")
         self.status_label.setWordWrap(True)
@@ -168,14 +163,18 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         return card
 
     def create_results_table(self):
-        self.routes_table = QTableWidget(0, 6)
+        self.routes_table = QTableWidget(0, 10)
         self.routes_table.setHorizontalHeaderLabels([
             "Commodity",
-            "Origin",
-            "Destination",
-            "Profit",
-            "Profit / Min",
-            "Time",
+            "Buy Location",
+            "Buy Price",
+            "Sell Location",
+            "Sell Price",
+            "Profit / SCU",
+            "Cargo SCU",
+            "Total Profit",
+            "Buy Cost",
+            "Source / Updated",
         ])
         self.routes_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.routes_table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -186,8 +185,8 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         return self.routes_table
 
     def connect_signals(self):
-        self.load_locations_button.clicked.connect(self.load_locations)
-        self.find_routes_button.clicked.connect(self.find_routes)
+        self.load_lists_button.clicked.connect(self.load_reference_data)
+        self.search_button.clicked.connect(self.find_routes)
         self.open_source_button.clicked.connect(self.open_source)
         self.ship_combo.currentTextChanged.connect(self.on_ship_changed)
         self.routes_table.itemSelectionChanged.connect(self.update_details)
@@ -195,100 +194,89 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
     def on_ship_changed(self):
         fill_cargo_from_ship(self.ship_combo, self.cargo_input, self.status_label)
 
-    def load_locations(self):
-        if self.location_refresh_running:
+    def load_reference_data(self):
+        if self.reference_refresh_running:
             return
 
-        self.location_refresh_running = True
-        self.load_locations_button.setEnabled(False)
-        self.load_locations_button.setText("Loading...")
-        self.status_label.setText("Loading token-free shop and commodity lists...")
+        self.reference_refresh_running = True
+        self.load_lists_button.setEnabled(False)
+        self.load_lists_button.setText("Loading...")
+        self.status_label.setText("Loading SC Trade Tools shops, locations and commodities...")
 
         self.start_background_task(
-            lambda: (fetch_commodity_shops(), fetch_commodity_items()),
-            self.on_locations_loaded,
+            fetch_trade_route_reference,
+            self.on_reference_loaded,
             self.on_error,
-            self.finish_location_refresh,
+            self.finish_reference_refresh,
         )
 
-    def on_locations_loaded(self, result):
-        locations, commodities = result
-        self.locations = sorted(locations, key=lambda item: item.name.lower())
-        self.commodities = sorted(commodities, key=lambda item: item.name.lower())
-        self.populate_location_combo(self.origin_combo)
-        self.populate_location_combo(self.destination_combo)
+    def on_reference_loaded(self, result):
+        shops, locations, commodities = result
+        self.shops = sorted(shops, key=lambda shop: shop.name.lower())
+        self.locations = sorted(locations, key=lambda location: location.name.lower())
+        self.commodities = sorted(commodities, key=lambda commodity: commodity.name.lower())
+        set_combo_items(self.origin_combo, (shop.name for shop in self.shops))
+        set_combo_items(self.location_filter_combo, (location.name for location in self.locations))
         set_combo_items(self.commodity_combo, (commodity.name for commodity in self.commodities))
         self.status_label.setText(
-            f"Loaded {len(self.locations)} commodity shops and {len(self.commodities)} commodities. "
-            "En Route lookup requires a configured token."
+            f"Loaded {len(self.shops)} shops, {len(self.locations)} locations and "
+            f"{len(self.commodities)} commodities. Route lookup requires a configured token."
         )
 
-    def populate_location_combo(self, combo):
-        set_combo_items(combo, (location.name for location in self.locations))
-
-    def finish_location_refresh(self):
-        self.location_refresh_running = False
-        self.load_locations_button.setEnabled(True)
-        self.load_locations_button.setText("Load Lists")
+    def finish_reference_refresh(self):
+        self.reference_refresh_running = False
+        self.load_lists_button.setEnabled(True)
+        self.load_lists_button.setText("Load Lists")
 
     def find_routes(self):
-        if self.route_refresh_running:
+        if self.routes_refresh_running:
             return
 
         token = get_app_setting(SC_TRADE_TOOLS_TOKEN_SETTING, "")
         if not token.strip():
-            self.status_label.setText(
-                "SC Trade Tools token is not configured. Add it in Settings to use En Route."
-            )
+            self.status_label.setText("SC Trade Tools token required for Trade Routes.")
             self.routes = []
             self.populate_routes_table()
             return
 
-        origin = selected_combo_text(self.origin_combo, allow_free_text=not self.locations)
-        destination = selected_combo_text(self.destination_combo, allow_free_text=not self.locations)
-        if not origin or not destination:
-            self.status_label.setText("Choose start and destination shops from the searchable dropdowns.")
-            return
-        commodity = selected_combo_text(self.commodity_combo, allow_free_text=False)
         ship = selected_combo_text(self.ship_combo, allow_free_text=False)
         if not ship:
-            self.status_label.setText("Choose a ship from the searchable dropdown before searching.")
+            self.status_label.setText("Choose a ship from the searchable dropdown before finding routes.")
             return
 
-        self.route_refresh_running = True
-        self.find_routes_button.setEnabled(False)
-        self.find_routes_button.setText("Searching...")
-        self.status_label.setText("Searching SC Trade Tools itinerary opportunities...")
+        self.routes_refresh_running = True
+        self.search_button.setEnabled(False)
+        self.search_button.setText("Searching...")
+        self.status_label.setText("Searching SC Trade Tools trade routes...")
 
         self.start_background_task(
-            lambda: fetch_en_route(
+            lambda: fetch_trade_routes(
                 token=token,
-                origin=origin,
-                destination=destination,
-                commodity_name=commodity,
+                origin=selected_combo_text(self.origin_combo, allow_free_text=False),
+                location_filter=selected_combo_text(self.location_filter_combo, allow_free_text=False),
+                commodity_name=selected_combo_text(self.commodity_combo, allow_free_text=False),
                 ship=ship,
-                max_volume=self.parse_number(self.cargo_input.text(), default=1),
+                cargo_scu=self.parse_number(self.cargo_input.text(), default=1),
                 investment=self.parse_number(self.investment_input.text(), default=100000),
-                allowable_detour=self.parse_number(self.detour_input.text(), default=25),
             ),
             self.on_routes_loaded,
             self.on_error,
-            self.finish_route_refresh,
+            self.finish_routes_refresh,
         )
 
     def on_routes_loaded(self, routes):
         self.routes = sorted(
             routes,
-            key=lambda route: route.profit if route.profit is not None else -1,
+            key=lambda route: route.total_profit if route.total_profit is not None else -1,
             reverse=True,
         )
-        self.status_label.setText(f"Loaded {len(self.routes)} en-route opportunities from SC Trade Tools.")
+        self.status_label.setText(f"Loaded {len(self.routes)} trade routes from SC Trade Tools.")
         self.populate_routes_table()
 
-    def finish_route_refresh(self):
-        self.route_refresh_running = False
-        self.find_routes_button.setEnabled(True)
-        self.find_routes_button.setText("Find En Route")
+    def finish_routes_refresh(self):
+        self.routes_refresh_running = False
+        self.search_button.setEnabled(True)
+        self.search_button.setText("Find Routes")
 
     def on_error(self, exc):
         self.status_label.setText(f"SC Trade Tools request failed: {exc}")
@@ -301,25 +289,33 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         for row_index, route in enumerate(self.routes):
             values = [
                 route.commodity,
-                route.origin,
-                route.destination,
-                self.format_auec(route.profit),
-                self.format_auec(route.profit_per_minute),
-                self.format_seconds(route.time_seconds),
+                route.buy_location,
+                self.format_auec(route.buy_price),
+                route.sell_location,
+                self.format_auec(route.sell_price),
+                self.format_auec(route.profit_per_scu),
+                self.format_scu(route.cargo_scu),
+                self.format_auec(route.total_profit),
+                self.format_auec(route.buy_cost),
+                "SC Trade Tools",
             ]
             sort_values = [
                 route.commodity,
-                route.origin,
-                route.destination,
-                route.profit,
-                route.profit_per_minute,
-                route.time_seconds,
+                route.buy_location,
+                route.buy_price,
+                route.sell_location,
+                route.sell_price,
+                route.profit_per_scu,
+                route.cargo_scu,
+                route.total_profit,
+                route.buy_cost,
+                "SC Trade Tools",
             ]
             for col_index, value in enumerate(values):
                 item = SortableTableWidgetItem(str(value))
                 item.setData(SORT_ROLE, sort_values[col_index])
                 item.setData(ROW_ROLE, row_index)
-                if col_index in (3, 4, 5):
+                if col_index in (2, 4, 5, 6, 7, 8):
                     item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 self.routes_table.setItem(row_index, col_index, item)
 
@@ -332,17 +328,18 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         route = self.selected_route()
         if not route:
             self.detail_label.setText(
-                "Itinerary results require a SC Trade Tools token. Configure it in Settings, then search a route."
+                "Trade Routes requires a SC Trade Tools token. Configure it in Settings, then search routes."
             )
             return
 
         self.detail_label.setText(
             f"Commodity: {route.commodity}\n"
-            f"Origin: {route.origin}\n"
-            f"Destination: {route.destination}\n"
-            f"Profit: {self.format_auec(route.profit)}\n"
-            f"Profit / minute: {self.format_auec(route.profit_per_minute)}\n"
-            f"Estimated time: {self.format_seconds(route.time_seconds)}\n"
+            f"Buy: {route.buy_location} @ {self.format_auec(route.buy_price)} / SCU\n"
+            f"Sell: {route.sell_location} @ {self.format_auec(route.sell_price)} / SCU\n"
+            f"Profit / SCU: {self.format_auec(route.profit_per_scu)}\n"
+            f"Cargo used: {self.format_scu(route.cargo_scu)}\n"
+            f"Investment / buy cost: {self.format_auec(route.buy_cost)}\n"
+            f"Estimated total profit: {self.format_auec(route.total_profit)}\n"
             "Source: SC Trade Tools"
         )
 
@@ -375,6 +372,11 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
             return "N/A"
         return f"{self.format_number(value)} aUEC"
 
+    def format_scu(self, value):
+        if value is None:
+            return "N/A"
+        return f"{self.format_number(value)} SCU"
+
     def format_number(self, value):
         if value is None:
             return "N/A"
@@ -386,18 +388,5 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
             return f"{int(number):,}"
         return f"{number:,.2f}".rstrip("0").rstrip(".")
 
-    def format_seconds(self, value):
-        if value is None:
-            return "N/A"
-        total = int(value)
-        hours = total // 3600
-        minutes = (total % 3600) // 60
-        seconds = total % 60
-        if hours:
-            return f"{hours}h {minutes}m {seconds}s"
-        if minutes:
-            return f"{minutes}m {seconds}s"
-        return f"{seconds}s"
-
     def open_source(self):
-        QDesktopServices.openUrl(QUrl(SC_TRADE_EN_ROUTE_URL))
+        QDesktopServices.openUrl(QUrl(SC_TRADE_ROUTES_URL))

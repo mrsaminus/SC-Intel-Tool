@@ -65,6 +65,14 @@ class SCTradeRoute:
     origin: str
     destination: str
     commodity: str
+    buy_location: str
+    sell_location: str
+    buy_price: float | None
+    sell_price: float | None
+    profit_per_scu: float | None
+    cargo_scu: float | None
+    buy_cost: float | None
+    total_profit: float | None
     profit: float | None
     profit_per_minute: float | None
     time_seconds: float | None
@@ -140,6 +148,11 @@ def fetch_shops_reference():
     return fetch_commodity_shops(locations), locations
 
 
+def fetch_trade_route_reference():
+    locations = fetch_locations()
+    return fetch_commodity_shops(locations), locations, fetch_commodity_items()
+
+
 def test_token_connection(token):
     token = normalize_token(token)
     if not token:
@@ -164,12 +177,38 @@ def fetch_best_buyers(token, commodity_name, quantity_scu=1):
     return [transaction_from_record(record) for record in extract_records(payload)]
 
 
+def fetch_trade_routes(
+    token,
+    origin="",
+    location_filter="",
+    commodity_name="",
+    ship="Freelancer",
+    cargo_scu=1,
+    investment=100000,
+):
+    token = require_token(token)
+    payload = post_json(
+        "/tools/trades",
+        build_trade_route_request(
+            origin=origin,
+            location_filter=location_filter,
+            commodity_name=commodity_name,
+            ship=ship,
+            cargo_scu=parse_float(cargo_scu, 1),
+            investment=parse_float(investment, 100000),
+        ),
+        token=token,
+    )
+    return [route_from_record(record) for record in extract_records(payload)]
+
+
 def fetch_en_route(
     token,
     origin,
     destination,
     commodity_name="",
     ship="Freelancer",
+    max_volume=1,
     investment=100000,
     allowable_detour=25,
 ):
@@ -186,6 +225,7 @@ def fetch_en_route(
             destination=destination,
             commodity_name=commodity_name,
             ship=ship,
+            max_volume=max_volume,
             investment=parse_float(investment, 100000),
             allowable_detour=parse_float(allowable_detour, 25),
         ),
@@ -284,7 +324,42 @@ def build_buyer_request(commodity_name, quantity_scu):
     }
 
 
-def build_itinerary_request(origin, destination, commodity_name, ship, investment, allowable_detour):
+def build_trade_route_request(origin, location_filter, commodity_name, ship, cargo_scu, investment):
+    commodity_name = (commodity_name or "").strip()
+    commodity_names = [commodity_name] if commodity_name else []
+    commodity_filter_type = "whitelist" if commodity_name else "blacklist"
+    location_filter = (location_filter or "").strip()
+    location_names = [location_filter] if location_filter else []
+    location_filter_type = "whitelist" if location_filter else "blacklist"
+    safe_cargo = parse_int(cargo_scu, default=1, minimum=1, maximum=100000000)
+    return {
+        "locationNames": location_names,
+        "locationNamesType": location_filter_type,
+        "locationTypes": [],
+        "locationTypesType": "blacklist",
+        "factionNames": [],
+        "factionsNamesType": "blacklist",
+        "minSecurityLevel": 0,
+        "supportedBoxSizeInScu": supported_box_size(safe_cargo),
+        "avoidHiddenLocations": True,
+        "commodityNames": commodity_names,
+        "commodityNamesType": commodity_filter_type,
+        "commodityTypes": [],
+        "commodityTypesType": "blacklist",
+        "maxVolume": safe_cargo,
+        "investment": parse_int(investment, default=100000, minimum=1, maximum=100000000),
+        "profitType": "pure",
+        "ship": (ship or "Freelancer").strip() or "Freelancer",
+        "maxStops": 1,
+        "allowWaitTimes": False,
+        "useAutoLoading": False,
+        "smartFilters": False,
+        "minInventorySizeInScu": 0,
+        "origin": (origin or "").strip(),
+    }
+
+
+def build_itinerary_request(origin, destination, commodity_name, ship, max_volume, investment, allowable_detour):
     commodity_name = (commodity_name or "").strip()
     commodity_names = [commodity_name] if commodity_name else []
     commodity_filter_type = "whitelist" if commodity_name else "blacklist"
@@ -305,7 +380,7 @@ def build_itinerary_request(origin, destination, commodity_name, ship, investmen
         "commodityNamesType": commodity_filter_type,
         "commodityTypes": [],
         "commodityTypesType": "blacklist",
-        "maxVolume": 1,
+        "maxVolume": parse_int(max_volume, default=1, minimum=1, maximum=100000000),
         "investment": parse_int(investment, default=100000, minimum=1, maximum=100000000),
         "profitType": "pure",
         "ship": (ship or "Freelancer").strip() or "Freelancer",
@@ -334,12 +409,40 @@ def transaction_from_record(record):
 
 
 def route_from_record(record):
+    origin_record = record.get("origin") if isinstance(record.get("origin"), dict) else {}
+    destination_record = record.get("destination") if isinstance(record.get("destination"), dict) else {}
+    buy_price = parse_optional_float(origin_record.get("price"))
+    sell_price = parse_optional_float(destination_record.get("price"))
+    cargo_scu = parse_optional_float(origin_record.get("itemQuantityInScu"))
+    if cargo_scu is None:
+        cargo_scu = parse_optional_float(destination_record.get("itemQuantityInScu"))
+
+    profit_per_scu = None
+    if buy_price is not None and sell_price is not None:
+        profit_per_scu = sell_price - buy_price
+
+    buy_cost = None
+    if buy_price is not None and cargo_scu is not None:
+        buy_cost = buy_price * cargo_scu
+
+    total_profit = parse_optional_float(record.get("profit"))
+    if total_profit is None and profit_per_scu is not None and cargo_scu is not None:
+        total_profit = profit_per_scu * cargo_scu
+
     commodity = extract_route_commodity(record)
     return SCTradeRoute(
         origin=format_transaction_location(record.get("origin")),
         destination=format_transaction_location(record.get("destination")),
         commodity=commodity,
-        profit=parse_optional_float(record.get("profit")),
+        buy_location=format_transaction_location(record.get("origin")),
+        sell_location=format_transaction_location(record.get("destination")),
+        buy_price=buy_price,
+        sell_price=sell_price,
+        profit_per_scu=profit_per_scu,
+        cargo_scu=cargo_scu,
+        buy_cost=buy_cost,
+        total_profit=total_profit,
+        profit=total_profit,
         profit_per_minute=parse_optional_float(record.get("profitPerMinute")),
         time_seconds=parse_optional_float(record.get("timeInSeconds")),
         raw=record,
@@ -408,6 +511,13 @@ def parse_int(value, default=0, minimum=None, maximum=None):
     if maximum is not None:
         number = min(number, maximum)
     return number
+
+
+def supported_box_size(cargo_scu):
+    for size in (32, 24, 16, 8, 4, 2, 1):
+        if cargo_scu >= size:
+            return size
+    return 1
 
 
 def parse_optional_float(value):

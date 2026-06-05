@@ -2,6 +2,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
+    QComboBox,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -22,6 +23,7 @@ from app.trading_data import (
 
 from ..table_utils import configure_readable_table_columns
 from ..workers import BackgroundTaskMixin
+from .ship_selection import configure_ship_combo, fill_cargo_from_ship
 
 
 SORT_ROLE = Qt.UserRole + 1
@@ -138,6 +140,10 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Filter commodity, system, location or terminal...")
 
+        self.ship_combo = QComboBox()
+        configure_ship_combo(self.ship_combo)
+        self.ship_combo.setMaximumWidth(180)
+
         self.cargo_input = QLineEdit()
         self.cargo_input.setPlaceholderText("Cargo SCU (default 1)")
         self.cargo_input.setMaximumWidth(110)
@@ -160,6 +166,7 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         self.hide_suspicious_checkbox = QCheckBox("Hide suspicious margins")
 
         controls.addWidget(self.search_input, 1)
+        controls.addWidget(self.ship_combo)
         controls.addWidget(self.cargo_input)
         controls.addWidget(self.max_investment_input)
         controls.addWidget(self.refresh_button)
@@ -186,6 +193,7 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
 
     def connect_signals(self):
         self.refresh_button.clicked.connect(self.refresh_trading_data)
+        self.ship_combo.currentTextChanged.connect(self.on_ship_changed)
         self.search_input.textChanged.connect(self.populate_trade_table)
         self.cargo_input.textChanged.connect(self.populate_trade_table)
         self.max_investment_input.textChanged.connect(self.populate_trade_table)
@@ -196,6 +204,10 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         self.only_affordable_checkbox.stateChanged.connect(self.populate_trade_table)
         self.hide_suspicious_checkbox.stateChanged.connect(self.populate_trade_table)
         self.trade_table.itemSelectionChanged.connect(self.update_trade_summary)
+
+    def on_ship_changed(self):
+        fill_cargo_from_ship(self.ship_combo, self.cargo_input, self.status_label)
+        self.populate_trade_table()
 
     def refresh_trading_data(self):
         if self.trading_refresh_running:

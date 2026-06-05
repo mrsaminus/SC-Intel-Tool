@@ -13,6 +13,9 @@
 - Added a token-free SC Trade Tools Shops browser.
 - Added token-aware SC Trade Tools Best Buyer and En Route workflow tabs.
 - Added graceful no-token states for token-gated SC Trade Tools workflows.
+- Added searchable dropdown behavior across Trading selection fields.
+- Added ship selection with local cargo-capacity autofill for Trading workflows.
+- Added SC Trade Tools-backed Trade Routes workflow with token-aware fallback.
 - Kept UEX trading behavior, filters, live refresh and SCU calculations unchanged.
 
 ### Maintenance

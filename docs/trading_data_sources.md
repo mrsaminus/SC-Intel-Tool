@@ -39,7 +39,11 @@ Current SC Intel Tool use:
   configured.
 - `En Route` uses the token-required itinerary endpoint when a local token is
   configured.
-- `Trade Routes` remains planned and is not implemented yet.
+- `Trade Routes` uses the token-required trade route endpoint when a local token
+  is configured.
+- Trading dropdowns use searchable/type-filterable selection fields.
+- Trading ship selectors use local `app/ship_metadata.py` cargo capacity data
+  where known, with manual Cargo SCU override.
 
 SC Trade Tools token handling:
 
@@ -145,8 +149,7 @@ Possible future path:
 1. Keep the current UEX MVP table as the default simple workflow.
 2. Use token-free SC Trade Tools metadata for commodities, shops and locations
    where it improves reference workflows.
-3. Keep Best Buyer and En Route as opt-in token-backed workflows.
-4. If token/licensing is acceptable, add an opt-in route optimizer using
-   `POST /api/tools/trades`.
+3. Keep Trade Routes, Best Buyer and En Route as opt-in token-backed workflows.
+4. Expand route tools gradually only after real token-backed testing.
 5. Treat crowdsourced listings as experimental until outlier handling and data
    freshness rules are clear.

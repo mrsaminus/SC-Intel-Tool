@@ -18,6 +18,7 @@ from app.sc_trade_tools_client import fetch_commodities_reference
 
 from ..table_utils import configure_readable_table_columns
 from ..workers import BackgroundTaskMixin
+from .searchable_combo import configure_searchable_combo, set_combo_items
 
 
 SORT_ROLE = Qt.UserRole + 1
@@ -110,6 +111,7 @@ class CommoditiesTab(BackgroundTaskMixin, QWidget):
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Search commodity...")
         self.type_filter = QComboBox()
+        configure_searchable_combo(self.type_filter)
         self.type_filter.addItem("All types")
         self.type_filter.setEnabled(False)
         self.type_filter.setToolTip(
@@ -231,10 +233,11 @@ class CommoditiesTab(BackgroundTaskMixin, QWidget):
 
     def populate_type_catalog(self):
         self.type_filter.blockSignals(True)
-        self.type_filter.clear()
-        self.type_filter.addItem("All types")
-        for item_type in self.commodity_types:
-            self.type_filter.addItem(item_type.display_name)
+        set_combo_items(
+            self.type_filter,
+            ["All types", *(item_type.display_name for item_type in self.commodity_types)],
+            current_text="All types",
+        )
         self.type_filter.setEnabled(False)
         self.type_filter.blockSignals(False)
 
