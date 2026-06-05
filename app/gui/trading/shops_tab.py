@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 from ..table_utils import configure_readable_table_columns
 from ..workers import BackgroundTaskMixin
 from .reference_data import get_trading_reference_service
+from .route_quality import copy_to_clipboard
 
 
 SORT_ROLE = Qt.UserRole + 1
@@ -166,6 +167,10 @@ class ShopsTab(BackgroundTaskMixin, QWidget):
         self.detail_body_label.setWordWrap(True)
         layout.addWidget(self.detail_body_label)
 
+        self.copy_details_button = QPushButton("Copy Details")
+        self.copy_details_button.setEnabled(False)
+        layout.addWidget(self.copy_details_button)
+
         layout.addStretch(1)
         card.setLayout(layout)
         return card
@@ -173,6 +178,7 @@ class ShopsTab(BackgroundTaskMixin, QWidget):
     def connect_signals(self):
         self.refresh_button.clicked.connect(self.refresh_shops)
         self.open_source_button.clicked.connect(self.open_source)
+        self.copy_details_button.clicked.connect(self.copy_details)
         self.search_input.textChanged.connect(self.populate_table)
         self.shops_table.itemSelectionChanged.connect(self.update_details)
 
@@ -245,10 +251,16 @@ class ShopsTab(BackgroundTaskMixin, QWidget):
                 self.detail_body_label.setText("No shops match the current search.")
             else:
                 self.detail_body_label.setText("Loading commodity shop names from SC Trade Tools.")
+            self.copy_details_button.setEnabled(False)
             return
 
         self.detail_title_label.setText(shop.display_name)
-        self.detail_body_label.setText(
+        self.detail_body_label.setText(self.build_details_text(shop))
+        self.copy_details_button.setEnabled(True)
+
+    def build_details_text(self, shop):
+        return (
+            f"Shop: {shop.display_name}\n"
             f"Full path: {shop.name}\n"
             f"System: {shop.system}\n"
             f"Location: {shop.location}\n"
@@ -257,6 +269,13 @@ class ShopsTab(BackgroundTaskMixin, QWidget):
             "Source: SC Trade Tools\n"
             "Note: detailed shop transaction data requires a SC Trade Tools token."
         )
+
+    def copy_details(self):
+        shop = self.selected_shop()
+        if not shop:
+            return
+        copy_to_clipboard(self.build_details_text(shop))
+        self.status_label.setText("Shop details copied to clipboard.")
 
     def selected_shop(self):
         row = self.shops_table.currentRow()

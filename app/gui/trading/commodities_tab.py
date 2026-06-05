@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 from ..table_utils import configure_readable_table_columns
 from ..workers import BackgroundTaskMixin
 from .reference_data import get_trading_reference_service
+from .route_quality import copy_to_clipboard
 from .searchable_combo import configure_searchable_combo, set_combo_items
 
 
@@ -191,6 +192,10 @@ class CommoditiesTab(BackgroundTaskMixin, QWidget):
         self.type_catalog_label.setWordWrap(True)
         layout.addWidget(self.type_catalog_label)
 
+        self.copy_details_button = QPushButton("Copy Details")
+        self.copy_details_button.setEnabled(False)
+        layout.addWidget(self.copy_details_button)
+
         layout.addStretch(1)
         card.setLayout(layout)
         return card
@@ -198,6 +203,7 @@ class CommoditiesTab(BackgroundTaskMixin, QWidget):
     def connect_signals(self):
         self.refresh_button.clicked.connect(self.refresh_commodities)
         self.open_source_button.clicked.connect(self.open_source)
+        self.copy_details_button.clicked.connect(self.copy_details)
         self.search_input.textChanged.connect(self.populate_table)
         self.commodities_table.itemSelectionChanged.connect(self.update_details)
 
@@ -290,6 +296,7 @@ class CommoditiesTab(BackgroundTaskMixin, QWidget):
                 self.detail_body_label.setText("No commodities match the current search.")
             else:
                 self.detail_body_label.setText("Loading commodity names from SC Trade Tools.")
+            self.copy_details_button.setEnabled(False)
 
     def update_details(self):
         commodity = self.selected_commodity()
@@ -297,16 +304,29 @@ class CommoditiesTab(BackgroundTaskMixin, QWidget):
             if not self.commodities:
                 self.detail_title_label.setText("No commodity selected")
                 self.detail_body_label.setText("Loading commodity names from SC Trade Tools.")
+            self.copy_details_button.setEnabled(False)
             return
 
         self.detail_title_label.setText(commodity.name)
-        self.detail_body_label.setText(
+        self.detail_body_label.setText(self.build_details_text(commodity))
+        self.copy_details_button.setEnabled(True)
+
+    def build_details_text(self, commodity):
+        return (
+            f"Commodity: {commodity.name}\n"
             "Type / category: N/A\n"
             "Flags: N/A\n"
             "Metadata: token-free endpoint exposes commodity name only.\n"
             "Source: SC Trade Tools\n"
             "Note: detailed transaction, buyer and route data require token/auth and are planned later."
         )
+
+    def copy_details(self):
+        commodity = self.selected_commodity()
+        if not commodity:
+            return
+        copy_to_clipboard(self.build_details_text(commodity))
+        self.status_label.setText("Commodity details copied to clipboard.")
 
     def selected_commodity(self):
         row = self.commodities_table.currentRow()

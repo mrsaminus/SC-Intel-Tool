@@ -4,6 +4,7 @@ from .best_buyer_tab import BestBuyerTab
 from .commodities_tab import CommoditiesTab
 from .en_route_tab import EnRouteTab
 from .reference_data import get_trading_reference_service
+from .saved_routes_tab import SavedRoutesTab
 from .sc_trade_placeholder_tab import SCTradePlaceholderTab
 from .shared import SC_TRADE_WORKFLOWS
 from .shops_tab import ShopsTab
@@ -24,6 +25,8 @@ class TradingTab(QWidget):
         self.tabs = QTabWidget()
         self.uex_trading_tab = UEXTradingTab(self.reference_service)
         self.tabs.addTab(self.uex_trading_tab, "UEX Trading")
+        self.saved_routes_tab = SavedRoutesTab()
+        self.tabs.addTab(self.saved_routes_tab, "Saved Routes")
 
         self.sc_trade_tabs = {}
         for workflow in SC_TRADE_WORKFLOWS:
@@ -48,4 +51,10 @@ class TradingTab(QWidget):
 
         layout.addWidget(self.tabs)
         self.setLayout(layout)
+        self.tabs.currentChanged.connect(self.on_tab_changed)
         self.reference_service.ensure_loaded()
+
+    def on_tab_changed(self, index):
+        widget = self.tabs.widget(index)
+        if widget is self.saved_routes_tab:
+            self.saved_routes_tab.refresh_routes()

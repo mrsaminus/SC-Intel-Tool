@@ -41,6 +41,10 @@ Current SC Intel Tool use:
   configured.
 - `Trade Routes` uses the token-required trade route endpoint when a local token
   is configured.
+- `Saved Routes` stores complete saved and recent route summaries locally in
+  SQLite.
+- `UEX Trading` presets store selected ship, Cargo SCU, investment and filter
+  settings locally.
 - Trading dropdowns use searchable/type-filterable selection fields.
 - Trading reference data auto-loads token-free commodities, shops, locations and
   ship names in the background when the Trading module opens.
@@ -60,6 +64,16 @@ SC Trade Tools token handling:
 - The token is stored locally in the SC Intel Tool AppData database.
 - No token is sent anywhere except SC Trade Tools requests that require it.
 - If no token is configured, token-gated tabs show a helpful disabled state.
+
+Local Trading storage:
+
+- Saved routes, recent routes and UEX Trading presets are local-only SQLite data.
+- Recent routes are capped to the latest 100 entries and exact duplicates are
+  collapsed to avoid spam.
+- Saved routes are only enabled when the workflow exposes complete buy/sell,
+  cargo and profit fields.
+- Best Buyer remains informational when buy-side/profit data is unavailable;
+  SC Intel Tool does not invent missing route profit.
 
 ### Token-Free Endpoints
 

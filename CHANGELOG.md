@@ -30,6 +30,12 @@
   profit, source and warning details.
 - Added Copy Route Summary actions for Trading route-style workflows.
 - Improved no-token, empty-result and request-failure states in Trading workflows.
+- Added local Saved Routes and Recent Routes storage for complete Trading routes.
+- Added a Saved Routes subtab with search, details, copy, delete saved and clear recent actions.
+- Added UEX Trading presets for ship, cargo, investment and filter settings.
+- Added Save Route actions where Trading workflows expose complete buy/sell route data.
+- Added Copy Details actions for Commodities and Shops reference subtabs.
+- Trading saved routes, recent routes and presets are local-only SQLite data.
 - Kept UEX trading behavior, filters, live refresh and SCU calculations unchanged.
 
 ### Maintenance

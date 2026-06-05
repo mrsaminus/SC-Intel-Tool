@@ -19,11 +19,22 @@ from app.sc_trade_tools_client import (
     SC_TRADE_TOOLS_TOKEN_SETTING,
     fetch_en_route,
 )
+from app.trading_storage import (
+    TradingRouteRecord,
+    add_recent_trading_route,
+    save_trading_route,
+)
 
 from ..table_utils import configure_readable_table_columns
 from ..workers import BackgroundTaskMixin
 from .reference_data import get_trading_reference_service
 from .route_quality import calculate_route_quality, copy_to_clipboard
+from .route_summary import (
+    describe_route_legs,
+    format_route_summary,
+    is_complete_route_record,
+    notes_from_flags,
+)
 from .searchable_combo import configure_searchable_combo, selected_combo_text, set_combo_items
 from .ship_selection import configure_ship_combo, fill_cargo_from_ship, selected_ship_name, update_ship_combo
 
@@ -98,7 +109,14 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
 
         self.copy_summary_button = QPushButton("Copy Route Summary")
         self.copy_summary_button.setEnabled(False)
-        layout.addWidget(self.copy_summary_button)
+        self.save_route_button = QPushButton("Save Route")
+        self.save_route_button.setEnabled(False)
+        button_row = QHBoxLayout()
+        button_row.setSpacing(8)
+        button_row.addWidget(self.copy_summary_button)
+        button_row.addWidget(self.save_route_button)
+        button_row.addStretch(1)
+        layout.addLayout(button_row)
 
         self.setLayout(layout)
 
@@ -207,6 +225,7 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         self.ship_combo.currentTextChanged.connect(self.on_ship_changed)
         self.routes_table.itemSelectionChanged.connect(self.update_details)
         self.copy_summary_button.clicked.connect(self.copy_route_summary)
+        self.save_route_button.clicked.connect(self.save_selected_route)
 
     def on_ship_changed(self):
         fill_cargo_from_ship(self.ship_combo, self.cargo_input, self.status_label)
@@ -356,12 +375,22 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
                 "Itinerary results require a SC Trade Tools token. Configure it in Settings, then search a route."
             )
             self.copy_summary_button.setEnabled(False)
+            self.save_route_button.setEnabled(False)
             return
 
-        self.detail_label.setText(self.build_route_summary(route))
+        record = self.route_record_for_route(route)
+        if is_complete_route_record(record):
+            self.detail_label.setText(format_route_summary(record))
+        else:
+            self.detail_label.setText(self.build_route_summary(route))
         self.copy_summary_button.setEnabled(True)
+        self.save_route_button.setEnabled(is_complete_route_record(record))
 
     def build_route_summary(self, route):
+        record = self.route_record_for_route(route)
+        if is_complete_route_record(record):
+            return format_route_summary(record)
+
         quality = self.route_quality(route)
         notes = list(quality.flags)
         if not notes:
@@ -379,13 +408,49 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
             f"Notes: {', '.join(notes)}"
         )
 
+    def route_record_for_route(self, route):
+        quality = self.route_quality(route)
+        return TradingRouteRecord(
+            source="SC Trade Tools",
+            commodity=route.commodity,
+            buy_location=route.buy_location,
+            sell_location=route.sell_location,
+            buy_price=route.buy_price,
+            sell_price=route.sell_price,
+            profit_per_scu=route.profit_per_scu,
+            cargo_scu=route.cargo_scu,
+            buy_cost=route.buy_cost,
+            total_profit=route.total_profit,
+            quality=quality.label,
+            notes=notes_from_flags(quality.flags, (describe_route_legs(route.raw),)),
+        )
+
     def copy_route_summary(self):
         route = self.selected_route()
         if not route:
             return
 
+        record = self.route_record_for_route(route)
         copy_to_clipboard(self.build_route_summary(route))
-        self.status_label.setText("Route summary copied to clipboard.")
+        if is_complete_route_record(record):
+            add_recent_trading_route(record)
+            self.status_label.setText("Route summary copied and added to recent routes.")
+        else:
+            self.status_label.setText("Route summary copied to clipboard. Route is incomplete, so it was not saved.")
+
+    def save_selected_route(self):
+        route = self.selected_route()
+        if not route:
+            return
+
+        record = self.route_record_for_route(route)
+        if not is_complete_route_record(record):
+            self.status_label.setText("This route is missing required buy/sell data and cannot be saved.")
+            return
+
+        save_trading_route(record)
+        add_recent_trading_route(record)
+        self.status_label.setText("Route saved locally.")
 
     def route_quality(self, route):
         return calculate_route_quality(

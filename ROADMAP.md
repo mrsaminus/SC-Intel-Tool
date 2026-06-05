@@ -59,9 +59,9 @@ Remaining optional cleanup:
 - Player Lookup can be split later if it starts slowing feature work.
 - Additional shared helpers can be extracted when duplication becomes clearer.
 
-### 1. Trading MVP
+### 1. Trading Alpha Complete
 
-Goal: build a simple commodity trading workflow first.
+Goal: keep Trading useful and stable while future route optimization remains optional.
 
 Current status:
 
@@ -88,8 +88,12 @@ Current status:
   gracefully when no token is configured.
 - Trading route results now include quality indicators, clearer summaries,
   copy-to-clipboard support and better empty/error states.
+- Saved Routes and Recent Routes are stored locally in SQLite.
+- UEX Trading presets store ship, cargo, investment and filter setups locally.
+- Complete route results can be saved; incomplete/reference-only results can be copied
+  without inventing missing profit data.
 
-Scope:
+Alpha-complete scope:
 
 - Commodity list
 - Buy location
@@ -116,7 +120,7 @@ Out of scope for the first Trading MVP:
 - Market prediction
 - OCR integration
 
-Implementation phases:
+Completed implementation phases:
 
 Phase 1:
 
@@ -133,7 +137,15 @@ Phase 2:
 Phase 3:
 
 - Route quality polish - complete
-- Saved/favorite routes later
+- Saved/recent routes - complete
+- UEX Trading presets - complete
+
+Future Trading polish:
+
+- Optional favorite route labels/groups.
+- Export/copy bundles for ops planning.
+- More token-backed route testing with real SC Trade Tools accounts.
+- Consider deeper SC Trade Tools route tools only after more user testing.
 
 Trading data source notes:
 
@@ -285,11 +297,11 @@ Needs work:
 
 ### Trading
 
-Status: early usable MVP.
+Status: alpha-complete operational workflow.
 
 Near-term goal:
 
-- Improve the small commodity route/profit workflow without jumping straight
+- Keep the small commodity route/profit workflow stable without jumping straight
   to full route optimization.
 - Keep UEX Trading as the active MVP subtab.
 - Keep SC Trade Tools subtabs as planned workflows until token/auth handling is
@@ -317,7 +329,7 @@ First implementation phases:
 - Phase 1: data loading, table layout and simple buy/sell comparison - complete.
 - Phase 2: cargo capacity, profit calculations, filters and sorting - complete.
 - Phase 3: route quality polish and SCU calculation cleanup - complete.
-- Phase 4: saved/favorite routes later.
+- Phase 4: saved/recent routes and presets - complete.
 - Route summary quality/copy polish - complete.
 
 Current subtab structure:
@@ -328,6 +340,7 @@ Current subtab structure:
 - Trade Routes - token-aware SC Trade Tools trade route workflow.
 - Best Buyer - token-aware SC Trade Tools buyer lookup workflow.
 - En Route - token-aware SC Trade Tools along-route workflow.
+- Saved Routes - local saved/recent Trading route library.
 
 Trading Data Sources:
 
@@ -342,6 +355,7 @@ Trading Data Sources:
   workflows.
 - Future path: consider SC Trade Tools as an opt-in/token-backed source for
   route optimization once the basic Trading workflow is stable.
+- Saved routes, recent routes and presets are local-only SQLite data.
 
 Out of scope for MVP:
 

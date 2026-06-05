@@ -14,6 +14,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.trading_storage import (
+    TradingPresetRecord,
+    TradingRouteRecord,
+    add_recent_trading_route,
+    delete_trading_preset,
+    get_trading_presets,
+    save_trading_preset,
+    save_trading_route,
+)
 from app.trading_data import (
     calculate_trade_estimate,
     fetch_trading_opportunities,
@@ -25,7 +34,14 @@ from ..table_utils import configure_readable_table_columns
 from ..workers import BackgroundTaskMixin
 from .reference_data import get_trading_reference_service
 from .route_quality import calculate_route_quality, copy_to_clipboard
-from .ship_selection import configure_ship_combo, fill_cargo_from_ship, update_ship_combo
+from .route_summary import format_route_summary, is_complete_route_record, notes_from_flags
+from .searchable_combo import configure_searchable_combo, set_combo_items
+from .ship_selection import (
+    configure_ship_combo,
+    fill_cargo_from_ship,
+    selected_ship_name,
+    update_ship_combo,
+)
 
 
 SORT_ROLE = Qt.UserRole + 1
@@ -59,10 +75,12 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         self.all_opportunities = []
         self.visible_opportunities = []
         self.price_row_count = 0
+        self.presets = []
 
         self.build_ui()
         self.connect_signals()
         self.connect_reference_service()
+        self.load_presets()
 
     def connect_reference_service(self):
         self.reference_service.loaded.connect(self.on_reference_loaded)
@@ -116,7 +134,14 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
 
         self.copy_summary_button = QPushButton("Copy Route Summary")
         self.copy_summary_button.setEnabled(False)
-        layout.addWidget(self.copy_summary_button)
+        self.save_route_button = QPushButton("Save Route")
+        self.save_route_button.setEnabled(False)
+        route_button_row = QHBoxLayout()
+        route_button_row.setSpacing(8)
+        route_button_row.addWidget(self.copy_summary_button)
+        route_button_row.addWidget(self.save_route_button)
+        route_button_row.addStretch(1)
+        layout.addLayout(route_button_row)
 
         self.setLayout(layout)
 
@@ -202,6 +227,24 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         filters.addStretch(1)
         layout.addLayout(filters)
 
+        presets = QHBoxLayout()
+        presets.setSpacing(8)
+        self.preset_combo = QComboBox()
+        configure_searchable_combo(self.preset_combo, "Load preset...")
+        self.preset_name_input = QLineEdit()
+        self.preset_name_input.setPlaceholderText("Preset name...")
+        self.preset_name_input.setMaximumWidth(180)
+        self.save_preset_button = QPushButton("Save Preset")
+        self.load_preset_button = QPushButton("Load Preset")
+        self.delete_preset_button = QPushButton("Delete Preset")
+        presets.addWidget(self.preset_combo, 1)
+        presets.addWidget(self.preset_name_input)
+        presets.addWidget(self.save_preset_button)
+        presets.addWidget(self.load_preset_button)
+        presets.addWidget(self.delete_preset_button)
+        presets.addStretch(1)
+        layout.addLayout(presets)
+
         self.status_label = QLabel("Trading data is loaded live from UEX on demand and is not stored locally.")
         self.status_label.setObjectName("moduleSubtitle")
         self.status_label.setWordWrap(True)
@@ -224,6 +267,10 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         self.hide_suspicious_checkbox.stateChanged.connect(self.populate_trade_table)
         self.trade_table.itemSelectionChanged.connect(self.update_trade_summary)
         self.copy_summary_button.clicked.connect(self.copy_route_summary)
+        self.save_route_button.clicked.connect(self.save_selected_route)
+        self.save_preset_button.clicked.connect(self.save_current_preset)
+        self.load_preset_button.clicked.connect(self.load_selected_preset)
+        self.delete_preset_button.clicked.connect(self.delete_selected_preset)
 
     def on_ship_changed(self):
         fill_cargo_from_ship(self.ship_combo, self.cargo_input, self.status_label)
@@ -260,6 +307,7 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         self.status_label.setText(f"Failed to load trading data: {exc}")
         self.detail_label.setText("Trading data failed to load. Try refreshing again later.")
         self.copy_summary_button.setEnabled(False)
+        self.save_route_button.setEnabled(False)
 
     def finish_trading_refresh(self):
         self.trading_refresh_running = False
@@ -354,6 +402,7 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
                 self.empty_label.setText("Refresh trading data to load UEX commodity opportunities.")
                 self.detail_label.setText("Refresh UEX Trading Data to load trade routes.")
             self.copy_summary_button.setEnabled(False)
+            self.save_route_button.setEnabled(False)
         else:
             self.update_trade_summary()
 
@@ -396,31 +445,36 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         opportunity = self.selected_opportunity()
         if not opportunity:
             self.copy_summary_button.setEnabled(False)
+            self.save_route_button.setEnabled(False)
             return
 
-        self.detail_label.setText(self.build_route_summary(opportunity))
+        record = self.route_record_for_opportunity(opportunity)
+        self.detail_label.setText(format_route_summary(record))
         self.copy_summary_button.setEnabled(True)
+        self.save_route_button.setEnabled(is_complete_route_record(record))
 
     def build_route_summary(self, opportunity):
+        return format_route_summary(self.route_record_for_opportunity(opportunity))
+
+    def route_record_for_opportunity(self, opportunity):
         cargo_scu = self.parse_number(self.cargo_input.text(), default=1)
         max_investment = self.parse_number(self.max_investment_input.text())
         estimate = calculate_trade_estimate(opportunity, cargo_scu, max_investment)
         quality = self.route_quality(opportunity, estimate)
-        notes = list(quality.flags)
-        if not notes:
-            notes.append("None")
 
-        return (
-            f"Commodity: {opportunity.commodity}\n"
-            f"Buy from: {opportunity.buy_location} @ {self.format_auec(opportunity.buy_price)} / SCU\n"
-            f"Sell to: {opportunity.sell_location} @ {self.format_auec(opportunity.sell_price)} / SCU\n"
-            f"Profit / SCU: {self.format_auec(opportunity.profit_per_scu)}\n"
-            f"Cargo used: {self.format_number(estimate.effective_cargo_scu)} SCU\n"
-            f"Buy cost: {self.format_auec(estimate.estimated_buy_cost)}\n"
-            f"Estimated total profit: {self.format_auec(estimate.estimated_total_profit)}\n"
-            f"Quality: {quality.label}\n"
-            f"Source: {opportunity.source} | {format_trade_age(opportunity.date_modified)}\n"
-            f"Notes: {', '.join(notes)}"
+        return TradingRouteRecord(
+            source=opportunity.source,
+            commodity=opportunity.commodity,
+            buy_location=opportunity.buy_location,
+            sell_location=opportunity.sell_location,
+            buy_price=opportunity.buy_price,
+            sell_price=opportunity.sell_price,
+            profit_per_scu=opportunity.profit_per_scu,
+            cargo_scu=estimate.effective_cargo_scu,
+            buy_cost=estimate.estimated_buy_cost,
+            total_profit=estimate.estimated_total_profit,
+            quality=quality.label,
+            notes=notes_from_flags(quality.flags, (f"Updated: {format_trade_age(opportunity.date_modified)}",)),
         )
 
     def copy_route_summary(self):
@@ -428,8 +482,27 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         if not opportunity:
             return
 
-        copy_to_clipboard(self.build_route_summary(opportunity))
-        self.status_label.setText("Route summary copied to clipboard.")
+        record = self.route_record_for_opportunity(opportunity)
+        copy_to_clipboard(format_route_summary(record))
+        if is_complete_route_record(record):
+            add_recent_trading_route(record)
+            self.status_label.setText("Route summary copied and added to recent routes.")
+        else:
+            self.status_label.setText("Route summary copied to clipboard.")
+
+    def save_selected_route(self):
+        opportunity = self.selected_opportunity()
+        if not opportunity:
+            return
+
+        record = self.route_record_for_opportunity(opportunity)
+        if not is_complete_route_record(record):
+            self.status_label.setText("This route is missing required buy/sell data and cannot be saved.")
+            return
+
+        save_trading_route(record)
+        add_recent_trading_route(record)
+        self.status_label.setText("Route saved locally.")
 
     def route_quality(self, opportunity, estimate):
         return calculate_route_quality(
@@ -439,6 +512,68 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
             affordable=estimate.full_cargo_affordable,
             suspicious=is_suspicious_margin(opportunity),
         )
+
+    def load_presets(self):
+        self.presets = get_trading_presets()
+        current = self.preset_combo.currentText().strip() if hasattr(self, "preset_combo") else ""
+        set_combo_items(self.preset_combo, (preset.name for preset in self.presets), current_text=current)
+
+    def save_current_preset(self):
+        name = self.preset_name_input.text().strip() or self.preset_combo.currentText().strip()
+        if not name:
+            self.status_label.setText("Enter a preset name before saving.")
+            return
+
+        save_trading_preset(TradingPresetRecord(
+            name=name,
+            selected_ship=selected_ship_name(self.ship_combo),
+            cargo_scu=self.cargo_input.text().strip(),
+            max_investment=self.max_investment_input.text().strip(),
+            min_profit_per_scu=self.min_profit_input.text().strip(),
+            min_total_profit=self.min_total_profit_input.text().strip(),
+            show_unprofitable=self.show_unprofitable_checkbox.isChecked(),
+            only_full_cargo=self.only_full_cargo_checkbox.isChecked(),
+            only_affordable=self.only_affordable_checkbox.isChecked(),
+            hide_suspicious_margins=self.hide_suspicious_checkbox.isChecked(),
+        ))
+        self.load_presets()
+        self.preset_combo.setCurrentText(name)
+        self.status_label.setText(f"Preset saved: {name}")
+
+    def load_selected_preset(self):
+        preset = self.selected_preset()
+        if not preset:
+            self.status_label.setText("Choose a preset to load.")
+            return
+
+        self.ship_combo.setCurrentText(preset.selected_ship)
+        self.cargo_input.setText(preset.cargo_scu)
+        self.max_investment_input.setText(preset.max_investment)
+        self.min_profit_input.setText(preset.min_profit_per_scu)
+        self.min_total_profit_input.setText(preset.min_total_profit)
+        self.show_unprofitable_checkbox.setChecked(preset.show_unprofitable)
+        self.only_full_cargo_checkbox.setChecked(preset.only_full_cargo)
+        self.only_affordable_checkbox.setChecked(preset.only_affordable)
+        self.hide_suspicious_checkbox.setChecked(preset.hide_suspicious_margins)
+        self.populate_trade_table()
+        self.status_label.setText(f"Preset loaded: {preset.name}")
+
+    def delete_selected_preset(self):
+        preset = self.selected_preset()
+        if not preset:
+            self.status_label.setText("Choose a preset to delete.")
+            return
+
+        delete_trading_preset(preset.name)
+        self.load_presets()
+        self.status_label.setText(f"Preset deleted: {preset.name}")
+
+    def selected_preset(self):
+        name = self.preset_combo.currentText().strip()
+        for preset in self.presets:
+            if preset.name.lower() == name.lower():
+                return preset
+        return None
 
     def selected_opportunity(self):
         row = self.trade_table.currentRow()
