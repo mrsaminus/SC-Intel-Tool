@@ -19,6 +19,7 @@ from .settings_tab import SettingsTab
 from .styles import APP_STYLE
 from .trading_tab import TradingTab
 from .wikelo_tab import WikeloItemsTab
+from .watchlists_tab import WatchlistsTab
 from .workers import BackgroundTaskMixin
 
 
@@ -47,6 +48,7 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
         self.mining_tab = MiningTab()
         self.trading_tab = TradingTab()
         self.item_finder_tab = ItemFinderTab()
+        self.watchlists_tab = WatchlistsTab()
         self.wikelo_tab = WikeloItemsTab()
         self.notes_tab = NotesTab()
         self.settings_tab = SettingsTab(
@@ -61,6 +63,7 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
         self.tabs.addTab(self.mining_tab, "Mining & Salvage")
         self.tabs.addTab(self.trading_tab, "Trading")
         self.tabs.addTab(self.item_finder_tab, "Item Finder")
+        self.tabs.addTab(self.watchlists_tab, "Watchlists")
         self.tabs.addTab(self.wikelo_tab, "Wikelo Items")
         self.tabs.addTab(self.notes_tab, "Notes")
         self.tabs.addTab(self.settings_tab, "Settings")

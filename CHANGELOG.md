@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Watchlists
+
+- Added a new local-only Watchlists main tab.
+- Added SQLite storage for watchlist entries, snapshots and unread events.
+- Added Watchlists Overview, Trading, Items & Ships and Intel subtabs.
+- Added manual refresh actions for selected/all active watches.
+- Added copy summary, mark events read, enable/disable and delete watch actions.
+- Added UEX Trading integration for watching selected commodities and complete routes.
+- Added Saved Routes integration for adding saved/recent routes to Watchlists.
+- Added Item Finder integration for adding selected items and ships to Watchlists.
+- Item/Ship watches store current known metadata locally; live refresh remains planned.
+- Intel watchlists remain a planned Player Intel milestone.
+
 ### Trading
 
 - Reorganized Trading into workflow subtabs.

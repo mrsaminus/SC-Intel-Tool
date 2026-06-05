@@ -136,9 +136,11 @@ class ItemFinderTab(
         self.load_item_locations_button = QPushButton("Reload Locations")
         self.open_selected_item_button = QPushButton("Open Item")
         self.open_selected_location_button = QPushButton("Open Location")
+        self.add_item_watch_button = QPushButton("Add to Watchlist")
         button_row.addWidget(self.load_item_locations_button)
         button_row.addWidget(self.open_selected_item_button)
         button_row.addWidget(self.open_selected_location_button)
+        button_row.addWidget(self.add_item_watch_button)
         layout.addLayout(button_row)
 
         self.item_locations_table = self.create_table([
@@ -168,3 +170,4 @@ class ItemFinderTab(
         self.load_item_locations_button.clicked.connect(self.load_selected_item_locations)
         self.open_selected_item_button.clicked.connect(self.open_selected_item)
         self.open_selected_location_button.clicked.connect(self.open_selected_location)
+        self.add_item_watch_button.clicked.connect(self.add_selected_item_to_watchlist)

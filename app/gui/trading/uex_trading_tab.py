@@ -23,6 +23,7 @@ from app.trading_storage import (
     save_trading_preset,
     save_trading_route,
 )
+from app.watchlists.service import add_trading_commodity_watch, add_trading_route_watch
 from app.trading_data import (
     calculate_trade_estimate,
     fetch_trading_opportunities,
@@ -136,10 +137,16 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         self.copy_summary_button.setEnabled(False)
         self.save_route_button = QPushButton("Save Route")
         self.save_route_button.setEnabled(False)
+        self.watch_route_button = QPushButton("Add Route to Watchlist")
+        self.watch_route_button.setEnabled(False)
+        self.watch_commodity_button = QPushButton("Add Commodity to Watchlist")
+        self.watch_commodity_button.setEnabled(False)
         route_button_row = QHBoxLayout()
         route_button_row.setSpacing(8)
         route_button_row.addWidget(self.copy_summary_button)
         route_button_row.addWidget(self.save_route_button)
+        route_button_row.addWidget(self.watch_route_button)
+        route_button_row.addWidget(self.watch_commodity_button)
         route_button_row.addStretch(1)
         layout.addLayout(route_button_row)
 
@@ -268,6 +275,8 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         self.trade_table.itemSelectionChanged.connect(self.update_trade_summary)
         self.copy_summary_button.clicked.connect(self.copy_route_summary)
         self.save_route_button.clicked.connect(self.save_selected_route)
+        self.watch_route_button.clicked.connect(self.add_selected_route_to_watchlist)
+        self.watch_commodity_button.clicked.connect(self.add_selected_commodity_to_watchlist)
         self.save_preset_button.clicked.connect(self.save_current_preset)
         self.load_preset_button.clicked.connect(self.load_selected_preset)
         self.delete_preset_button.clicked.connect(self.delete_selected_preset)
@@ -446,12 +455,16 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         if not opportunity:
             self.copy_summary_button.setEnabled(False)
             self.save_route_button.setEnabled(False)
+            self.watch_route_button.setEnabled(False)
+            self.watch_commodity_button.setEnabled(False)
             return
 
         record = self.route_record_for_opportunity(opportunity)
         self.detail_label.setText(format_route_summary(record))
         self.copy_summary_button.setEnabled(True)
         self.save_route_button.setEnabled(is_complete_route_record(record))
+        self.watch_route_button.setEnabled(is_complete_route_record(record))
+        self.watch_commodity_button.setEnabled(bool(opportunity.commodity))
 
     def build_route_summary(self, opportunity):
         return format_route_summary(self.route_record_for_opportunity(opportunity))
@@ -503,6 +516,38 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         save_trading_route(record)
         add_recent_trading_route(record)
         self.status_label.setText("Route saved locally.")
+
+    def add_selected_route_to_watchlist(self):
+        opportunity = self.selected_opportunity()
+        if not opportunity:
+            return
+
+        record = self.route_record_for_opportunity(opportunity)
+        if not is_complete_route_record(record):
+            self.status_label.setText("This route is missing required buy/sell data and cannot be watched.")
+            return
+
+        add_trading_route_watch(record)
+        add_recent_trading_route(record)
+        self.status_label.setText("Route added to Watchlists.")
+
+    def add_selected_commodity_to_watchlist(self):
+        opportunity = self.selected_opportunity()
+        if not opportunity:
+            return
+
+        metadata = {
+            "commodity": opportunity.commodity,
+            "buy_location": opportunity.buy_location,
+            "sell_location": opportunity.sell_location,
+            "buy_price": opportunity.buy_price,
+            "sell_price": opportunity.sell_price,
+            "profit_per_scu": opportunity.profit_per_scu,
+            "source": opportunity.source,
+            "date_modified": opportunity.date_modified,
+        }
+        add_trading_commodity_watch(opportunity.commodity, opportunity.source, metadata)
+        self.status_label.setText(f"Commodity added to Watchlists: {opportunity.commodity}")
 
     def route_quality(self, opportunity, estimate):
         return calculate_route_quality(

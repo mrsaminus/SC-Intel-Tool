@@ -18,6 +18,7 @@ from app.trading_storage import (
     get_recent_trading_routes,
     get_saved_trading_routes,
 )
+from app.watchlists.service import add_trading_route_watch
 
 from ..table_utils import configure_readable_table_columns
 from .route_quality import copy_to_clipboard
@@ -82,10 +83,13 @@ class SavedRoutesTab(QWidget):
         button_row.setSpacing(8)
         self.copy_summary_button = QPushButton("Copy Summary")
         self.copy_summary_button.setEnabled(False)
+        self.watch_route_button = QPushButton("Add Route to Watchlist")
+        self.watch_route_button.setEnabled(False)
         self.delete_saved_button = QPushButton("Delete Saved")
         self.delete_saved_button.setEnabled(False)
         self.clear_recent_button = QPushButton("Clear Recent")
         button_row.addWidget(self.copy_summary_button)
+        button_row.addWidget(self.watch_route_button)
         button_row.addWidget(self.delete_saved_button)
         button_row.addWidget(self.clear_recent_button)
         button_row.addStretch(1)
@@ -201,6 +205,7 @@ class SavedRoutesTab(QWidget):
         self.search_input.textChanged.connect(self.populate_tables)
         self.refresh_button.clicked.connect(self.refresh_routes)
         self.copy_summary_button.clicked.connect(self.copy_summary)
+        self.watch_route_button.clicked.connect(self.add_selected_route_to_watchlist)
         self.delete_saved_button.clicked.connect(self.delete_selected_saved)
         self.clear_recent_button.clicked.connect(self.clear_recent)
         self.saved_table.itemSelectionChanged.connect(lambda: self.on_selection_changed("saved"))
@@ -284,11 +289,13 @@ class SavedRoutesTab(QWidget):
         if not route:
             self.detail_label.setText("Select a saved or recent route to see details.")
             self.copy_summary_button.setEnabled(False)
+            self.watch_route_button.setEnabled(False)
             self.delete_saved_button.setEnabled(False)
             return
 
         self.detail_label.setText(format_route_summary(route))
         self.copy_summary_button.setEnabled(True)
+        self.watch_route_button.setEnabled(True)
         self.delete_saved_button.setEnabled(self.current_source == "saved")
 
     def selected_route(self):
@@ -314,6 +321,13 @@ class SavedRoutesTab(QWidget):
             return
         copy_to_clipboard(format_route_summary(route))
         self.status_label.setText("Route summary copied to clipboard.")
+
+    def add_selected_route_to_watchlist(self):
+        route = self.selected_route()
+        if not route:
+            return
+        add_trading_route_watch(route)
+        self.status_label.setText("Route added to Watchlists.")
 
     def delete_selected_saved(self):
         route = self.selected_route_from_table(self.saved_table, self.visible_saved_routes)

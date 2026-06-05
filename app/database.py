@@ -2,6 +2,7 @@ import sqlite3
 
 from .paths import get_database_path
 from .trading_storage import ensure_trading_tables
+from .watchlists.storage import ensure_watchlist_tables
 
 DB_PATH = get_database_path()
 
@@ -45,6 +46,7 @@ def init_db():
         ensure_app_settings_table(cur)
         ensure_wikelo_checklist_table(cur)
         ensure_trading_tables(cur)
+        ensure_watchlist_tables(cur)
         cur.execute("""
         UPDATE lookup_history
         SET any_org_piracy = 1

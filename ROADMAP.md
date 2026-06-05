@@ -4,7 +4,7 @@ Last updated: 2026-06-05
 
 SC Intel Tool is a Star Citizen intelligence and utility app for player lookup,
 organization context, mining and salvage planning, item finding, Wikelo
-tracking, local notes, and future trading/watchlist/OCR workflows.
+tracking, Trading workflows, Watchlists, local notes, and future OCR workflows.
 
 The app is currently in alpha. The priority is to keep shipping practical,
 stable improvements while preserving local user data and keeping live data
@@ -34,12 +34,13 @@ requests transparent.
 - Mining & Salvage tools
 - Item Finder
 - Wikelo Items
+- Trading
+- Watchlists
 - Notes
 - Settings and update checks
 
 ### Still Early / Placeholder Areas
 
-- Watchlists
 - Dedicated Organization Intel
 - OCR / Chat Scanner
 
@@ -168,7 +169,30 @@ Trading data source notes:
 - Public RSI Ship Matrix JSON exposes `cargocapacity` and can be used for future
   local ship cargo metadata refreshes.
 
-### 2. Player Intel Expansion
+### 2. Watchlists Alpha Complete
+
+Goal: provide local-only tracking without background polling or cloud sync.
+
+Current status:
+
+- Watchlists is now a main tab.
+- Local SQLite storage tracks entries, snapshots and unread events.
+- Overview shows active watches, category counts, last checked and recent events.
+- Trading watches support UEX commodities and complete buy/sell routes.
+- UEX Trading and Saved Routes can add routes to Watchlists.
+- Item Finder can add selected items and ships to Watchlists.
+- Item/Ship watch refresh currently reports a planned local state instead of
+  inventing live availability changes.
+- Intel watchlists are intentionally placeholder-only until Player Intel expands.
+
+Future Watchlists polish:
+
+- Better item/ship live refresh once Item Finder refresh cost is designed.
+- Player/org watchlists after Player Intel expansion.
+- Optional export/copy bundles for ops planning.
+- Optional threshold controls after real user testing.
+
+### 3. Player Intel Expansion
 
 Goal: make player/org context more useful for operational decisions.
 
@@ -178,7 +202,7 @@ Goal: make player/org context more useful for operational decisions.
 - Add player/org watchlists.
 - Add custom tag management.
 
-### 3. Wikelo Polish
+### 4. Wikelo Polish
 
 Goal: make Wikelo tracking smoother without turning it into a spreadsheet clone.
 
@@ -187,7 +211,7 @@ Goal: make Wikelo tracking smoother without turning it into a spreadsheet clone.
 - Consider optional export/copy tools later.
 - Keep checklist data local-only.
 
-### 4. General Polish / Bugfixes
+### 5. General Polish / Bugfixes
 
 Goal: keep alpha builds comfortable to test.
 
@@ -274,7 +298,7 @@ Implemented:
 Needs work:
 
 - Better loading/progress feedback
-- Favorites/watchlists
+- More Watchlists polish for live item/ship refresh
 - More robust category coverage as sources change
 - Export/copy location results
 
@@ -341,6 +365,7 @@ Current subtab structure:
 - Best Buyer - token-aware SC Trade Tools buyer lookup workflow.
 - En Route - token-aware SC Trade Tools along-route workflow.
 - Saved Routes - local saved/recent Trading route library.
+- Watchlists - local manual tracking for selected Trading routes and commodities.
 
 Trading Data Sources:
 
@@ -356,6 +381,27 @@ Trading Data Sources:
 - Future path: consider SC Trade Tools as an opt-in/token-backed source for
   route optimization once the basic Trading workflow is stable.
 - Saved routes, recent routes and presets are local-only SQLite data.
+
+### Watchlists
+
+Status: alpha local tracking workflow.
+
+Implemented:
+
+- Main Watchlists tab
+- Overview with active counts, unread events and recent events
+- Trading watchlists for UEX commodities and complete routes
+- Items & Ships watchlists for Item Finder selections
+- Manual refresh selected/all
+- Enable/disable and delete watches
+- Copy watch summaries
+- Local-only SQLite entries, snapshots and events
+
+Needs work:
+
+- Item/Ship live refresh design
+- Player and organization watchlists
+- Optional thresholds/favorite grouping after user testing
 
 Out of scope for MVP:
 

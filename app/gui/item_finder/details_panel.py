@@ -1,4 +1,5 @@
 from .shared import *
+from app.watchlists.service import add_item_watch
 
 
 class ItemDetailsPanelMixin:
@@ -15,6 +16,7 @@ class ItemDetailsPanelMixin:
         has_item = item is not None
         self.load_item_locations_button.setEnabled(has_item)
         self.open_selected_item_button.setEnabled(has_item)
+        self.add_item_watch_button.setEnabled(has_item)
         self.open_selected_location_button.setEnabled(bool(self.selected_location_url()))
 
         if not item:
@@ -24,6 +26,7 @@ class ItemDetailsPanelMixin:
             self.selected_ship_metadata_label.setText("")
             self.selected_ship_metadata_label.setVisible(False)
             self.selected_item_effect_label.setText("")
+            self.add_item_watch_button.setEnabled(False)
             self.finder_locations = []
             self.item_locations_table.setRowCount(0)
             self.item_location_empty_label.setVisible(True)
@@ -107,4 +110,72 @@ class ItemDetailsPanelMixin:
         item = self.selected_item()
         if item:
             QDesktopServices.openUrl(QUrl(item.detail_url))
+
+
+    def add_selected_item_to_watchlist(self):
+        item = self.selected_item()
+        if not item:
+            return
+
+        locations = self.known_item_locations(item)
+        if locations is None:
+            locations = list(self.finder_locations)
+
+        location_summaries = [
+            {
+                "location": location.location,
+                "price": location.price,
+                "verified": location.verified,
+                "url": location.url,
+            }
+            for location in list(locations)[:25]
+        ]
+        location_count = len(locations) if locations else self.availability_counts.get(self.finder_item_key(item))
+        metadata = {
+            "category": item.category,
+            "type": item.item_type,
+            "source": item.source,
+            "availability": self.display_item_availability(item),
+            "location_count": location_count,
+            "location_summary": self.location_summary_text(locations),
+            "locations": location_summaries,
+            "effect": item.effect,
+            "detail_url": item.detail_url,
+            "category_url": item.category_url,
+        }
+        if self.is_ship_item(item):
+            metadata["lowest_price"] = self.lowest_ship_price_text(item)
+            watch_category = "ship"
+        else:
+            metadata["lowest_price"] = self.lowest_location_price_text(locations)
+            watch_category = "item"
+
+        add_item_watch(
+            item.name,
+            item.category,
+            item.source,
+            metadata,
+            watch_category=watch_category,
+        )
+        self.finder_status_label.setText(f"Added to Watchlists: {item.name}")
+
+
+    def location_summary_text(self, locations):
+        if not locations:
+            return "No locations loaded"
+        if len(locations) == 1:
+            return locations[0].location
+        return f"{len(locations)} locations"
+
+
+    def lowest_location_price_text(self, locations):
+        prices = [
+            self.price_number(location.price)
+            for location in locations
+            if hasattr(self, "price_number")
+        ]
+        prices = [price for price in prices if price is not None]
+        if prices:
+            return f"{min(prices):,} aUEC"
+        return "N/A"
 
