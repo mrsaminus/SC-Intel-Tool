@@ -78,8 +78,10 @@ Current status:
 - Ship selection can auto-fill Cargo SCU from local ship metadata where known.
 - Token-free Trading reference data now auto-loads in the background for
   commodities, shops, locations and ships.
-- Ship dropdowns are expanded with SC Trade Tools ship names; Cargo SCU remains
-  local metadata or manual entry when unknown.
+- Ship dropdowns are expanded with SC Trade Tools ship names only when they can
+  be resolved to known local Cargo SCU metadata.
+- Trading ship dropdowns are filtered to known Cargo SCU ships so cargo/profit
+  calculations never start from unknown capacity.
 - Trade Routes, Best Buyer and En Route subtabs are token-aware and degrade
   gracefully when no token is configured.
 
@@ -147,6 +149,8 @@ Trading data source notes:
   shop, location, ship and crowdsourced listing metadata.
 - Current Trading UX uses token-free SC Trade Tools reference data to avoid
   first-use manual dropdown loading.
+- Public RSI Ship Matrix JSON exposes `cargocapacity` and can be used for future
+  local ship cargo metadata refreshes.
 
 ### 2. Player Intel Expansion
 

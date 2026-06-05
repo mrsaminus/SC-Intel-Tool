@@ -20,6 +20,8 @@
   shops, locations and ships.
 - Expanded Trading ship dropdowns with token-free SC Trade Tools ship names,
   while keeping Cargo SCU autofill limited to known local ship metadata.
+- Filtered Trading ship dropdowns to only include ships with known Cargo SCU
+  capacity.
 - Kept UEX trading behavior, filters, live refresh and SCU calculations unchanged.
 
 ### Maintenance
