@@ -1,0 +1,159 @@
+from dataclasses import dataclass
+
+import requests
+
+
+SC_CRAFT_TOOLS_BASE_URL = "https://sc-craft.tools"
+SC_CRAFT_BLUEPRINTS_API = f"{SC_CRAFT_TOOLS_BASE_URL}/api/blueprints"
+SC_CRAFT_TIMEOUT_SECONDS = 20
+SC_CRAFT_PAGE_LIMIT = 100
+SC_CRAFT_MAX_PAGES = 40
+
+
+class BlueprintsError(Exception):
+    pass
+
+
+@dataclass(frozen=True)
+class BlueprintIngredient:
+    slot: str
+    name: str
+    quantity: float | None
+    unit: str
+    min_quality: float | None
+    quality_effects: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class BlueprintMission:
+    name: str
+    drop_chance: str
+
+
+@dataclass(frozen=True)
+class BlueprintRecord:
+    key: str
+    blueprint_name: str
+    crafted_item: str
+    category: str
+    craft_time_seconds: int | None
+    ingredients: tuple[BlueprintIngredient, ...]
+    missions: tuple[BlueprintMission, ...]
+    patch: str
+    source: str
+    source_url: str
+    raw: dict
+
+    @property
+    def source_summary(self):
+        if not self.missions:
+            return "Mission/source data unavailable"
+        first = self.missions[0].name
+        if len(self.missions) == 1:
+            return first
+        return f"{first} + {len(self.missions) - 1} more"
+
+    @property
+    def system(self):
+        return "N/A"
+
+
+def fetch_blueprints():
+    session = requests.Session()
+    session.headers.update({"User-Agent": "SC-Intel-Tool"})
+
+    blueprints = []
+    page = 1
+    total_pages = None
+    while page <= SC_CRAFT_MAX_PAGES:
+        payload = fetch_blueprints_page(session, page)
+        items = payload.get("items")
+        if not isinstance(items, list):
+            raise BlueprintsError("Unexpected SC Craft Tools blueprint response format.")
+
+        blueprints.extend(blueprint_from_record(record) for record in items)
+        pagination = payload.get("pagination") if isinstance(payload.get("pagination"), dict) else {}
+        total_pages = parse_int(pagination.get("pages")) or total_pages
+        if not items or (total_pages is not None and page >= total_pages):
+            break
+        page += 1
+
+    blueprints.sort(key=lambda item: (item.category.lower(), item.blueprint_name.lower()))
+    return blueprints
+
+
+def fetch_blueprints_page(session, page):
+    response = session.get(
+        SC_CRAFT_BLUEPRINTS_API,
+        params={"page": page, "limit": SC_CRAFT_PAGE_LIMIT},
+        timeout=SC_CRAFT_TIMEOUT_SECONDS,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    if not isinstance(payload, dict):
+        raise BlueprintsError("Unexpected SC Craft Tools blueprint response format.")
+    return payload
+
+
+def blueprint_from_record(record):
+    blueprint_name = str(record.get("name") or "Unknown Blueprint")
+    key = str(record.get("blueprint_id") or record.get("id") or blueprint_name)
+    category = str(record.get("category") or "N/A")
+    patch = str(record.get("version") or "N/A")
+    return BlueprintRecord(
+        key=key,
+        blueprint_name=blueprint_name,
+        crafted_item=blueprint_name,
+        category=category,
+        craft_time_seconds=parse_int(record.get("craft_time_seconds")),
+        ingredients=tuple(parse_ingredient(item) for item in record.get("ingredients") or ()),
+        missions=tuple(parse_mission(item) for item in record.get("missions") or ()),
+        patch=patch,
+        source="SC Craft Tools",
+        source_url=SC_CRAFT_TOOLS_BASE_URL,
+        raw=record if isinstance(record, dict) else {},
+    )
+
+
+def parse_ingredient(record):
+    options = record.get("options") if isinstance(record.get("options"), list) else []
+    first_option = options[0] if options and isinstance(options[0], dict) else {}
+    return BlueprintIngredient(
+        slot=str(record.get("slot") or "Material"),
+        name=str(record.get("name") or first_option.get("name") or "Unknown"),
+        quantity=parse_float(record.get("quantity_scu") or first_option.get("quantity_scu")),
+        unit=str(first_option.get("unit") or "scu"),
+        min_quality=parse_float(first_option.get("min_quality")),
+        quality_effects=tuple(parse_quality_effect(effect) for effect in record.get("quality_effects") or ()),
+    )
+
+
+def parse_quality_effect(record):
+    stat = str(record.get("stat") or "Quality")
+    effect_type = str(record.get("type") or "")
+    min_value = record.get("modifier_at_min")
+    max_value = record.get("modifier_at_max")
+    if min_value is None and max_value is None:
+        return stat
+    return f"{stat}: {min_value} -> {max_value} {effect_type}".strip()
+
+
+def parse_mission(record):
+    return BlueprintMission(
+        name=str(record.get("name") or "Unknown mission"),
+        drop_chance=str(record.get("drop_chance") or ""),
+    )
+
+
+def parse_float(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def parse_int(value):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None

@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+### BP Overview / Crafting
+
+- Added a new BP Overview main tab for Star Citizen blueprints and crafting.
+- Added a Blueprint Browser powered by the public SC Craft Tools blueprint endpoint.
+- Added blueprint search, category/source filters, owned-only and missing-only filters.
+- Added recipe/details view with ingredients, quantities, quality/effect hints,
+  mission/source context where available and source attribution.
+- Added Copy Recipe Summary for Discord-friendly crafting summaries.
+- Added local-only `owned_blueprints` SQLite storage for owned blueprint tracking.
+- Added an Owned Blueprints subtab for local progress review.
+- Added SC Craft Tools and SCMDB data-source research documentation.
+- Kept OCR/screen-reader capture, account sync and deeper inventory import out of scope for this alpha pass.
+
+### Roadmap / Public Scope
+
+- Removed Dedicated Organization Intel from the public roadmap.
+- Clarified that public Player Lookup, Search History, Watchlists and Event Center stay neutral.
+- Clarified that advanced organization intelligence or relationship mapping is out of scope for the public app.
+
 ### Stabilization
 
 - Ran a full alpha stabilization and regression pass after the Trading, Watchlists and Event Center additions.

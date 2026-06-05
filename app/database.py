@@ -1,5 +1,6 @@
 import sqlite3
 
+from .blueprints_storage import ensure_blueprint_tables
 from .event_center.storage import ensure_event_tables
 from .paths import get_database_path
 from .trading_storage import ensure_trading_tables
@@ -48,6 +49,7 @@ def init_db():
         ensure_column(cur, "lookup_history", "is_pinned", "INTEGER DEFAULT 0")
         ensure_app_settings_table(cur)
         ensure_wikelo_checklist_table(cur)
+        ensure_blueprint_tables(cur)
         ensure_trading_tables(cur)
         ensure_watchlist_tables(cur)
         ensure_event_tables(cur)

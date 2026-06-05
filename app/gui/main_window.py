@@ -9,6 +9,7 @@ from app.paths import bundled_path
 from app.update_checker import check_for_updates as fetch_update_info
 from app.version import APP_VERSION
 
+from .bp_overview_tab import BPOverviewTab
 from .event_center_tab import EventCenterTab
 from .home_tab import HomeTab
 from .item_finder_tab import ItemFinderTab
@@ -52,6 +53,7 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
         self.item_finder_tab = ItemFinderTab()
         self.watchlists_tab = WatchlistsTab()
         self.wikelo_tab = WikeloItemsTab()
+        self.bp_overview_tab = BPOverviewTab()
         self.notes_tab = NotesTab()
         self.settings_tab = SettingsTab(
             update_status_callback=self.home_tab.apply_update_check_result,
@@ -67,6 +69,7 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
         self.tabs.addTab(self.item_finder_tab, "Item Finder")
         self.tabs.addTab(self.watchlists_tab, "Watchlists")
         self.tabs.addTab(self.wikelo_tab, "Wikelo Items")
+        self.tabs.addTab(self.bp_overview_tab, "BP Overview")
         self.tabs.addTab(self.event_center_tab, "Event Center")
         self.tabs.addTab(self.notes_tab, "Notes")
         self.tabs.addTab(self.settings_tab, "Settings")

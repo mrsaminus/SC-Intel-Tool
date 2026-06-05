@@ -1,0 +1,270 @@
+from PySide6.QtCore import QTimer, QUrl
+from PySide6.QtGui import QDesktopServices
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
+
+from app.blueprints_client import SC_CRAFT_TOOLS_BASE_URL, fetch_blueprints
+from app.blueprints_storage import get_owned_blueprint_keys
+
+from ..workers import BackgroundTaskMixin
+from .blueprint_details_panel import BlueprintDetailsPanel
+from .shared import ROW_ROLE, create_card, create_header, create_table, table_item
+
+
+class BlueprintBrowserTab(BackgroundTaskMixin, QWidget):
+    def __init__(self, owned_changed_callback=None):
+        super().__init__()
+        self.blueprints = []
+        self.visible_blueprints = []
+        self.owned_keys = get_owned_blueprint_keys()
+        self.owned_changed_callback = owned_changed_callback
+        self.refresh_running = False
+        self.filter_timer = QTimer(self)
+        self.filter_timer.setSingleShot(True)
+        self.filter_timer.setInterval(160)
+        self.filter_timer.timeout.connect(self.populate_table)
+
+        self.build_ui()
+        self.connect_signals()
+        self.populate_table()
+        self.update_details()
+
+    def build_ui(self):
+        layout = QVBoxLayout()
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(12)
+        layout.addWidget(create_header(
+            "Blueprint Browser",
+            "Browse Star Citizen crafting blueprints from SC Craft Tools. Owned tracking is stored locally only.",
+        ))
+
+        content = QHBoxLayout()
+        content.setSpacing(12)
+        content.addWidget(self.create_browser_panel(), 3)
+        self.details_panel = BlueprintDetailsPanel(self.on_detail_owned_changed)
+        content.addWidget(self.details_panel, 2)
+        layout.addLayout(content, 1)
+        self.setLayout(layout)
+
+    def create_browser_panel(self):
+        card = create_card("BLUEPRINTS")
+        layout = card.layout()
+
+        controls = QHBoxLayout()
+        controls.setSpacing(8)
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Search blueprint, crafted item, material or mission...")
+        self.category_filter = QComboBox()
+        self.category_filter.addItem("All categories")
+        self.source_filter = QComboBox()
+        self.source_filter.addItems(["All sources", "SC Craft Tools"])
+        self.owned_only_checkbox = QCheckBox("Owned only")
+        self.missing_only_checkbox = QCheckBox("Missing only")
+        controls.addWidget(self.search_input, 1)
+        controls.addWidget(self.category_filter)
+        controls.addWidget(self.source_filter)
+        controls.addWidget(self.owned_only_checkbox)
+        controls.addWidget(self.missing_only_checkbox)
+        layout.addLayout(controls)
+
+        buttons = QHBoxLayout()
+        buttons.setSpacing(8)
+        self.refresh_button = QPushButton("Refresh / Load Blueprints")
+        self.open_source_button = QPushButton("Open SC Craft Tools")
+        buttons.addWidget(self.refresh_button)
+        buttons.addWidget(self.open_source_button)
+        layout.addLayout(buttons)
+
+        self.status_label = QLabel("No blueprint data loaded yet. Click Refresh / Load Blueprints.")
+        self.status_label.setObjectName("moduleSubtitle")
+        self.status_label.setWordWrap(True)
+        layout.addWidget(self.status_label)
+
+        self.blueprint_table = create_table([
+            "Blueprint",
+            "Crafted Item",
+            "Category",
+            "Source / Mission",
+            "System",
+            "Owned",
+            "Patch / Updated",
+            "Data Source",
+        ])
+        layout.addWidget(self.blueprint_table, 1)
+        self.empty_label = QLabel("No blueprint data loaded yet.")
+        self.empty_label.setObjectName("emptyState")
+        self.empty_label.setWordWrap(True)
+        layout.addWidget(self.empty_label)
+        return card
+
+    def connect_signals(self):
+        self.refresh_button.clicked.connect(self.refresh_blueprints)
+        self.open_source_button.clicked.connect(
+            lambda: QDesktopServices.openUrl(QUrl(SC_CRAFT_TOOLS_BASE_URL))
+        )
+        self.search_input.textChanged.connect(self.queue_filter)
+        self.category_filter.currentTextChanged.connect(self.populate_table)
+        self.source_filter.currentTextChanged.connect(self.populate_table)
+        self.owned_only_checkbox.stateChanged.connect(self.on_owned_filter_changed)
+        self.missing_only_checkbox.stateChanged.connect(self.on_missing_filter_changed)
+        self.blueprint_table.itemSelectionChanged.connect(self.update_details)
+
+    def refresh_blueprints(self):
+        if self.refresh_running:
+            return
+        self.refresh_running = True
+        self.refresh_button.setEnabled(False)
+        self.refresh_button.setText("Loading...")
+        self.status_label.setText("Loading blueprint data from SC Craft Tools...")
+        self.start_background_task(
+            fetch_blueprints,
+            self.on_blueprints_loaded,
+            self.on_blueprints_error,
+            self.finish_refresh,
+        )
+
+    def on_blueprints_loaded(self, blueprints):
+        self.blueprints = blueprints
+        self.owned_keys = get_owned_blueprint_keys()
+        self.populate_category_filter()
+        self.status_label.setText(
+            f"Loaded {len(self.blueprints)} blueprints from SC Craft Tools. "
+            "Owned state is local-only."
+        )
+        self.populate_table()
+
+    def on_blueprints_error(self, exc):
+        self.status_label.setText(f"Blueprint refresh failed: {exc}")
+
+    def finish_refresh(self):
+        self.refresh_running = False
+        self.refresh_button.setEnabled(True)
+        self.refresh_button.setText("Refresh / Load Blueprints")
+
+    def populate_category_filter(self):
+        current = self.category_filter.currentText()
+        categories = sorted({item.category for item in self.blueprints if item.category})
+        self.category_filter.blockSignals(True)
+        self.category_filter.clear()
+        self.category_filter.addItem("All categories")
+        self.category_filter.addItems(categories)
+        index = self.category_filter.findText(current)
+        self.category_filter.setCurrentIndex(index if index >= 0 else 0)
+        self.category_filter.blockSignals(False)
+
+    def queue_filter(self):
+        self.filter_timer.start()
+
+    def on_owned_filter_changed(self, *_):
+        if self.owned_only_checkbox.isChecked():
+            self.missing_only_checkbox.blockSignals(True)
+            self.missing_only_checkbox.setChecked(False)
+            self.missing_only_checkbox.blockSignals(False)
+        self.populate_table()
+
+    def on_missing_filter_changed(self, *_):
+        if self.missing_only_checkbox.isChecked():
+            self.owned_only_checkbox.blockSignals(True)
+            self.owned_only_checkbox.setChecked(False)
+            self.owned_only_checkbox.blockSignals(False)
+        self.populate_table()
+
+    def populate_table(self, *_):
+        query = self.search_input.text().strip().lower()
+        category = self.category_filter.currentText()
+        source = self.source_filter.currentText()
+        owned_only = self.owned_only_checkbox.isChecked()
+        missing_only = self.missing_only_checkbox.isChecked()
+
+        visible = []
+        for blueprint in self.blueprints:
+            owned = blueprint.key in self.owned_keys
+            if category != "All categories" and blueprint.category != category:
+                continue
+            if source != "All sources" and blueprint.source != source:
+                continue
+            if owned_only and not owned:
+                continue
+            if missing_only and owned:
+                continue
+            if query and query not in self.search_blob(blueprint):
+                continue
+            visible.append(blueprint)
+
+        self.visible_blueprints = visible
+        self.blueprint_table.setSortingEnabled(False)
+        self.blueprint_table.setRowCount(len(visible))
+        for row, blueprint in enumerate(visible):
+            owned = blueprint.key in self.owned_keys
+            values = [
+                blueprint.blueprint_name,
+                blueprint.crafted_item,
+                blueprint.category,
+                blueprint.source_summary,
+                blueprint.system,
+                "Yes" if owned else "No",
+                blueprint.patch,
+                blueprint.source,
+            ]
+            for column, value in enumerate(values):
+                sort_value = 1 if column == 5 and owned else 0 if column == 5 else value
+                item = table_item(value, sort_value)
+                item.setData(ROW_ROLE, row)
+                self.blueprint_table.setItem(row, column, item)
+        self.blueprint_table.setSortingEnabled(True)
+        self.empty_label.setVisible(not visible)
+        if not visible:
+            self.empty_label.setText(
+                "No blueprints match the current filters." if self.blueprints else "No blueprint data loaded yet."
+            )
+        self.update_details()
+
+    def search_blob(self, blueprint):
+        parts = [
+            blueprint.blueprint_name,
+            blueprint.crafted_item,
+            blueprint.category,
+            blueprint.patch,
+            blueprint.source,
+            " ".join(ingredient.name for ingredient in blueprint.ingredients),
+            " ".join(mission.name for mission in blueprint.missions),
+        ]
+        return " ".join(parts).lower()
+
+    def selected_blueprint(self):
+        row = self.blueprint_table.currentRow()
+        if row < 0:
+            return None
+        item = self.blueprint_table.item(row, 0)
+        if not item:
+            return None
+        source_row = item.data(ROW_ROLE)
+        if source_row is None or source_row >= len(self.visible_blueprints):
+            return None
+        return self.visible_blueprints[source_row]
+
+    def update_details(self):
+        blueprint = self.selected_blueprint()
+        owned = blueprint.key in self.owned_keys if blueprint else False
+        self.details_panel.set_blueprint(blueprint, owned)
+
+    def on_detail_owned_changed(self, blueprint, owned):
+        if owned:
+            self.owned_keys.add(blueprint.key)
+        else:
+            self.owned_keys.discard(blueprint.key)
+        self.populate_table()
+        if self.owned_changed_callback:
+            self.owned_changed_callback()
+
+    def refresh_owned_keys(self):
+        self.owned_keys = get_owned_blueprint_keys()
+        self.populate_table()

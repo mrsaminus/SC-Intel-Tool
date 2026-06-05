@@ -3,8 +3,9 @@
 Last updated: 2026-06-05
 
 SC Intel Tool is a Star Citizen intelligence and utility app for player lookup,
-organization context, mining and salvage planning, item finding, Wikelo
-tracking, Trading workflows, Watchlists, local notes, and future OCR workflows.
+organization context, mining and salvage planning, item finding, blueprint and
+crafting reference, Wikelo tracking, Trading workflows, Watchlists, local notes,
+and future OCR workflows.
 
 The app is currently in alpha. The priority is to keep shipping practical,
 stable improvements while preserving local user data and keeping live data
@@ -13,6 +14,8 @@ requests transparent.
 ## Current Alpha Status
 
 ### Completed Alpha Foundation
+
+- BP Overview alpha module for public blueprint/crafting reference
 
 - ✓ Home redesign into a command-board style landing page
 - ✓ Update system stabilization
@@ -41,12 +44,12 @@ Stabilization note:
 - Wikelo Items
 - Trading
 - Watchlists
+- BP Overview
 - Notes
 - Settings and update checks
 
 ### Still Early / Placeholder Areas
 
-- Dedicated Organization Intel
 - OCR / Chat Scanner
 
 ## Near-Term Alpha Priorities
@@ -64,6 +67,51 @@ Remaining optional cleanup:
 
 - Player Lookup can be split later if it starts slowing feature work.
 - Additional shared helpers can be extracted when duplication becomes clearer.
+
+### BP Overview / Crafting
+
+Goal: provide a public, neutral crafting workflow for blueprint reference,
+recipe/material details, mission/source context and local owned-blueprint
+tracking.
+
+Current status:
+
+- BP Overview is a main tab.
+- Blueprint Browser loads public SC Craft Tools blueprint data.
+- Recipe/details panel shows ingredients, quantities, quality/effect hints and
+  mission drops when present.
+- Owned blueprint tracking is local-only SQLite data.
+- SCMDB is documented as a secondary/source-context reference.
+- OCR/screen-reader capture is deferred and optional.
+
+Implementation phases:
+
+Phase 1:
+
+- Blueprint browser - alpha implemented
+
+Phase 2:
+
+- Recipe/material details - alpha implemented
+
+Phase 3:
+
+- Owned blueprint tracking - alpha implemented
+
+Phase 4:
+
+- Mission/source context - alpha implemented from currently exposed fields
+
+Phase 5:
+
+- Optional OCR/screen-reader capture later
+
+Needs work:
+
+- More source-context enrichment if public data exposes contractor/faction,
+  system or location cleanly.
+- Optional export/copy improvements after real use.
+- Optional SCMDB enrichment only if it can be done safely and efficiently.
 
 ### 1. Trading Alpha Complete
 
@@ -196,19 +244,21 @@ Current status:
 Future Watchlists polish:
 
 - Better item/ship live refresh once Item Finder refresh cost is designed.
-- Deeper player/org watchlists after Player Intel expansion.
+- Better public player/org change summaries after Player Intel expansion.
 - Optional export/copy bundles for ops planning.
 - Optional threshold controls after real user testing.
 - OS notifications and scheduled refresh later, after manual tracking is stable.
 
 ### 3. Player Intel Expansion
 
-Goal: make player/org context more useful for operational decisions.
+Goal: make public player/org context clearer while keeping the public app neutral.
 
 - Player/org watchlist foundation is started.
 - Event Center receives conservative player/org change events.
 - Player Lookup and Search History show simple change summaries.
-- Add deeper organization analysis.
+- Public scope stays limited to Player Lookup, Search History, Watchlists and Event Center.
+- Advanced organization intelligence and relationship mapping are out of scope for the public app.
+- If advanced org intelligence is ever needed, it belongs in a separate private/internal version.
 - Improve affiliation context and hidden/redacted messaging where RSI exposes it.
 - Improve piracy/risk presentation without inventing data.
 - Add custom tag management.
@@ -332,6 +382,26 @@ Needs work:
 - Optional export/copy checklist
 - User feedback pass after more real use
 
+### BP Overview / Crafting
+
+Implemented:
+
+- BP Overview main tab
+- Public SC Craft Tools blueprint browser
+- Search, category/source filters, owned-only and missing-only filters
+- Details panel with ingredients, quantities, quality/effect hints and mission
+  drops where available
+- Copy Recipe Summary
+- Local-only owned blueprint tracking in SQLite
+- Owned Blueprints subtab
+- Data-source research doc for SC Craft Tools and SCMDB
+
+Needs work:
+
+- Richer mission/source context if public data exposes more normalized fields.
+- Optional export/copy improvements.
+- Optional OCR/screen-reader capture later.
+
 ### Trading
 
 Status: alpha-complete operational workflow.
@@ -417,7 +487,7 @@ Implemented:
 Needs work:
 
 - Item/Ship live refresh design
-- Deeper player and organization analysis
+- Better public player/org change summaries
 - Optional thresholds/favorite grouping after user testing
 
 ### Event Center
@@ -481,13 +551,16 @@ Needs work:
 
 ## Later Backlog
 
-### Watchlists and Organization Intel
+### Watchlists and Public Intel Polish
 
-- Deeper player watchlist analysis
-- Deeper org watchlist analysis
-- Relationship/risk notes
-- Allies/enemies/neutral tracking
-- Export/import intel data
+- Better public player/org watchlist summaries
+- Clearer public change history
+- Export/import local watchlist data
+- Export/import local intel notes
+
+Advanced organization intelligence, org-network mapping and relationship mapping
+are out of scope for the public roadmap. If ever needed, they belong in a
+separate private/internal version.
 
 ### OCR / Chat Scanner
 
