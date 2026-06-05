@@ -44,11 +44,13 @@ Current SC Intel Tool use:
 - Trading dropdowns use searchable/type-filterable selection fields.
 - Trading reference data auto-loads token-free commodities, shops, locations and
   ship names in the background when the Trading module opens.
-- Trading ship selectors use local `app/ship_metadata.py` cargo capacity data
-  where known, with manual Cargo SCU override after selection. SC Trade Tools
-  ship data can expand selectable ship names only when those names resolve to
-  known local Cargo SCU metadata; its `maxBoxSizeInScu` field is not treated as
-  cargo capacity.
+- Trading ship selectors use `app/trading_ship_cargo.py` for cargo capacity.
+  The primary source is the provided `Star_Citizen_Flight_Ready_SCU_Offisiell.xlsx`
+  workbook, sheet `SCU Kapasitet`. Existing `app/ship_metadata.py` values are
+  used only as fallback, and the spreadsheet wins if values disagree.
+- SC Trade Tools ship data can expand selectable ship names only when those
+  names resolve to known Trading cargo metadata; its `maxBoxSizeInScu` field is
+  not treated as cargo capacity.
 - Trading ship selectors filter out ships without known Cargo SCU because trade
   totals depend on capacity.
 
@@ -82,8 +84,8 @@ Observed sample sizes on 2026-06-05:
 - `GET /api/locations`: 201 locations.
 - `GET /api/ships`: 85 ships.
 - SC Trade Tools ship rows exposed `name` and `maxBoxSizeInScu`; cargo capacity
-  remains local metadata. Trading dropdowns filter out ships without known
-  local Cargo SCU metadata.
+  remains local Trading metadata. Trading dropdowns filter out ships without
+  known Cargo SCU metadata.
 - `GET /api/crowdsource/commodity-listings?page=0`: paginated, 100 rows per page,
   7,715 total elements at review time.
 
@@ -97,8 +99,9 @@ The public RSI Ship Matrix exposes ship specs through:
 - `GET https://robertsspaceindustries.com/ship-matrix/index`
 
 The response includes `name`, `min_crew`, `max_crew` and `cargocapacity` fields.
-This is the preferred public reference for future local cargo metadata updates.
-For the current Trading UI, SC Intel Tool still uses local cargo metadata at
+The provided spreadsheet remains the primary Trading cargo source, but RSI Ship
+Matrix is a documented public reference for future local cargo metadata updates.
+For the current Trading UI, SC Intel Tool uses local static cargo metadata at
 runtime and filters dropdowns to ships whose Cargo SCU is known.
 
 ### Token-Required Endpoints

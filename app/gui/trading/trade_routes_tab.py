@@ -24,7 +24,7 @@ from ..table_utils import configure_readable_table_columns
 from ..workers import BackgroundTaskMixin
 from .reference_data import get_trading_reference_service
 from .searchable_combo import configure_searchable_combo, selected_combo_text, set_combo_items
-from .ship_selection import configure_ship_combo, fill_cargo_from_ship, update_ship_combo
+from .ship_selection import configure_ship_combo, fill_cargo_from_ship, selected_ship_name, update_ship_combo
 
 
 SORT_ROLE = Qt.UserRole + 1
@@ -247,7 +247,7 @@ class TradeRoutesTab(BackgroundTaskMixin, QWidget):
             self.status_label.setText("Reference data is still loading or failed to load. Refresh reference data first.")
             return
 
-        ship = selected_combo_text(self.ship_combo, allow_free_text=False)
+        ship = selected_ship_name(self.ship_combo)
         if not ship:
             self.status_label.setText("Choose a ship from the searchable dropdown before finding routes.")
             return

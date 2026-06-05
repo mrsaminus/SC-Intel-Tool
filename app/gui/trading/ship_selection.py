@@ -1,9 +1,13 @@
-from app.ship_metadata import SHIP_METADATA, ship_metadata_for
+from app.trading_ship_cargo import (
+    canonical_trading_ship_name,
+    trading_ship_cargo_scu,
+    trading_ship_names,
+)
 
 from .searchable_combo import configure_searchable_combo, set_combo_items
 
 
-SHIP_NAMES = sorted(SHIP_METADATA)
+SHIP_NAMES = trading_ship_names()
 SUPPORTED_BOX_SIZES = (32, 24, 16, 8, 4, 2, 1)
 
 
@@ -14,12 +18,7 @@ def configure_ship_combo(combo, ship_names=None):
 
 
 def known_cargo_ship_names(ship_names=None):
-    names = {name for name in SHIP_NAMES if cargo_scu_for_ship(name) is not None}
-    for ship_name in ship_names or ():
-        name = getattr(ship_name, "name", ship_name)
-        if name and cargo_scu_for_ship(name) is not None:
-            names.add(str(name))
-    return sorted(names, key=lambda value: value.lower())
+    return trading_ship_names(ship_names)
 
 
 def update_ship_combo(combo, ship_names):
@@ -27,10 +26,11 @@ def update_ship_combo(combo, ship_names):
 
 
 def cargo_scu_for_ship(ship_name):
-    metadata = ship_metadata_for(ship_name)
-    if not metadata:
-        return None
-    return metadata.cargo_scu
+    return trading_ship_cargo_scu(ship_name)
+
+
+def selected_ship_name(combo):
+    return canonical_trading_ship_name(combo.currentText().strip())
 
 
 def fill_cargo_from_ship(ship_combo, cargo_input, status_label=None):

@@ -22,6 +22,9 @@
   while keeping Cargo SCU autofill limited to known local ship metadata.
 - Filtered Trading ship dropdowns to only include ships with known Cargo SCU
   capacity.
+- Restored full Trading cargo metadata from the provided `SCU Kapasitet`
+  spreadsheet reference, with spreadsheet values taking priority over older
+  local ship metadata.
 - Kept UEX trading behavior, filters, live refresh and SCU calculations unchanged.
 
 ### Maintenance

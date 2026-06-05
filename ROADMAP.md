@@ -75,13 +75,15 @@ Current status:
 - SC Trade Tools Shops subtab now uses token-free shop/location endpoints.
 - Optional local SC Trade Tools API token support is available in Settings.
 - Trading selection fields use searchable/type-filterable dropdowns.
-- Ship selection can auto-fill Cargo SCU from local ship metadata where known.
+- Ship selection can auto-fill Cargo SCU from Trading cargo metadata where known.
 - Token-free Trading reference data now auto-loads in the background for
   commodities, shops, locations and ships.
 - Ship dropdowns are expanded with SC Trade Tools ship names only when they can
-  be resolved to known local Cargo SCU metadata.
+  be resolved to known Trading Cargo SCU metadata.
 - Trading ship dropdowns are filtered to known Cargo SCU ships so cargo/profit
   calculations never start from unknown capacity.
+- Trading Cargo SCU metadata is now based first on the provided `SCU Kapasitet`
+  spreadsheet reference, with older local metadata only as fallback.
 - Trade Routes, Best Buyer and En Route subtabs are token-aware and degrade
   gracefully when no token is configured.
 
