@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Trading
+
+- Reorganized Trading into workflow subtabs.
+- Moved the existing UEX commodity workflow into the `UEX Trading` subtab.
+- Added planned SC Trade Tools workflow tabs for Trade Routes, Best Buyer,
+  En Route, Commodities and Shops.
+- Kept UEX trading behavior, filters, live refresh and SCU calculations unchanged.
+
 ### Maintenance
 
 - Split Mining & Salvage GUI into focused modules.
