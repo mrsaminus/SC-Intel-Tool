@@ -78,7 +78,7 @@ Scope:
 - Sell location
 - Buy price
 - Sell price
-- Profit per unit
+- Profit per SCU
 - Profit per SCU
 - Total profit based on cargo capacity
 - Basic filters:
@@ -270,7 +270,7 @@ MVP inputs and outputs:
 - Commodity
 - Buy location and buy price
 - Sell location and sell price
-- Profit per unit
+- Profit per SCU
 - Profit per SCU
 - Cargo capacity
 - Total profit

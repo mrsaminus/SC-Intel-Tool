@@ -1,11 +1,10 @@
 from dataclasses import dataclass
 from datetime import datetime
-from math import floor
 
 from app.uex_client import fetch_all_commodity_prices
 
 
-UNITS_PER_SCU = 100
+SUSPICIOUS_MARGIN_RATIO = 25
 
 
 @dataclass(frozen=True)
@@ -15,22 +14,19 @@ class TradingOpportunity:
     buy_price: float
     sell_location: str
     sell_price: float
-    profit_per_unit: float
+    profit_per_scu: float
     source: str
     date_modified: int | None
 
 
 @dataclass(frozen=True)
 class TradingEstimate:
-    units_per_scu: int
     cargo_scu: float
-    units_capacity: int
-    effective_units: int
     effective_cargo_scu: float
     estimated_buy_cost: float
     estimated_total_profit: float
-    profit_per_scu: float
     investment_limited: bool
+    full_cargo_affordable: bool
 
 
 def fetch_trading_opportunities(include_unprofitable=False):
@@ -38,36 +34,38 @@ def fetch_trading_opportunities(include_unprofitable=False):
     return build_trading_opportunities(prices, include_unprofitable=include_unprofitable), len(prices)
 
 
-def calculate_trade_estimate(opportunity, cargo_scu, max_investment=None, units_per_scu=UNITS_PER_SCU):
+def calculate_trade_estimate(opportunity, cargo_scu, max_investment=None):
     safe_cargo_scu = max(0, cargo_scu or 0)
-    units_capacity = floor(safe_cargo_scu * units_per_scu)
-
-    investment_units = units_capacity
+    full_cargo_buy_cost = opportunity.buy_price * safe_cargo_scu
+    effective_cargo_scu = safe_cargo_scu
     if max_investment is not None:
         safe_investment = max(0, max_investment)
         if opportunity.buy_price > 0:
-            investment_units = floor(safe_investment / opportunity.buy_price)
+            effective_cargo_scu = min(safe_cargo_scu, safe_investment / opportunity.buy_price)
         else:
-            investment_units = 0
+            effective_cargo_scu = 0
 
-    effective_units = max(0, min(units_capacity, investment_units))
-    effective_cargo_scu = effective_units / units_per_scu if units_per_scu else 0
-    estimated_buy_cost = opportunity.buy_price * effective_units
-    estimated_total_profit = opportunity.profit_per_unit * effective_units
-    profit_per_scu = opportunity.profit_per_unit * units_per_scu
-    investment_limited = max_investment is not None and investment_units < units_capacity
+    effective_cargo_scu = max(0, effective_cargo_scu)
+    estimated_buy_cost = opportunity.buy_price * effective_cargo_scu
+    estimated_total_profit = opportunity.profit_per_scu * effective_cargo_scu
+    investment_limited = max_investment is not None and effective_cargo_scu < safe_cargo_scu
+    full_cargo_affordable = max_investment is None or full_cargo_buy_cost <= max(0, max_investment)
 
     return TradingEstimate(
-        units_per_scu=units_per_scu,
         cargo_scu=safe_cargo_scu,
-        units_capacity=units_capacity,
-        effective_units=effective_units,
         effective_cargo_scu=effective_cargo_scu,
         estimated_buy_cost=estimated_buy_cost,
         estimated_total_profit=estimated_total_profit,
-        profit_per_scu=profit_per_scu,
         investment_limited=investment_limited,
+        full_cargo_affordable=full_cargo_affordable,
     )
+
+
+def is_suspicious_margin(opportunity, margin_ratio=SUSPICIOUS_MARGIN_RATIO):
+    if opportunity.buy_price <= 0:
+        return True
+
+    return opportunity.sell_price / opportunity.buy_price > margin_ratio
 
 
 def build_trading_opportunities(prices, include_unprofitable=False):
@@ -103,14 +101,14 @@ def build_trading_opportunities(prices, include_unprofitable=False):
                     buy_price=buy_row.price_buy or 0,
                     sell_location=format_trade_location(sell_row),
                     sell_price=sell_row.price_sell or 0,
-                    profit_per_unit=profit,
+                    profit_per_scu=profit,
                     source="UEX",
                     date_modified=max_date_modified(buy_row.date_modified, sell_row.date_modified),
                 ))
 
     opportunities.sort(
         key=lambda opportunity: (
-            -opportunity.profit_per_unit,
+            -opportunity.profit_per_scu,
             opportunity.commodity.lower(),
             opportunity.buy_location.lower(),
             opportunity.sell_location.lower(),
