@@ -31,6 +31,23 @@ Sources:
 
 The OpenAPI document identifies the API as `SC Trade Tools API` version `11.3.1`.
 
+Current SC Intel Tool use:
+
+- `Commodities` uses token-free commodity item and item-type endpoints.
+- `Shops` uses token-free commodity shop and location endpoints.
+- `Best Buyer` uses the token-required buyer endpoint when a local token is
+  configured.
+- `En Route` uses the token-required itinerary endpoint when a local token is
+  configured.
+- `Trade Routes` remains planned and is not implemented yet.
+
+SC Trade Tools token handling:
+
+- The token is optional.
+- The token is stored locally in the SC Intel Tool AppData database.
+- No token is sent anywhere except SC Trade Tools requests that require it.
+- If no token is configured, token-gated tabs show a helpful disabled state.
+
 ### Token-Free Endpoints
 
 These endpoints responded without authentication during the spike:
@@ -126,9 +143,10 @@ Do not replace UEX yet.
 Possible future path:
 
 1. Keep the current UEX MVP table as the default simple workflow.
-2. Add optional SC Trade Tools metadata use for ships/locations if it improves
-   filters without requiring auth.
-3. If token/licensing is acceptable, add an opt-in route optimizer using
+2. Use token-free SC Trade Tools metadata for commodities, shops and locations
+   where it improves reference workflows.
+3. Keep Best Buyer and En Route as opt-in token-backed workflows.
+4. If token/licensing is acceptable, add an opt-in route optimizer using
    `POST /api/tools/trades`.
-4. Treat crowdsourced listings as experimental until outlier handling and data
+5. Treat crowdsourced listings as experimental until outlier handling and data
    freshness rules are clear.

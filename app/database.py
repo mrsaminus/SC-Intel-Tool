@@ -41,6 +41,7 @@ def init_db():
         ensure_column(cur, "lookup_history", "org_sid", "TEXT")
         ensure_column(cur, "lookup_history", "org_piracy", "INTEGER DEFAULT 0")
         ensure_column(cur, "lookup_history", "any_org_piracy", "INTEGER DEFAULT 0")
+        ensure_app_settings_table(cur)
         ensure_wikelo_checklist_table(cur)
         cur.execute("""
         UPDATE lookup_history
@@ -72,6 +73,41 @@ def ensure_wikelo_checklist_table(cursor):
         UNIQUE(reward_key, option_key, material_key)
     )
     """)
+
+
+def ensure_app_settings_table(cursor):
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+
+def get_app_setting(key, default=""):
+    with get_connection() as conn:
+        cur = conn.cursor()
+        ensure_app_settings_table(cur)
+        cur.execute("SELECT value FROM app_settings WHERE key = ?", (key,))
+        row = cur.fetchone()
+        if not row:
+            return default
+        return row[0]
+
+
+def set_app_setting(key, value):
+    with get_connection() as conn:
+        cur = conn.cursor()
+        ensure_app_settings_table(cur)
+        cur.execute("""
+        INSERT INTO app_settings (key, value)
+        VALUES (?, ?)
+        ON CONFLICT(key) DO UPDATE SET
+            value = excluded.value,
+            updated_at = CURRENT_TIMESTAMP
+        """, (key, value))
+        conn.commit()
 
 
 def get_wikelo_checklist_state(reward_key):

@@ -9,6 +9,10 @@
 - Added planned SC Trade Tools workflow tabs for Trade Routes, Best Buyer,
   En Route, Commodities and Shops.
 - Added a token-free SC Trade Tools Commodities browser.
+- Added optional local SC Trade Tools API token support in Settings.
+- Added a token-free SC Trade Tools Shops browser.
+- Added token-aware SC Trade Tools Best Buyer and En Route workflow tabs.
+- Added graceful no-token states for token-gated SC Trade Tools workflows.
 - Kept UEX trading behavior, filters, live refresh and SCU calculations unchanged.
 
 ### Maintenance
