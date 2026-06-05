@@ -60,7 +60,6 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
         self.startup_update_check_running = False
 
         self.tabs.addTab(self.home_tab, "Home")
-        self.tabs.addTab(self.event_center_tab, "Event Center")
         self.tabs.addTab(self.player_tab, "Player Lookup")
         self.tabs.addTab(self.history_tab, "Search History")
         self.tabs.addTab(self.mining_tab, "Mining & Salvage")
@@ -68,6 +67,7 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
         self.tabs.addTab(self.item_finder_tab, "Item Finder")
         self.tabs.addTab(self.watchlists_tab, "Watchlists")
         self.tabs.addTab(self.wikelo_tab, "Wikelo Items")
+        self.tabs.addTab(self.event_center_tab, "Event Center")
         self.tabs.addTab(self.notes_tab, "Notes")
         self.tabs.addTab(self.settings_tab, "Settings")
 

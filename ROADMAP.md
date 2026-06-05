@@ -27,6 +27,10 @@ requests transparent.
 - ✓ Worker-thread pass for slow live-data workflows
 - ✓ Release pipeline with Windows build script and GitHub pre-releases
 
+Stabilization note:
+
+- Full app smoke/regression pass completed after the Trading, Watchlists and Event Center expansion.
+
 ### Usable Areas
 
 - Home command board

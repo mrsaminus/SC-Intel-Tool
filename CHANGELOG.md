@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Stabilization
+
+- Ran a full alpha stabilization and regression pass after the Trading, Watchlists and Event Center additions.
+- Moved the Event Center main tab after Wikelo Items so it sits with the tracking/workflow tools.
+- No feature behavior changes intended in this pass.
+
 ### Event Center / Intel Tracking
 
 - Added a new Event Center main tab for persistent local app events.
