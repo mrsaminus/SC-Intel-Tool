@@ -30,6 +30,7 @@ requests transparent.
 ### Usable Areas
 
 - Home command board
+- Event Center
 - Player Lookup and Search History
 - Mining & Salvage tools
 - Item Finder
@@ -169,7 +170,7 @@ Trading data source notes:
 - Public RSI Ship Matrix JSON exposes `cargocapacity` and can be used for future
   local ship cargo metadata refreshes.
 
-### 2. Watchlists Alpha Complete
+### 2. Watchlists Alpha Expanded
 
 Goal: provide local-only tracking without background polling or cloud sync.
 
@@ -181,25 +182,31 @@ Current status:
 - Trading watches support UEX commodities and complete buy/sell routes.
 - UEX Trading and Saved Routes can add routes to Watchlists.
 - Item Finder can add selected items and ships to Watchlists.
+- Player Lookup and Search History can add player/org watches.
+- Player/org watchlists can be refreshed manually and create local events for
+  meaningful changes.
+- Event Center now collects watchlist, lookup and system events locally.
 - Item/Ship watch refresh currently reports a planned local state instead of
   inventing live availability changes.
-- Intel watchlists are intentionally placeholder-only until Player Intel expands.
 
 Future Watchlists polish:
 
 - Better item/ship live refresh once Item Finder refresh cost is designed.
-- Player/org watchlists after Player Intel expansion.
+- Deeper player/org watchlists after Player Intel expansion.
 - Optional export/copy bundles for ops planning.
 - Optional threshold controls after real user testing.
+- OS notifications and scheduled refresh later, after manual tracking is stable.
 
 ### 3. Player Intel Expansion
 
 Goal: make player/org context more useful for operational decisions.
 
+- Player/org watchlist foundation is started.
+- Event Center receives conservative player/org change events.
+- Player Lookup and Search History show simple change summaries.
 - Add deeper organization analysis.
 - Improve affiliation context and hidden/redacted messaging where RSI exposes it.
 - Improve piracy/risk presentation without inventing data.
-- Add player/org watchlists.
 - Add custom tag management.
 
 ### 4. Wikelo Polish
@@ -250,10 +257,12 @@ Implemented:
 - Local notes and tags
 - Search history with piracy summary
 - Hidden/redacted org handling
+- Player/org watchlist actions
+- Lookup change summaries
+- Search History pin/favorite flags
 
 Needs work:
 
-- Watchlists
 - Better org context
 - Better risk/intel presentation
 - Export/copy summaries
@@ -384,7 +393,7 @@ Trading Data Sources:
 
 ### Watchlists
 
-Status: alpha local tracking workflow.
+Status: expanded alpha local tracking workflow.
 
 Implemented:
 
@@ -392,6 +401,10 @@ Implemented:
 - Overview with active counts, unread events and recent events
 - Trading watchlists for UEX commodities and complete routes
 - Items & Ships watchlists for Item Finder selections
+- Player watchlists
+- Organization watchlists
+- Manual player/org refresh
+- Event Center integration
 - Manual refresh selected/all
 - Enable/disable and delete watches
 - Copy watch summaries
@@ -400,8 +413,27 @@ Implemented:
 Needs work:
 
 - Item/Ship live refresh design
-- Player and organization watchlists
+- Deeper player and organization analysis
 - Optional thresholds/favorite grouping after user testing
+
+### Event Center
+
+Implemented:
+
+- Main Event Center tab
+- Persistent local `notification_events`
+- Search, category filter, severity filter and unread-only toggle
+- Mark selected/all read
+- Clear read events
+- Copy event summaries
+- Watchlists, Player Lookup and Search History can create events
+
+Needs work:
+
+- OS notifications later
+- Scheduled refresh later
+- Export/import later
+- Discord/webhook integration later, only if intentionally added
 
 Out of scope for MVP:
 
@@ -447,8 +479,8 @@ Needs work:
 
 ### Watchlists and Organization Intel
 
-- Player watchlist
-- Org watchlist
+- Deeper player watchlist analysis
+- Deeper org watchlist analysis
 - Relationship/risk notes
 - Allies/enemies/neutral tracking
 - Export/import intel data

@@ -1,5 +1,6 @@
 import sqlite3
 
+from .event_center.storage import ensure_event_tables
 from .paths import get_database_path
 from .trading_storage import ensure_trading_tables
 from .watchlists.storage import ensure_watchlist_tables
@@ -43,10 +44,13 @@ def init_db():
         ensure_column(cur, "lookup_history", "org_sid", "TEXT")
         ensure_column(cur, "lookup_history", "org_piracy", "INTEGER DEFAULT 0")
         ensure_column(cur, "lookup_history", "any_org_piracy", "INTEGER DEFAULT 0")
+        ensure_column(cur, "lookup_history", "is_favorite", "INTEGER DEFAULT 0")
+        ensure_column(cur, "lookup_history", "is_pinned", "INTEGER DEFAULT 0")
         ensure_app_settings_table(cur)
         ensure_wikelo_checklist_table(cur)
         ensure_trading_tables(cur)
         ensure_watchlist_tables(cur)
+        ensure_event_tables(cur)
         cur.execute("""
         UPDATE lookup_history
         SET any_org_piracy = 1
@@ -266,9 +270,11 @@ def get_lookup_history(limit=200):
             org_piracy,
             any_org_piracy,
             profile_url,
+            is_favorite,
+            is_pinned,
             created_at
         FROM lookup_history
-        ORDER BY datetime(created_at) DESC, id DESC
+        ORDER BY is_pinned DESC, datetime(created_at) DESC, id DESC
         """)
 
         history = []
@@ -302,6 +308,24 @@ def clear_lookup_history():
     with get_connection() as conn:
         cur = conn.cursor()
         cur.execute("DELETE FROM lookup_history")
+        conn.commit()
+        return cur.rowcount
+
+
+def set_lookup_history_flag(handle, flag, enabled):
+    if flag not in {"is_favorite", "is_pinned"}:
+        raise ValueError("Unsupported lookup history flag.")
+
+    with get_connection() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            f"""
+            UPDATE lookup_history
+            SET {flag} = ?
+            WHERE LOWER(handle) = LOWER(?)
+            """,
+            (1 if enabled else 0, handle),
+        )
         conn.commit()
         return cur.rowcount
 

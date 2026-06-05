@@ -1,10 +1,10 @@
 # SC Intel Tool
 
-SC Intel Tool is a Star Citizen desktop utility for player intel, organization context, mining and salvage planning, item finding, Trading, Watchlists, and later OCR.
+SC Intel Tool is a Star Citizen desktop utility for player intel, organization context, local event tracking, mining and salvage planning, item finding, Trading, Watchlists, and later OCR.
 
 ## Current Status
 
-The app is in active alpha development. Home, Player Lookup, Search History, Mining & Salvage, Trading, Item Finder, Watchlists, Wikelo Items, Notes, Settings, AppData persistence, and packaged update checks are usable. Deeper Organization Intel and OCR are planned.
+The app is in active alpha development. Home, Event Center, Player Lookup, Search History, Mining & Salvage, Trading, Item Finder, Watchlists, Wikelo Items, Notes, Settings, AppData persistence, and packaged update checks are usable. Deeper Organization Intel and OCR are planned.
 
 ## Install And Run
 
@@ -39,17 +39,17 @@ executable. When the installer reports success, start `SC-Intel-Tool.exe`
 manually. Source/developer installs should update with git manually using
 `git pull`.
 
-User data is stored outside the install folder by default, so updates should preserve notes, lookup history, Wikelo checklist state, Trading presets/routes, Watchlists, settings, and future local data.
+User data is stored outside the install folder by default, so updates should preserve notes, lookup history, Event Center history, Wikelo checklist state, Trading presets/routes, Watchlists, settings, and future local data.
 
 ## Privacy
 
-SC Intel Tool has no telemetry, analytics, tracking, or user reporting. Player notes, lookup history, settings, and local database data are not sent to the developer.
+SC Intel Tool has no telemetry, analytics, tracking, or user reporting. Player notes, lookup history, Event Center events, watchlists, settings, and local database data are not sent to the developer.
 
-The app only makes outbound requests to public Star Citizen-related data sources needed for its features: RSI, UEX, Cornerstone, SC Focus, the public Wikelo Google Sheet, and GitHub Releases for update checking. All user data remains local unless the user explicitly exports it.
+The app only makes outbound requests to public Star Citizen-related data sources needed for its features: RSI, UEX, Cornerstone, SC Focus, SC Trade Tools, the public Wikelo Google Sheet, and GitHub Releases for update checking. All user data remains local unless the user explicitly exports it.
 
 ## User Data
 
-SC Intel Tool stores local user data outside the app install folder by default so updates do not remove notes, lookup history, Wikelo checklist state, Trading presets/routes, Watchlists, settings, or future local data.
+SC Intel Tool stores local user data outside the app install folder by default so updates do not remove notes, lookup history, Event Center events, Wikelo checklist state, Trading presets/routes, Watchlists, settings, or future local data.
 
 On Windows, the default user data folder is:
 

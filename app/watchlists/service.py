@@ -1,5 +1,14 @@
 import re
 
+from app.player_intel import (
+    affiliation_snapshot,
+    main_org_snapshot_from_lookup,
+    normalize_piracy_status,
+    org_change_events,
+    player_change_events,
+    player_snapshot_from_lookup,
+)
+from app.rsi_lookup import RSILookupError, fetch_org_details, lookup_player
 from app.trading_data import fetch_trading_opportunities
 
 from .storage import (
@@ -16,9 +25,12 @@ TRADING_ROUTE = "trading_route"
 TRADING_COMMODITY = "trading_commodity"
 ITEM = "item"
 SHIP = "ship"
+PLAYER = "player"
+ORG = "org"
 
 TRADING_CATEGORIES = {TRADING_ROUTE, TRADING_COMMODITY}
 ITEM_CATEGORIES = {ITEM, SHIP}
+INTEL_CATEGORIES = {PLAYER, ORG}
 
 
 def add_trading_route_watch(record):
@@ -87,6 +99,75 @@ def add_item_watch(item_name, category, source="", metadata=None, watch_category
     return get_watchlist_entry(entry_id)
 
 
+def add_player_watch(data, tag="", notes=""):
+    snapshot = player_snapshot_from_lookup(data, tag=tag, notes=notes)
+    return add_player_snapshot_watch(snapshot)
+
+
+def add_player_snapshot_watch(snapshot):
+    handle = snapshot["handle"]
+    key = normalized_key("rsi", handle)
+    entry_id, created = upsert_watchlist_entry(
+        PLAYER,
+        handle,
+        key,
+        "RSI",
+        snapshot,
+    )
+    add_watchlist_snapshot(
+        entry_id,
+        player_status(snapshot),
+        snapshot,
+        "Initial player watch snapshot from Player Lookup.",
+    )
+    add_watchlist_event(
+        entry_id,
+        "created" if created else "updated",
+        f"{'Added' if created else 'Updated'} player watch: {handle}",
+    )
+    return get_watchlist_entry(entry_id)
+
+
+def add_org_watch(org, source="RSI"):
+    snapshot = dict(org or {})
+    name = snapshot.get("name") or snapshot.get("sid") or "Unknown Organization"
+    sid = snapshot.get("sid") or ""
+    key = normalized_key(source, sid or name)
+    entry_id, created = upsert_watchlist_entry(
+        ORG,
+        name,
+        key,
+        source,
+        snapshot,
+    )
+    add_watchlist_snapshot(
+        entry_id,
+        org_status(snapshot),
+        snapshot,
+        "Initial organization watch snapshot.",
+    )
+    add_watchlist_event(
+        entry_id,
+        "created" if created else "updated",
+        f"{'Added' if created else 'Updated'} organization watch: {name}",
+    )
+    return get_watchlist_entry(entry_id)
+
+
+def add_main_org_watch_from_lookup(data):
+    org = main_org_snapshot_from_lookup(data)
+    if org.get("redacted") or not org.get("sid") or org.get("sid") == "N/A":
+        raise ValueError("Main organization is hidden or unavailable and cannot be watched yet.")
+    return add_org_watch(org, "RSI")
+
+
+def add_affiliation_org_watch(org):
+    snapshot = affiliation_snapshot(org)
+    if snapshot.get("redacted") or not snapshot.get("sid") or snapshot.get("sid") == "N/A":
+        raise ValueError("Organization is hidden or unavailable and cannot be watched yet.")
+    return add_org_watch(snapshot, "RSI")
+
+
 def refresh_watchlist_entries(entries):
     entries = list(entries or [])
     if not entries:
@@ -96,12 +177,19 @@ def refresh_watchlist_entries(entries):
     if any(entry.category in TRADING_CATEGORIES for entry in entries):
         opportunities, _price_count = fetch_trading_opportunities(include_unprofitable=True)
 
+    if any(entry.category in INTEL_CATEGORIES for entry in entries):
+        clear_rsi_caches()
+
     results = []
     for entry in entries:
         if entry.category in TRADING_CATEGORIES:
             results.append(refresh_trading_entry(entry, opportunities))
         elif entry.category in ITEM_CATEGORIES:
             results.append(refresh_local_only_entry(entry))
+        elif entry.category == PLAYER:
+            results.append(refresh_player_entry(entry))
+        elif entry.category == ORG:
+            results.append(refresh_org_entry(entry))
         else:
             results.append(refresh_planned_entry(entry))
 
@@ -199,6 +287,70 @@ def refresh_local_only_entry(entry):
     )
 
 
+def refresh_player_entry(entry):
+    handle = (entry.metadata or {}).get("handle") or entry.name
+    previous = get_latest_snapshot(entry.id)
+    try:
+        data = lookup_player(handle)
+    except RSILookupError as exc:
+        value = dict(entry.metadata or {})
+        value["last_error"] = str(exc)
+        return record_refresh_result(
+            entry,
+            "lookup_failed",
+            value,
+            f"RSI player lookup failed: {exc}",
+            previous=previous,
+        )
+
+    value = player_snapshot_from_lookup(
+        data,
+        tag=(entry.metadata or {}).get("tag", ""),
+        notes=(entry.metadata or {}).get("notes", ""),
+    )
+    status = player_status(value)
+    return record_refresh_result(
+        entry,
+        status,
+        value,
+        "RSI player watch refreshed.",
+        previous=previous,
+        forced_events=player_change_events(previous.value if previous else None, value),
+    )
+
+
+def refresh_org_entry(entry):
+    previous = get_latest_snapshot(entry.id)
+    metadata = entry.metadata or {}
+    sid = metadata.get("sid") or ""
+    if not sid or sid == "N/A" or metadata.get("redacted"):
+        value = dict(metadata)
+        return record_refresh_result(
+            entry,
+            "no_data",
+            value,
+            "Organization SID is hidden or unavailable.",
+            previous=previous,
+        )
+
+    details = fetch_org_details(sid)
+    value = dict(metadata)
+    for key in ("type", "commitment", "exclusivity", "member_count", "url", "logo_url"):
+        if details.get(key):
+            value[key] = details[key]
+    value["piracy"] = "YES" if details.get("piracy") else "NO"
+    value["redacted"] = False
+
+    return record_refresh_result(
+        entry,
+        org_status(value),
+        value,
+        "RSI organization watch refreshed.",
+        previous=previous,
+        forced_events=org_change_events(previous.value if previous else None, value),
+    )
+
+
 def refresh_planned_entry(entry):
     return record_refresh_result(
         entry,
@@ -208,9 +360,13 @@ def refresh_planned_entry(entry):
     )
 
 
-def record_refresh_result(entry, status, value, notes):
-    previous = get_latest_snapshot(entry.id)
+def record_refresh_result(entry, status, value, notes, previous=None, forced_events=None):
+    if previous is None:
+        previous = get_latest_snapshot(entry.id)
     add_watchlist_snapshot(entry.id, status, value, notes)
+    for event in forced_events or ():
+        add_watchlist_event(entry.id, event[0], event[2])
+
     event = build_refresh_event(entry, previous, status, value)
     if event:
         add_watchlist_event(entry.id, event[0], event[1])
@@ -223,13 +379,17 @@ def build_refresh_event(entry, previous, status, value):
 
     if status == "no_data" and previous_status != "no_data":
         return "no_data", f"No current data for {entry.name}."
+    if status == "lookup_failed" and previous_status != "lookup_failed":
+        return "lookup_failed", f"RSI lookup failed for {entry.name}."
+    if previous_status == "lookup_failed" and status != "lookup_failed":
+        return "lookup_recovered", f"{entry.name} returned after a lookup failure."
     if previous_status == "no_data" and status != "no_data":
         return "recovered", f"{entry.name} has current data again."
     if status == "unprofitable" and previous_status != "unprofitable":
         return "unprofitable", f"{entry.name} is currently unprofitable."
     if status == "profitable" and previous_status == "unprofitable":
         return "profitable", f"{entry.name} is profitable again."
-    if status in {"refresh_pending", "planned"} and previous_status != status:
+    if status in {"refresh_pending", "planned", "redacted"} and previous_status != status:
         return status, f"{entry.name}: {status_text(status)}."
 
     changed_keys = changed_value_keys(previous_value, value)
@@ -291,6 +451,28 @@ def copy_watchlist_summary_text(entry, latest_snapshot=None):
             f"Source: {entry.source or 'N/A'}",
         ))
 
+    if entry.category == PLAYER:
+        return "\n".join((
+            f"Player: {value.get('handle') or entry.name}",
+            f"Display: {value.get('display_name') or 'N/A'}",
+            f"Main Org: {value.get('main_org') or 'N/A'}",
+            f"Org SID: {value.get('org_sid') or 'N/A'}",
+            f"Piracy: {value.get('piracy_status') or 'Unknown'}",
+            f"Status: {status_text(latest_snapshot.status if latest_snapshot else entry.last_status)}",
+            "Source: RSI",
+        ))
+
+    if entry.category == ORG:
+        return "\n".join((
+            f"Organization: {value.get('name') or entry.name}",
+            f"SID: {value.get('sid') or 'N/A'}",
+            f"Members: {value.get('member_count') or 'N/A'}",
+            f"Type: {value.get('type') or 'N/A'}",
+            f"Piracy: {value.get('piracy') or 'Unknown'}",
+            f"Status: {status_text(latest_snapshot.status if latest_snapshot else entry.last_status)}",
+            "Source: RSI",
+        ))
+
     return "\n".join((
         f"Name: {entry.name}",
         f"Category: {display_category(entry.category)}",
@@ -335,14 +517,30 @@ def route_status(value):
     return "profitable" if profit > 0 else "unprofitable"
 
 
+def player_status(value):
+    if value.get("main_org_redacted") or value.get("affiliations_redacted") or value.get("organizations_redacted"):
+        return "redacted"
+    if normalize_piracy_status(value.get("piracy_status")) == "YES":
+        return "piracy_found"
+    return "tracked"
+
+
+def org_status(value):
+    if value.get("redacted"):
+        return "redacted"
+    if normalize_piracy_status(value.get("piracy")) == "YES":
+        return "piracy_found"
+    return "tracked"
+
+
 def display_category(category):
     return {
         TRADING_ROUTE: "Trading Route",
         TRADING_COMMODITY: "Trading Commodity",
         ITEM: "Item",
         SHIP: "Ship",
-        "player": "Player",
-        "org": "Organization",
+        PLAYER: "Player",
+        ORG: "Organization",
     }.get(category, category.replace("_", " ").title())
 
 
@@ -355,7 +553,18 @@ def status_text(status):
         "recovered": "Recovered",
         "refresh_pending": "Refresh not implemented yet",
         "planned": "Planned",
+        "lookup_failed": "Lookup failed",
+        "lookup_recovered": "Lookup recovered",
+        "redacted": "Redacted / Hidden",
+        "piracy_found": "Piracy signal found",
     }.get(status or "", status or "Not checked")
+
+
+def clear_rsi_caches():
+    if hasattr(lookup_player, "cache_clear"):
+        lookup_player.cache_clear()
+    if hasattr(fetch_org_details, "cache_clear"):
+        fetch_org_details.cache_clear()
 
 
 def normalized_key(*parts):

@@ -86,7 +86,15 @@ class WatchlistsTab(BackgroundTaskMixin, QWidget):
         self.tabs.addTab(self.items_panel, "Items & Ships")
         self.panels.append(self.items_panel)
 
-        self.tabs.addTab(self.create_intel_tab(), "Intel")
+        self.intel_panel = WatchlistPanel(
+            self,
+            ("player", "org"),
+            "Intel Watchlists",
+            "Track RSI player and organization changes manually. No scheduled polling is used.",
+            empty_text="No tracked players or organizations yet. Add them from Player Lookup or Search History.",
+        )
+        self.tabs.addTab(self.intel_panel, "Intel")
+        self.panels.append(self.intel_panel)
         layout.addWidget(self.tabs, 1)
 
         self.setLayout(layout)
@@ -172,34 +180,6 @@ class WatchlistsTab(BackgroundTaskMixin, QWidget):
         widget.setLayout(layout)
         return widget
 
-    def create_intel_tab(self):
-        widget = QWidget()
-        layout = QVBoxLayout()
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(12)
-
-        card = QFrame()
-        card.setObjectName("sectionCard")
-        card_layout = QVBoxLayout()
-        card_layout.setContentsMargins(16, 14, 16, 16)
-        card_layout.setSpacing(8)
-        title = QLabel("INTEL WATCHLISTS")
-        title.setObjectName("sectionTitle")
-        text = QLabel(
-            "Player and organization watchlists are planned for a later Player Intel milestone. "
-            "This area will track handles, orgs, affiliation changes and local intel signals without "
-            "inventing hidden data or sending anything away from your machine."
-        )
-        text.setObjectName("valueText")
-        text.setWordWrap(True)
-        card_layout.addWidget(title)
-        card_layout.addWidget(text)
-        card_layout.addStretch(1)
-        card.setLayout(card_layout)
-        layout.addWidget(card, 1)
-        widget.setLayout(layout)
-        return widget
-
     def reload_all(self):
         self.refresh_overview()
         for panel in self.panels:
@@ -274,10 +254,11 @@ class WatchlistsTab(BackgroundTaskMixin, QWidget):
 
 
 class WatchlistPanel(QWidget):
-    def __init__(self, owner, categories, title, subtitle):
+    def __init__(self, owner, categories, title, subtitle, empty_text="No watchlist entries yet."):
         super().__init__()
         self.owner = owner
         self.categories = tuple(categories)
+        self.empty_text = empty_text
         self.entries = []
         self.visible_entries = []
 
@@ -381,7 +362,7 @@ class WatchlistPanel(QWidget):
         self.table.setSortingEnabled(True)
         self.table.itemSelectionChanged.connect(self.update_details)
         configure_readable_table_columns(self.table, min_width=100, max_width=360, stretch_last=True)
-        self.empty_label = QLabel("No watchlist entries yet.")
+        self.empty_label = QLabel(self.empty_text)
         self.empty_label.setObjectName("emptyState")
         self.empty_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.table, 1)

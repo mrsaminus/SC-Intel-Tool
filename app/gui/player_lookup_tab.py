@@ -19,11 +19,20 @@ from PySide6.QtWidgets import (
 )
 
 from app.database import (
+    get_lookup_history,
     get_note,
     save_lookup,
     save_note,
 )
+from app.event_center.service import record_event
+from app.player_intel import (
+    player_change_events,
+    player_change_summary,
+    player_snapshot_from_history,
+    player_snapshot_from_lookup,
+)
 from app.rsi_lookup import RSILookupError, lookup_player
+from app.watchlists.service import add_main_org_watch_from_lookup, add_player_watch
 
 from .constants import (
     IMAGE_HEADERS,
@@ -42,6 +51,7 @@ class PlayerLookupTab(BackgroundTaskMixin, QWidget):
         self.current_profile_url = None
         self.current_organizations_url = None
         self.current_main_org_url = None
+        self.current_lookup_data = None
 
         self.player_facts = {}
         self.main_org_facts = {}
@@ -122,6 +132,11 @@ class PlayerLookupTab(BackgroundTaskMixin, QWidget):
             self.add_fact_row(facts_grid, row, label, self.player_facts, key)
 
         info_column.addLayout(facts_grid)
+        self.change_summary_label = QLabel("Change summary: No player loaded.")
+        self.change_summary_label.setObjectName("moduleSubtitle")
+        self.change_summary_label.setWordWrap(True)
+        self.change_summary_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        info_column.addWidget(self.change_summary_label)
         info_column.addStretch(1)
         layout.addLayout(info_column, 2)
 
@@ -147,13 +162,19 @@ class PlayerLookupTab(BackgroundTaskMixin, QWidget):
         self.open_profile_button = QPushButton("Open Profile")
         self.open_orgs_button = QPushButton("Open Organizations")
         self.open_main_org_button = QPushButton("Open Main Org")
+        self.recheck_button = QPushButton("Re-check")
+        self.add_player_watch_button = QPushButton("Add Player to Watchlist")
+        self.add_main_org_watch_button = QPushButton("Add Main Org to Watchlist")
 
         action_column.addWidget(tag_label)
         action_column.addWidget(self.tag_box)
         action_column.addSpacing(8)
+        action_column.addWidget(self.recheck_button)
         action_column.addWidget(self.open_profile_button)
         action_column.addWidget(self.open_orgs_button)
         action_column.addWidget(self.open_main_org_button)
+        action_column.addWidget(self.add_player_watch_button)
+        action_column.addWidget(self.add_main_org_watch_button)
         action_column.addStretch(1)
 
         layout.addLayout(action_column, 1)
@@ -273,6 +294,9 @@ class PlayerLookupTab(BackgroundTaskMixin, QWidget):
         self.open_profile_button.clicked.connect(self.open_current_profile)
         self.open_orgs_button.clicked.connect(self.open_current_organizations)
         self.open_main_org_button.clicked.connect(self.open_current_main_org)
+        self.recheck_button.clicked.connect(self.recheck_current_player)
+        self.add_player_watch_button.clicked.connect(self.add_current_player_to_watchlist)
+        self.add_main_org_watch_button.clicked.connect(self.add_current_main_org_to_watchlist)
         self.tag_box.currentTextChanged.connect(self.update_tag_badge)
 
     def add_fact_row(self, layout, row, label, registry, key):
@@ -310,8 +334,10 @@ class PlayerLookupTab(BackgroundTaskMixin, QWidget):
         )
 
     def on_player_lookup_finished(self, data):
+        previous_snapshot = self.previous_lookup_snapshot(data["handle"])
         self.display_player(data)
         self.load_saved_note(data["handle"])
+        self.update_lookup_change_summary(previous_snapshot, data)
 
         save_lookup(
             data["handle"],
@@ -327,6 +353,16 @@ class PlayerLookupTab(BackgroundTaskMixin, QWidget):
 
     def on_player_lookup_error(self, exc):
         self.set_actions_enabled(False)
+        handle = self.handle_input.text().strip()
+        if handle:
+            record_event(
+                "Errors",
+                "RSI Lookup",
+                handle,
+                "lookup_failed",
+                str(exc),
+                severity="Warning",
+            )
         if isinstance(exc, RSILookupError):
             QMessageBox.warning(self, "Lookup failed", str(exc))
         else:
@@ -338,6 +374,7 @@ class PlayerLookupTab(BackgroundTaskMixin, QWidget):
         self.search_button.setText("Lookup")
 
     def display_player(self, data):
+        self.current_lookup_data = data
         self.current_handle = data["handle"]
         self.current_profile_url = data["profile_url"]
         self.current_organizations_url = data["organizations_url"]
@@ -539,9 +576,18 @@ class PlayerLookupTab(BackgroundTaskMixin, QWidget):
 
     def set_actions_enabled(self, enabled):
         self.copy_handle_button.setEnabled(enabled)
+        self.recheck_button.setEnabled(enabled)
         self.open_profile_button.setEnabled(enabled)
         self.open_orgs_button.setEnabled(enabled)
         self.open_main_org_button.setEnabled(enabled and bool(self.current_main_org_url))
+        self.add_player_watch_button.setEnabled(enabled)
+        self.add_main_org_watch_button.setEnabled(
+            enabled
+            and bool(self.current_lookup_data)
+            and not bool(self.current_lookup_data.get("main_org_redacted"))
+            and bool(self.current_lookup_data.get("org_sid"))
+            and self.current_lookup_data.get("org_sid") != "N/A"
+        )
 
     def open_current_profile(self):
         self.open_url(self.current_profile_url, "No profile", "Lookup a player first.")
@@ -573,6 +619,62 @@ class PlayerLookupTab(BackgroundTaskMixin, QWidget):
             return
 
         QApplication.clipboard().setText(self.current_handle)
+
+    def recheck_current_player(self):
+        if not self.current_handle:
+            QMessageBox.warning(self, "No player", "Lookup a player first.")
+            return
+        if hasattr(lookup_player, "cache_clear"):
+            lookup_player.cache_clear()
+        self.handle_input.setText(self.current_handle)
+        self.search_player()
+
+    def add_current_player_to_watchlist(self):
+        if not self.current_lookup_data:
+            QMessageBox.warning(self, "No player", "Lookup a player first.")
+            return
+        add_player_watch(
+            self.current_lookup_data,
+            tag=self.tag_box.currentText(),
+            notes=self.notes_box.toPlainText(),
+        )
+        QMessageBox.information(self, "Watchlist", f"Player added to Watchlists: {self.current_handle}")
+
+    def add_current_main_org_to_watchlist(self):
+        if not self.current_lookup_data:
+            QMessageBox.warning(self, "No player", "Lookup a player first.")
+            return
+        try:
+            entry = add_main_org_watch_from_lookup(self.current_lookup_data)
+        except ValueError as exc:
+            QMessageBox.warning(self, "Organization unavailable", str(exc))
+            return
+        QMessageBox.information(self, "Watchlist", f"Organization added to Watchlists: {entry.name}")
+
+    def previous_lookup_snapshot(self, handle):
+        handle_key = handle.strip().lower()
+        for row in get_lookup_history(limit=500):
+            if row["handle"].strip().lower() == handle_key:
+                return player_snapshot_from_history(row)
+        return None
+
+    def update_lookup_change_summary(self, previous_snapshot, data):
+        current_snapshot = player_snapshot_from_lookup(data)
+        summary = player_change_summary(previous_snapshot, current_snapshot)
+        self.change_summary_label.setText(f"Change summary: {summary}")
+        for event_type, severity, message in player_change_events(previous_snapshot, current_snapshot):
+            record_event(
+                "Player",
+                "RSI Lookup",
+                data["handle"],
+                event_type,
+                message,
+                metadata={
+                    "profile_url": data.get("profile_url"),
+                    "organizations_url": data.get("organizations_url"),
+                },
+                severity=severity,
+            )
 
     def save_current_note(self):
         if not self.current_handle:

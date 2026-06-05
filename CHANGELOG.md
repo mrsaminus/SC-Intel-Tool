@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Event Center / Intel Tracking
+
+- Added a new Event Center main tab for persistent local app events.
+- Added local `notification_events` storage with categories, severity, read state and metadata.
+- Watchlist events now also appear in Event Center.
+- Added Player watchlists with manual RSI refresh and snapshot comparison.
+- Added Organization watchlists with manual RSI org-detail refresh where public SID data is available.
+- Added conservative Player/Org change events for redacted visibility changes, org changes,
+  piracy status changes, lookup failures and recovered lookups.
+- Added Player Lookup actions for quick re-check, Add Player to Watchlist and Add Main Org to Watchlist.
+- Added Player Lookup change summary against the previous stored lookup.
+- Added Search History pin/favorite flags, quick re-run lookup and watchlist actions.
+- Added Search History change summaries when a fresh lookup is loaded.
+- Event Center, Player/Org Watchlists and lookup-change tracking are local-only.
+
 ### Watchlists
 
 - Added a new local-only Watchlists main tab.
@@ -13,7 +28,7 @@
 - Added Saved Routes integration for adding saved/recent routes to Watchlists.
 - Added Item Finder integration for adding selected items and ships to Watchlists.
 - Item/Ship watches store current known metadata locally; live refresh remains planned.
-- Intel watchlists remain a planned Player Intel milestone.
+- Player and organization watchlists now support manual refresh and local event tracking.
 
 ### Trading
 

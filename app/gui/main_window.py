@@ -9,6 +9,7 @@ from app.paths import bundled_path
 from app.update_checker import check_for_updates as fetch_update_info
 from app.version import APP_VERSION
 
+from .event_center_tab import EventCenterTab
 from .home_tab import HomeTab
 from .item_finder_tab import ItemFinderTab
 from .mining_tab import MiningTab
@@ -43,6 +44,7 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
         self.tabs = QTabWidget()
 
         self.home_tab = HomeTab(self.open_tab)
+        self.event_center_tab = EventCenterTab()
         self.history_tab = SearchHistoryTab()
         self.player_tab = PlayerLookupTab(on_lookup_saved=self.history_tab.refresh_history)
         self.mining_tab = MiningTab()
@@ -58,6 +60,7 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
         self.startup_update_check_running = False
 
         self.tabs.addTab(self.home_tab, "Home")
+        self.tabs.addTab(self.event_center_tab, "Event Center")
         self.tabs.addTab(self.player_tab, "Player Lookup")
         self.tabs.addTab(self.history_tab, "Search History")
         self.tabs.addTab(self.mining_tab, "Mining & Salvage")

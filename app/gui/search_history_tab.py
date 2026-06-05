@@ -24,8 +24,18 @@ from app.database import (
     delete_lookup_history,
     get_lookup_history,
     save_lookup,
+    set_lookup_history_flag,
+)
+from app.event_center.service import record_event
+from app.player_intel import (
+    main_org_snapshot_from_lookup,
+    player_change_events,
+    player_change_summary,
+    player_snapshot_from_history,
+    player_snapshot_from_lookup,
 )
 from app.rsi_lookup import RSILookupError, lookup_player
+from app.watchlists.service import add_org_watch, add_player_snapshot_watch, add_player_watch
 
 from .constants import IMAGE_HEADERS
 from .table_utils import configure_readable_table_columns
@@ -41,6 +51,7 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         self.current_profile_url = None
         self.current_organizations_url = None
         self.current_main_org_url = None
+        self.current_lookup_data = None
         self.detail_player_facts = {}
         self.detail_org_facts = {}
         self.history_sort_column = None
@@ -72,11 +83,21 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         self.refresh_button = QPushButton("Refresh")
         self.remove_selected_button = QPushButton("Remove Selected")
         self.clear_history_button = QPushButton("Clear History")
+        self.rerun_lookup_button = QPushButton("Re-run Lookup")
+        self.pin_selected_button = QPushButton("Toggle Pin")
+        self.favorite_selected_button = QPushButton("Toggle Favorite")
+        self.watch_player_button = QPushButton("Watch Player")
+        self.watch_org_button = QPushButton("Watch Org")
         header.addWidget(title, 1)
         header.addWidget(self.refresh_button)
         list_layout.addLayout(header)
 
         history_actions = QHBoxLayout()
+        history_actions.addWidget(self.rerun_lookup_button)
+        history_actions.addWidget(self.pin_selected_button)
+        history_actions.addWidget(self.favorite_selected_button)
+        history_actions.addWidget(self.watch_player_button)
+        history_actions.addWidget(self.watch_org_button)
         history_actions.addWidget(self.remove_selected_button)
         history_actions.addWidget(self.clear_history_button)
         list_layout.addLayout(history_actions)
@@ -98,8 +119,8 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         filter_meta_row.addWidget(self.clear_filters_button)
         list_layout.addLayout(filter_meta_row)
 
-        self.history_table = QTableWidget(0, 3)
-        self.history_table.setHorizontalHeaderLabels(["Name", "Org", "Piracy"])
+        self.history_table = QTableWidget(0, 4)
+        self.history_table.setHorizontalHeaderLabels(["Name", "Org", "Piracy", "Flags"])
         self.history_table.verticalHeader().setVisible(False)
         self.history_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.history_table.setSelectionMode(QAbstractItemView.SingleSelection)
@@ -130,6 +151,11 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         self.setLayout(layout)
 
         self.refresh_button.clicked.connect(lambda: self.refresh_history())
+        self.rerun_lookup_button.clicked.connect(self.rerun_selected_lookup)
+        self.pin_selected_button.clicked.connect(self.toggle_selected_pin)
+        self.favorite_selected_button.clicked.connect(self.toggle_selected_favorite)
+        self.watch_player_button.clicked.connect(self.add_selected_player_to_watchlist)
+        self.watch_org_button.clicked.connect(self.add_selected_org_to_watchlist)
         self.remove_selected_button.clicked.connect(self.remove_selected_history)
         self.clear_history_button.clicked.connect(self.clear_all_history)
         self.history_filter_input.textChanged.connect(self.schedule_history_filter_refresh)
@@ -154,6 +180,7 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
 
         self.detail_handle.setText("No history row selected")
         self.detail_display_name.setText("Click a lookup row to open a dossier here.")
+        self.current_lookup_data = None
         self.set_fact_values(self.detail_player_facts, {
             "citizen_record": "N/A",
             "enlisted": "N/A",
@@ -218,6 +245,11 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
             self.add_fact_pair(facts_grid, row, 0, label, self.detail_player_facts, key)
 
         info_column.addLayout(facts_grid)
+        self.detail_change_summary_label = QLabel("Change summary: Select a row to compare fresh RSI data.")
+        self.detail_change_summary_label.setObjectName("moduleSubtitle")
+        self.detail_change_summary_label.setWordWrap(True)
+        self.detail_change_summary_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        info_column.addWidget(self.detail_change_summary_label)
         layout.addLayout(info_column, 1)
 
         action_column = QVBoxLayout()
@@ -360,7 +392,8 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
             has_piracy = self.history_row_has_piracy(row)
             piracy = "YES" if has_piracy else "NO"
 
-            for col, value in enumerate((name, org, piracy)):
+            flags = self.history_flags_text(row)
+            for col, value in enumerate((name, org, piracy, flags)):
                 item = QTableWidgetItem(str(value))
                 item.setData(Qt.UserRole, row_index)
                 if col == 2:
@@ -406,6 +439,8 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
             return (row.get("main_org") or "").lower()
         if column == 2:
             return 1 if self.history_row_has_piracy(row) else 0
+        if column == 3:
+            return self.history_flags_text(row)
 
         return ""
 
@@ -554,7 +589,9 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         if request_id != self.history_lookup_request_id:
             return
 
+        previous_snapshot = player_snapshot_from_history(row)
         self.display_lookup_detail(data)
+        self.update_detail_change_summary(previous_snapshot, data)
         self.update_stored_history_detail(data)
 
     def on_history_lookup_error(self, request_id, row, exc):
@@ -562,6 +599,14 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
             return
 
         self.display_stored_detail(row)
+        record_event(
+            "Errors",
+            "RSI Lookup",
+            row["handle"],
+            "lookup_failed",
+            str(exc),
+            severity="Warning",
+        )
         if isinstance(exc, RSILookupError):
             QMessageBox.warning(self, "Lookup failed", str(exc))
         else:
@@ -574,6 +619,7 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         self.history_lookup_running = False
 
     def display_lookup_detail(self, data):
+        self.current_lookup_data = data
         self.current_profile_url = data["profile_url"]
         self.current_organizations_url = data["organizations_url"]
         self.current_main_org_url = data["org_url"]
@@ -630,12 +676,14 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         self.refresh_history(selected_handle=data["handle"])
 
     def display_stored_detail(self, row):
+        self.current_lookup_data = None
         self.current_profile_url = row.get("profile_url")
         self.current_organizations_url = None
         self.current_main_org_url = None
 
         self.detail_handle.setText(row["handle"])
         self.detail_display_name.setText(row.get("display_name") or row["handle"])
+        self.detail_change_summary_label.setText("Change summary: Fresh lookup failed; stored history only.")
         self.set_fact_values(self.detail_player_facts, {
             "citizen_record": "N/A",
             "enlisted": "N/A",
@@ -807,6 +855,99 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         self.detail_open_profile_button.setEnabled(enabled and bool(self.current_profile_url))
         self.detail_open_orgs_button.setEnabled(enabled and bool(self.current_organizations_url))
         self.detail_open_main_org_button.setEnabled(enabled and bool(self.current_main_org_url))
+
+    def history_flags_text(self, row):
+        flags = []
+        if row.get("is_pinned"):
+            flags.append("Pinned")
+        if row.get("is_favorite"):
+            flags.append("Favorite")
+        return ", ".join(flags) if flags else ""
+
+    def rerun_selected_lookup(self):
+        row = self.selected_history_row()
+        if not row:
+            QMessageBox.information(self, "No selection", "Select a history row first.")
+            return
+        table_row = self.history_table.currentRow()
+        if hasattr(lookup_player, "cache_clear"):
+            lookup_player.cache_clear()
+        self.open_history_row(table_row, 0)
+
+    def toggle_selected_pin(self):
+        self.toggle_history_flag("is_pinned", "Pinned")
+
+    def toggle_selected_favorite(self):
+        self.toggle_history_flag("is_favorite", "Favorite")
+
+    def toggle_history_flag(self, flag, label):
+        row = self.selected_history_row()
+        if not row:
+            QMessageBox.information(self, "No selection", "Select a history row first.")
+            return
+        new_value = not bool(row.get(flag))
+        set_lookup_history_flag(row["handle"], flag, new_value)
+        self.refresh_history(selected_handle=row["handle"])
+        self.detail_display_name.setText(f"{label} {'enabled' if new_value else 'disabled'} for {row['handle']}.")
+
+    def add_selected_player_to_watchlist(self):
+        row = self.selected_history_row()
+        if not row:
+            QMessageBox.information(self, "No selection", "Select a history row first.")
+            return
+
+        if self.current_lookup_data and self.current_lookup_data.get("handle", "").lower() == row["handle"].lower():
+            entry = add_player_watch(self.current_lookup_data)
+        else:
+            entry = add_player_snapshot_watch(player_snapshot_from_history(row))
+
+        QMessageBox.information(self, "Watchlist", f"Player added to Watchlists: {entry.name}")
+
+    def add_selected_org_to_watchlist(self):
+        row = self.selected_history_row()
+        if not row:
+            QMessageBox.information(self, "No selection", "Select a history row first.")
+            return
+
+        if self.current_lookup_data and self.current_lookup_data.get("handle", "").lower() == row["handle"].lower():
+            org = main_org_snapshot_from_lookup(self.current_lookup_data)
+        else:
+            org = {
+                "relationship": "Main organization",
+                "name": row.get("main_org") or "",
+                "sid": row.get("org_sid") or "",
+                "piracy": "YES" if row.get("org_piracy") else "NO",
+                "redacted": (row.get("main_org") or "").upper() == "REDACTED",
+            }
+
+        if org.get("redacted") or not org.get("sid") or org.get("sid") == "N/A":
+            QMessageBox.warning(
+                self,
+                "Organization unavailable",
+                "This organization is hidden or has no SID available.",
+            )
+            return
+
+        entry = add_org_watch(org, "RSI")
+        QMessageBox.information(self, "Watchlist", f"Organization added to Watchlists: {entry.name}")
+
+    def update_detail_change_summary(self, previous_snapshot, data):
+        current_snapshot = player_snapshot_from_lookup(data)
+        summary = player_change_summary(previous_snapshot, current_snapshot)
+        self.detail_change_summary_label.setText(f"Change summary: {summary}")
+        for event_type, severity, message in player_change_events(previous_snapshot, current_snapshot):
+            record_event(
+                "Player",
+                "Search History",
+                data["handle"],
+                event_type,
+                message,
+                metadata={
+                    "profile_url": data.get("profile_url"),
+                    "organizations_url": data.get("organizations_url"),
+                },
+                severity=severity,
+            )
 
     def open_url(self, url, message):
         if not url:

@@ -202,13 +202,37 @@ def list_watchlist_snapshots(watchlist_id, limit=20):
 def add_watchlist_event(watchlist_id, event_type, message):
     ensure_watchlist_tables()
     with get_connection() as conn:
+        conn.row_factory = sqlite3.Row
         cur = conn.cursor()
         cur.execute("""
         INSERT INTO watchlist_events (watchlist_id, event_type, message)
         VALUES (?, ?, ?)
         """, (watchlist_id, event_type, message))
+        event_id = cur.lastrowid
+        cur.execute("""
+        SELECT e.*,
+               COALESCE(unread.unread_events, 0) AS unread_events
+        FROM watchlist_entries e
+        LEFT JOIN (
+            SELECT watchlist_id, COUNT(*) AS unread_events
+            FROM watchlist_events
+            WHERE is_read = 0
+            GROUP BY watchlist_id
+        ) unread ON unread.watchlist_id = e.id
+        WHERE e.id = ?
+        """, (watchlist_id,))
+        entry = entry_from_row(cur.fetchone())
         conn.commit()
-        return cur.lastrowid
+
+    if entry:
+        try:
+            from app.event_center.service import record_watchlist_event
+
+            record_watchlist_event(entry, event_type, message)
+        except Exception:
+            pass
+
+    return event_id
 
 
 def list_watchlist_events(watchlist_id=None, limit=20, unread_only=False):
