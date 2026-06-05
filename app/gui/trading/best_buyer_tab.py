@@ -18,13 +18,13 @@ from app.database import get_app_setting
 from app.sc_trade_tools_client import (
     SC_TRADE_TOOLS_TOKEN_SETTING,
     fetch_best_buyers,
-    fetch_commodity_items,
 )
 
 from ..table_utils import configure_readable_table_columns
 from ..workers import BackgroundTaskMixin
+from .reference_data import get_trading_reference_service
 from .searchable_combo import configure_searchable_combo, selected_combo_text, set_combo_items
-from .ship_selection import configure_ship_combo, fill_cargo_from_ship
+from .ship_selection import configure_ship_combo, fill_cargo_from_ship, update_ship_combo
 
 
 SORT_ROLE = Qt.UserRole + 1
@@ -50,18 +50,30 @@ class SortableTableWidgetItem(QTableWidgetItem):
 
 
 class BestBuyerTab(BackgroundTaskMixin, QWidget):
-    def __init__(self):
+    def __init__(self, reference_service=None):
         super().__init__()
 
-        self.commodity_refresh_running = False
+        self.reference_service = reference_service or get_trading_reference_service()
         self.buyer_refresh_running = False
         self.commodities = []
         self.buyers = []
 
         self.build_ui()
         self.connect_signals()
+        self.connect_reference_service()
         self.populate_buyers_table()
         self.update_details()
+
+    def connect_reference_service(self):
+        self.reference_service.loaded.connect(self.on_reference_loaded)
+        self.reference_service.error.connect(self.on_reference_error)
+        self.reference_service.state_changed.connect(self.on_reference_state_changed)
+        if self.reference_service.data is not None:
+            self.on_reference_loaded(self.reference_service.data)
+        elif self.reference_service.is_loading:
+            self.on_reference_state_changed("loading")
+        else:
+            self.reference_service.ensure_loaded()
 
     def build_ui(self):
         layout = QVBoxLayout()
@@ -125,7 +137,7 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
         self.quantity_input = QLineEdit("1")
         self.quantity_input.setPlaceholderText("Quantity SCU")
         self.quantity_input.setMaximumWidth(120)
-        self.load_commodities_button = QPushButton("Load Commodities")
+        self.load_commodities_button = QPushButton("Refresh Reference Data")
         self.find_buyers_button = QPushButton("Find Buyers")
         self.open_source_button = QPushButton("Open Source")
 
@@ -137,9 +149,7 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
         controls.addWidget(self.open_source_button)
         layout.addLayout(controls)
 
-        self.status_label = QLabel(
-            "Token required for buyer results. Configure SC Trade Tools API Token in Settings."
-        )
+        self.status_label = QLabel("Loading SC Trade Tools reference data...")
         self.status_label.setObjectName("moduleSubtitle")
         self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
@@ -178,32 +188,27 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
         fill_cargo_from_ship(self.ship_combo, self.quantity_input, self.status_label)
 
     def load_commodities(self):
-        if self.commodity_refresh_running:
-            return
+        self.reference_service.refresh(force=True)
 
-        self.commodity_refresh_running = True
-        self.load_commodities_button.setEnabled(False)
-        self.load_commodities_button.setText("Loading...")
-        self.status_label.setText("Loading token-free commodity list...")
-
-        self.start_background_task(
-            fetch_commodity_items,
-            self.on_commodities_loaded,
-            self.on_error,
-            self.finish_commodity_refresh,
-        )
-
-    def on_commodities_loaded(self, commodities):
-        self.commodities = sorted(commodities, key=lambda item: item.name.lower())
+    def on_reference_loaded(self, data):
+        self.commodities = list(data.commodities)
         set_combo_items(self.commodity_combo, (commodity.name for commodity in self.commodities))
+        update_ship_combo(self.ship_combo, data.ships)
         self.status_label.setText(
             f"Loaded {len(self.commodities)} commodities. Buyer lookup requires a configured token."
         )
 
-    def finish_commodity_refresh(self):
-        self.commodity_refresh_running = False
-        self.load_commodities_button.setEnabled(True)
-        self.load_commodities_button.setText("Load Commodities")
+    def on_reference_state_changed(self, state):
+        if state == "loading":
+            self.load_commodities_button.setEnabled(False)
+            self.load_commodities_button.setText("Loading...")
+            self.status_label.setText("Loading SC Trade Tools reference data...")
+        else:
+            self.load_commodities_button.setEnabled(True)
+            self.load_commodities_button.setText("Refresh Reference Data")
+
+    def on_reference_error(self, exc):
+        self.status_label.setText(f"Reference data failed to load: {exc}")
 
     def find_buyers(self):
         if self.buyer_refresh_running:

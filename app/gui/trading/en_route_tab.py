@@ -17,15 +17,14 @@ from PySide6.QtWidgets import (
 from app.database import get_app_setting
 from app.sc_trade_tools_client import (
     SC_TRADE_TOOLS_TOKEN_SETTING,
-    fetch_commodity_items,
-    fetch_commodity_shops,
     fetch_en_route,
 )
 
 from ..table_utils import configure_readable_table_columns
 from ..workers import BackgroundTaskMixin
+from .reference_data import get_trading_reference_service
 from .searchable_combo import configure_searchable_combo, selected_combo_text, set_combo_items
-from .ship_selection import configure_ship_combo, fill_cargo_from_ship
+from .ship_selection import configure_ship_combo, fill_cargo_from_ship, update_ship_combo
 
 
 SORT_ROLE = Qt.UserRole + 1
@@ -51,10 +50,10 @@ class SortableTableWidgetItem(QTableWidgetItem):
 
 
 class EnRouteTab(BackgroundTaskMixin, QWidget):
-    def __init__(self):
+    def __init__(self, reference_service=None):
         super().__init__()
 
-        self.location_refresh_running = False
+        self.reference_service = reference_service or get_trading_reference_service()
         self.route_refresh_running = False
         self.locations = []
         self.commodities = []
@@ -62,8 +61,20 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
 
         self.build_ui()
         self.connect_signals()
+        self.connect_reference_service()
         self.populate_routes_table()
         self.update_details()
+
+    def connect_reference_service(self):
+        self.reference_service.loaded.connect(self.on_reference_loaded)
+        self.reference_service.error.connect(self.on_reference_error)
+        self.reference_service.state_changed.connect(self.on_reference_state_changed)
+        if self.reference_service.data is not None:
+            self.on_reference_loaded(self.reference_service.data)
+        elif self.reference_service.is_loading:
+            self.on_reference_state_changed("loading")
+        else:
+            self.reference_service.ensure_loaded()
 
     def build_ui(self):
         layout = QVBoxLayout()
@@ -144,7 +155,7 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         self.detour_input = QLineEdit("25")
         self.detour_input.setPlaceholderText("Detour %")
         self.detour_input.setMaximumWidth(100)
-        self.load_locations_button = QPushButton("Load Lists")
+        self.load_locations_button = QPushButton("Refresh Reference Data")
         self.find_routes_button = QPushButton("Find En Route")
         self.open_source_button = QPushButton("Open Source")
         second_row.addWidget(self.ship_combo)
@@ -157,9 +168,7 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         second_row.addStretch(1)
         layout.addLayout(second_row)
 
-        self.status_label = QLabel(
-            "Token required for itinerary results. Configure SC Trade Tools API Token in Settings."
-        )
+        self.status_label = QLabel("Loading SC Trade Tools reference data...")
         self.status_label.setObjectName("moduleSubtitle")
         self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
@@ -196,28 +205,15 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         fill_cargo_from_ship(self.ship_combo, self.cargo_input, self.status_label)
 
     def load_locations(self):
-        if self.location_refresh_running:
-            return
+        self.reference_service.refresh(force=True)
 
-        self.location_refresh_running = True
-        self.load_locations_button.setEnabled(False)
-        self.load_locations_button.setText("Loading...")
-        self.status_label.setText("Loading token-free shop and commodity lists...")
-
-        self.start_background_task(
-            lambda: (fetch_commodity_shops(), fetch_commodity_items()),
-            self.on_locations_loaded,
-            self.on_error,
-            self.finish_location_refresh,
-        )
-
-    def on_locations_loaded(self, result):
-        locations, commodities = result
-        self.locations = sorted(locations, key=lambda item: item.name.lower())
-        self.commodities = sorted(commodities, key=lambda item: item.name.lower())
+    def on_reference_loaded(self, data):
+        self.locations = list(data.shops)
+        self.commodities = list(data.commodities)
         self.populate_location_combo(self.origin_combo)
         self.populate_location_combo(self.destination_combo)
         set_combo_items(self.commodity_combo, (commodity.name for commodity in self.commodities))
+        update_ship_combo(self.ship_combo, data.ships)
         self.status_label.setText(
             f"Loaded {len(self.locations)} commodity shops and {len(self.commodities)} commodities. "
             "En Route lookup requires a configured token."
@@ -226,10 +222,17 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
     def populate_location_combo(self, combo):
         set_combo_items(combo, (location.name for location in self.locations))
 
-    def finish_location_refresh(self):
-        self.location_refresh_running = False
-        self.load_locations_button.setEnabled(True)
-        self.load_locations_button.setText("Load Lists")
+    def on_reference_state_changed(self, state):
+        if state == "loading":
+            self.load_locations_button.setEnabled(False)
+            self.load_locations_button.setText("Loading...")
+            self.status_label.setText("Loading SC Trade Tools reference data...")
+        else:
+            self.load_locations_button.setEnabled(True)
+            self.load_locations_button.setText("Refresh Reference Data")
+
+    def on_reference_error(self, exc):
+        self.status_label.setText(f"Reference data failed to load: {exc}")
 
     def find_routes(self):
         if self.route_refresh_running:

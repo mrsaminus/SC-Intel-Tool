@@ -13,10 +13,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.sc_trade_tools_client import fetch_shops_reference
-
 from ..table_utils import configure_readable_table_columns
 from ..workers import BackgroundTaskMixin
+from .reference_data import get_trading_reference_service
 
 
 SORT_ROLE = Qt.UserRole + 1
@@ -35,18 +34,30 @@ class SortableTableWidgetItem(QTableWidgetItem):
 
 
 class ShopsTab(BackgroundTaskMixin, QWidget):
-    def __init__(self):
+    def __init__(self, reference_service=None):
         super().__init__()
 
-        self.refresh_running = False
+        self.reference_service = reference_service or get_trading_reference_service()
         self.shops = []
         self.locations = []
         self.visible_shops = []
 
         self.build_ui()
         self.connect_signals()
+        self.connect_reference_service()
         self.populate_table()
         self.update_details()
+
+    def connect_reference_service(self):
+        self.reference_service.loaded.connect(self.on_shops_loaded)
+        self.reference_service.error.connect(self.on_shops_error)
+        self.reference_service.state_changed.connect(self.on_reference_state_changed)
+        if self.reference_service.data is not None:
+            self.on_shops_loaded(self.reference_service.data)
+        elif self.reference_service.is_loading:
+            self.on_reference_state_changed("loading")
+        else:
+            self.reference_service.ensure_loaded()
 
     def build_ui(self):
         layout = QVBoxLayout()
@@ -98,14 +109,14 @@ class ShopsTab(BackgroundTaskMixin, QWidget):
         controls.setSpacing(8)
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Search shop, system, location or type...")
-        self.refresh_button = QPushButton("Refresh")
+        self.refresh_button = QPushButton("Refresh Reference Data")
         self.open_source_button = QPushButton("Open Source")
         controls.addWidget(self.search_input, 1)
         controls.addWidget(self.refresh_button)
         controls.addWidget(self.open_source_button)
         layout.addLayout(controls)
 
-        self.status_label = QLabel("Refresh to load token-free shop data from SC Trade Tools.")
+        self.status_label = QLabel("Loading token-free SC Trade Tools shop data...")
         self.status_label.setObjectName("moduleSubtitle")
         self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
@@ -126,7 +137,7 @@ class ShopsTab(BackgroundTaskMixin, QWidget):
         configure_readable_table_columns(self.shops_table, min_width=120, max_width=420, stretch_last=True)
         layout.addWidget(self.shops_table, 1)
 
-        self.empty_label = QLabel("No shop data loaded yet.")
+        self.empty_label = QLabel("Loading shop data...")
         self.empty_label.setObjectName("emptyState")
         self.empty_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.empty_label)
@@ -166,25 +177,11 @@ class ShopsTab(BackgroundTaskMixin, QWidget):
         self.shops_table.itemSelectionChanged.connect(self.update_details)
 
     def refresh_shops(self):
-        if self.refresh_running:
-            return
+        self.reference_service.refresh(force=True)
 
-        self.refresh_running = True
-        self.refresh_button.setEnabled(False)
-        self.refresh_button.setText("Loading...")
-        self.status_label.setText("Loading SC Trade Tools shop data...")
-
-        self.start_background_task(
-            fetch_shops_reference,
-            self.on_shops_loaded,
-            self.on_shops_error,
-            self.finish_refresh,
-        )
-
-    def on_shops_loaded(self, result):
-        shops, locations = result
-        self.shops = sorted(shops, key=lambda shop: shop.name.lower())
-        self.locations = sorted(locations, key=lambda location: location.name.lower())
+    def on_shops_loaded(self, data):
+        self.shops = list(data.shops)
+        self.locations = list(data.locations)
         self.status_label.setText(
             f"Loaded {len(self.shops)} commodity shops and {len(self.locations)} "
             "known trade locations from SC Trade Tools."
@@ -200,10 +197,14 @@ class ShopsTab(BackgroundTaskMixin, QWidget):
         self.status_label.setText(f"Failed to load SC Trade Tools shops: {exc}")
         self.update_details()
 
-    def finish_refresh(self):
-        self.refresh_running = False
-        self.refresh_button.setEnabled(True)
-        self.refresh_button.setText("Refresh")
+    def on_reference_state_changed(self, state):
+        if state == "loading":
+            self.refresh_button.setEnabled(False)
+            self.refresh_button.setText("Loading...")
+            self.status_label.setText("Loading token-free SC Trade Tools shop data...")
+        else:
+            self.refresh_button.setEnabled(True)
+            self.refresh_button.setText("Refresh Reference Data")
 
     def populate_table(self):
         query = self.search_input.text().strip().lower()
@@ -243,7 +244,7 @@ class ShopsTab(BackgroundTaskMixin, QWidget):
             if self.shops:
                 self.detail_body_label.setText("No shops match the current search.")
             else:
-                self.detail_body_label.setText("Refresh to load commodity shop names from SC Trade Tools.")
+                self.detail_body_label.setText("Loading commodity shop names from SC Trade Tools.")
             return
 
         self.detail_title_label.setText(shop.display_name)

@@ -42,8 +42,12 @@ Current SC Intel Tool use:
 - `Trade Routes` uses the token-required trade route endpoint when a local token
   is configured.
 - Trading dropdowns use searchable/type-filterable selection fields.
+- Trading reference data auto-loads token-free commodities, shops, locations and
+  ship names in the background when the Trading module opens.
 - Trading ship selectors use local `app/ship_metadata.py` cargo capacity data
-  where known, with manual Cargo SCU override.
+  where known, with manual Cargo SCU override. SC Trade Tools ship data expands
+  the selectable ship names, but its `maxBoxSizeInScu` field is not treated as
+  cargo capacity.
 
 SC Trade Tools token handling:
 
@@ -74,6 +78,8 @@ Observed sample sizes on 2026-06-05:
 - `GET /api/commodity/shops`: 158 shops.
 - `GET /api/locations`: 201 locations.
 - `GET /api/ships`: 85 ships.
+- SC Trade Tools ship rows exposed `name` and `maxBoxSizeInScu`; cargo capacity
+  remains local metadata or manual input.
 - `GET /api/crowdsource/commodity-listings?page=0`: paginated, 100 rows per page,
   7,715 total elements at review time.
 

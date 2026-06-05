@@ -46,6 +46,13 @@ class SCTradeShop:
 
 
 @dataclass(frozen=True)
+class SCTradeShip:
+    name: str
+    max_box_size_scu: float | None
+    raw: dict
+
+
+@dataclass(frozen=True)
 class SCTradeTransaction:
     location: str
     shop: str
@@ -151,6 +158,18 @@ def fetch_shops_reference():
 def fetch_trade_route_reference():
     locations = fetch_locations()
     return fetch_commodity_shops(locations), locations, fetch_commodity_items()
+
+
+def fetch_ships():
+    payload = get_json("/ships")
+    return [
+        SCTradeShip(
+            name=str(record.get("name") or "Unknown"),
+            max_box_size_scu=parse_optional_float(record.get("maxBoxSizeInScu")),
+            raw=record,
+        )
+        for record in extract_records(payload)
+    ]
 
 
 def test_token_connection(token):
@@ -363,6 +382,7 @@ def build_itinerary_request(origin, destination, commodity_name, ship, max_volum
     commodity_name = (commodity_name or "").strip()
     commodity_names = [commodity_name] if commodity_name else []
     commodity_filter_type = "whitelist" if commodity_name else "blacklist"
+    safe_volume = parse_int(max_volume, default=1, minimum=1, maximum=100000000)
     return {
         "origin": origin,
         "destination": destination,
@@ -374,13 +394,13 @@ def build_itinerary_request(origin, destination, commodity_name, ship, max_volum
         "factionNames": [],
         "factionsNamesType": "blacklist",
         "minSecurityLevel": 0,
-        "supportedBoxSizeInScu": 1,
+        "supportedBoxSizeInScu": supported_box_size(safe_volume),
         "avoidHiddenLocations": True,
         "commodityNames": commodity_names,
         "commodityNamesType": commodity_filter_type,
         "commodityTypes": [],
         "commodityTypesType": "blacklist",
-        "maxVolume": parse_int(max_volume, default=1, minimum=1, maximum=100000000),
+        "maxVolume": safe_volume,
         "investment": parse_int(investment, default=100000, minimum=1, maximum=100000000),
         "profitType": "pure",
         "ship": (ship or "Freelancer").strip() or "Freelancer",

@@ -7,10 +7,23 @@ SHIP_NAMES = sorted(SHIP_METADATA)
 SUPPORTED_BOX_SIZES = (32, 24, 16, 8, 4, 2, 1)
 
 
-def configure_ship_combo(combo):
+def configure_ship_combo(combo, ship_names=None):
     configure_searchable_combo(combo, "Select ship...")
-    set_combo_items(combo, SHIP_NAMES)
+    set_combo_items(combo, combined_ship_names(ship_names))
     return combo
+
+
+def combined_ship_names(ship_names=None):
+    names = set(SHIP_NAMES)
+    for ship_name in ship_names or ():
+        name = getattr(ship_name, "name", ship_name)
+        if name:
+            names.add(str(name))
+    return sorted(names, key=lambda value: value.lower())
+
+
+def update_ship_combo(combo, ship_names):
+    set_combo_items(combo, combined_ship_names(ship_names))
 
 
 def cargo_scu_for_ship(ship_name):

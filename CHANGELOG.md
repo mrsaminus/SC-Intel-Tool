@@ -16,6 +16,10 @@
 - Added searchable dropdown behavior across Trading selection fields.
 - Added ship selection with local cargo-capacity autofill for Trading workflows.
 - Added SC Trade Tools-backed Trade Routes workflow with token-aware fallback.
+- Added automatic token-free Trading reference-data loading for commodities,
+  shops, locations and ships.
+- Expanded Trading ship dropdowns with token-free SC Trade Tools ship names,
+  while keeping Cargo SCU autofill limited to known local ship metadata.
 - Kept UEX trading behavior, filters, live refresh and SCU calculations unchanged.
 
 ### Maintenance

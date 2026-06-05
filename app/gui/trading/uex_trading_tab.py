@@ -23,7 +23,8 @@ from app.trading_data import (
 
 from ..table_utils import configure_readable_table_columns
 from ..workers import BackgroundTaskMixin
-from .ship_selection import configure_ship_combo, fill_cargo_from_ship
+from .reference_data import get_trading_reference_service
+from .ship_selection import configure_ship_combo, fill_cargo_from_ship, update_ship_combo
 
 
 SORT_ROLE = Qt.UserRole + 1
@@ -49,9 +50,10 @@ class SortableTableWidgetItem(QTableWidgetItem):
 
 
 class UEXTradingTab(BackgroundTaskMixin, QWidget):
-    def __init__(self):
+    def __init__(self, reference_service=None):
         super().__init__()
 
+        self.reference_service = reference_service or get_trading_reference_service()
         self.trading_refresh_running = False
         self.all_opportunities = []
         self.visible_opportunities = []
@@ -59,6 +61,17 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
 
         self.build_ui()
         self.connect_signals()
+        self.connect_reference_service()
+
+    def connect_reference_service(self):
+        self.reference_service.loaded.connect(self.on_reference_loaded)
+        if self.reference_service.data is not None:
+            self.on_reference_loaded(self.reference_service.data)
+        else:
+            self.reference_service.ensure_loaded()
+
+    def on_reference_loaded(self, data):
+        update_ship_combo(self.ship_combo, data.ships)
 
     def build_ui(self):
         layout = QVBoxLayout()

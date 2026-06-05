@@ -3,6 +3,7 @@ from PySide6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 from .best_buyer_tab import BestBuyerTab
 from .commodities_tab import CommoditiesTab
 from .en_route_tab import EnRouteTab
+from .reference_data import get_trading_reference_service
 from .sc_trade_placeholder_tab import SCTradePlaceholderTab
 from .shared import SC_TRADE_WORKFLOWS
 from .shops_tab import ShopsTab
@@ -18,22 +19,24 @@ class TradingTab(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
+        self.reference_service = get_trading_reference_service()
+
         self.tabs = QTabWidget()
-        self.uex_trading_tab = UEXTradingTab()
+        self.uex_trading_tab = UEXTradingTab(self.reference_service)
         self.tabs.addTab(self.uex_trading_tab, "UEX Trading")
 
         self.sc_trade_tabs = {}
         for workflow in SC_TRADE_WORKFLOWS:
             if workflow["title"] == "Trade Routes":
-                tab = TradeRoutesTab()
+                tab = TradeRoutesTab(self.reference_service)
             elif workflow["title"] == "Commodities":
-                tab = CommoditiesTab()
+                tab = CommoditiesTab(self.reference_service)
             elif workflow["title"] == "Shops":
-                tab = ShopsTab()
+                tab = ShopsTab(self.reference_service)
             elif workflow["title"] == "Best Buyer":
-                tab = BestBuyerTab()
+                tab = BestBuyerTab(self.reference_service)
             elif workflow["title"] == "En Route":
-                tab = EnRouteTab()
+                tab = EnRouteTab(self.reference_service)
             else:
                 tab = SCTradePlaceholderTab(
                     workflow["title"],
@@ -45,3 +48,4 @@ class TradingTab(QWidget):
 
         layout.addWidget(self.tabs)
         self.setLayout(layout)
+        self.reference_service.ensure_loaded()
