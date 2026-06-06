@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- No unreleased changes.
+
+## 0.1.0-alpha.8.6 - 2026-06-06
+
 ### BP Overview / Crafting
 
 - Added local-only owned crafting material tracking.
@@ -15,7 +19,15 @@
 - Reward Scanner is off by default, reads only a user-selected region when manually triggered,
   and never marks blueprints owned without user confirmation.
 - Added conservative blueprint reward text matcher for pasted/OCR text.
-- OCR engine integration and region overlay remain deferred; Scan Once handles missing local OCR support gracefully.
+- Added visual `Select Screen Region` overlay for choosing the reward popup area.
+- Added `Preview Region` to capture and inspect the selected region once without running OCR.
+- OCR engine integration remains deferred; Scan Once handles missing local OCR support gracefully.
+
+### Stabilization
+
+- Ran BP Overview regression coverage for blueprint loading, craftability, Reward Scanner parsing,
+  manual confirmation and Event Center integration.
+- Prepared the app version for the next alpha build.
 
 ## 0.1.0-alpha.8.5 - 2026-06-06
 

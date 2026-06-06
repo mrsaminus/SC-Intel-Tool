@@ -4,7 +4,7 @@ SC Intel Tool is a Star Citizen desktop utility for player intel, organization c
 
 ## Current Status
 
-The app is in active alpha development. Home, Event Center, Player Lookup, Search History, Mining & Salvage, Trading, Item Finder, BP Overview, Watchlists, Wikelo Items, Notes, Settings, AppData persistence, and packaged update checks are usable. BP Overview includes an optional local Reward Scanner alpha foundation; full OCR engine/overlay support remains planned for later. Dedicated organization-intelligence mapping is not part of the public app roadmap.
+The app is in active alpha development. Home, Event Center, Player Lookup, Search History, Mining & Salvage, Trading, Item Finder, BP Overview, Watchlists, Wikelo Items, Notes, Settings, AppData persistence, and packaged update checks are usable. BP Overview includes an optional local Reward Scanner alpha foundation with manual region selection; full OCR engine packaging remains planned for later. Dedicated organization-intelligence mapping is not part of the public app roadmap.
 
 ## Install And Run
 
@@ -47,7 +47,7 @@ SC Intel Tool has no telemetry, analytics, tracking, or user reporting. Player n
 
 The app only makes outbound requests to public Star Citizen-related data sources needed for its features: RSI, UEX, Cornerstone, SC Focus, SC Craft Tools, SC Trade Tools, the public Wikelo Google Sheet, and GitHub Releases for update checking. SCMDB is documented as a secondary BP Overview reference and may be used in a later enrichment pass. All user data remains local unless the user explicitly exports it.
 
-The Reward Scanner is optional and off by default. It only reads a user-selected region when the user manually triggers a scan, and blueprint ownership changes require explicit confirmation.
+The Reward Scanner is optional and off by default. It can visually select or manually enter a screen region, only reads that region when the user manually triggers a scan, and blueprint ownership changes require explicit confirmation.
 
 ## User Data
 

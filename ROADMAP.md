@@ -50,7 +50,7 @@ Stabilization note:
 
 ### Still Early / Alpha Foundation Areas
 
-- Reward Scanner OCR engine / region overlay
+- Reward Scanner OCR engine packaging
 - OCR / Chat Scanner
 
 ## Near-Term Alpha Priorities
@@ -86,7 +86,8 @@ Current status:
 - Selected-blueprint craftability shows required, owned and missing material quantities.
 - Craftable-only filtering provides the first `What Can I Craft?` workflow.
 - Reward Scanner alpha foundation is implemented as optional, local-only and confirmation-based.
-- Full OCR engine packaging and visual region overlay remain deferred.
+- Reward Scanner includes visual region selection and one-shot region preview.
+- Full OCR engine packaging remains deferred.
 
 Implementation phases:
 
@@ -112,7 +113,7 @@ Phase 5:
 
 Phase 6:
 
-- Local OCR engine packaging / region overlay - planned later
+- Local OCR engine packaging - planned later
 
 Needs work:
 
@@ -120,7 +121,7 @@ Needs work:
   system or location cleanly.
 - Optional export/copy improvements after real use.
 - Optional SCMDB enrichment only if it can be done safely and efficiently.
-- Reward Scanner OCR engine packaging and better region selection overlay.
+- Reward Scanner OCR engine packaging and richer region-selection polish if needed after testing.
 
 ### 1. Trading Alpha Complete
 
