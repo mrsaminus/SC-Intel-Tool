@@ -15,8 +15,8 @@ class CraftingRecipesTab(QWidget):
         text = QLabel(
             "Recipe and material details are shown in the Blueprint Browser details panel. "
             "This alpha keeps the recipe workflow tied to the selected blueprint so the app only "
-            "shows fields that SC Craft Tools exposes publicly: ingredients, quantities, "
-            "quality/effect hints, craft time and mission drops when available."
+            "shows confirmed crafting fields: ingredients, quantities, quality scaling, "
+            "craft time and mission drops when available."
         )
         text.setObjectName("valueText")
         text.setWordWrap(True)

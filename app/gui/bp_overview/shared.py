@@ -8,8 +8,6 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from app.blueprints_client import SC_CRAFT_TOOLS_BASE_URL
-
 from ..table_utils import configure_readable_table_columns
 
 
@@ -106,7 +104,6 @@ def format_duration(seconds):
 def blueprint_summary(blueprint, owned=False):
     lines = [
         f"Blueprint: {blueprint.blueprint_name}",
-        f"Crafts: {blueprint.crafted_item}",
         f"Category: {blueprint.category or 'N/A'}",
         f"Owned: {'Yes' if owned else 'No'}",
         "Materials:",
@@ -117,24 +114,50 @@ def blueprint_summary(blueprint, owned=False):
                 f"- {ingredient.name} x{format_number(ingredient.quantity)} {ingredient.unit}".strip()
             )
     else:
-        lines.append("- No material data available from current source.")
+        lines.append("- No material data available.")
+
+    quality_lines = grouped_quality_effect_lines(blueprint, limit=10)
+    if quality_lines:
+        lines.append("Quality scaling:")
+        lines.extend(quality_lines)
 
     if blueprint.missions:
-        lines.append("Sources:")
+        lines.append("Mission / drop context:")
         for mission in blueprint.missions[:8]:
             chance = f" ({mission.drop_chance})" if mission.drop_chance else ""
             lines.append(f"- {mission.name}{chance}")
         if len(blueprint.missions) > 8:
             lines.append(f"- ...and {len(blueprint.missions) - 8} more")
     else:
-        lines.append("Source: Mission/source data not available from current source.")
+        lines.append("Mission / drop context: Not available.")
 
-    lines.append(f"Data source: {blueprint.source}")
     return "\n".join(lines)
 
 
-def source_attribution_text():
-    return (
-        f"Primary source: SC Craft Tools ({SC_CRAFT_TOOLS_BASE_URL}). "
-        "SCMDB is documented as a secondary source-context reference; it is not loaded by this alpha tab."
-    )
+def grouped_quality_effect_lines(blueprint, limit=None):
+    grouped = {}
+    for ingredient in blueprint.ingredients:
+        for effect in ingredient.quality_effects:
+            stat, detail = split_quality_effect(effect)
+            grouped.setdefault(stat, []).append((ingredient.slot, ingredient.name, detail))
+
+    lines = []
+    count = 0
+    for stat, entries in grouped.items():
+        lines.append(f"- {stat}")
+        for slot, name, detail in entries:
+            count += 1
+            if limit is not None and count > limit:
+                remaining = sum(len(items) for items in grouped.values()) - limit
+                lines.append(f"  - ...and {remaining} more")
+                return lines
+            label = f"{slot} / {name}" if slot and slot != "Material" else name
+            lines.append(f"  - {label}: {detail}")
+    return lines
+
+
+def split_quality_effect(effect):
+    if ":" not in effect:
+        return effect, "scales with material quality"
+    stat, detail = effect.split(":", 1)
+    return stat.strip() or "Quality", detail.strip() or "scales with material quality"

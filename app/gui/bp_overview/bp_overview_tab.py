@@ -16,8 +16,7 @@ class BPOverviewTab(QWidget):
         layout.setSpacing(12)
         layout.addWidget(create_header(
             "BP Overview",
-            "Blueprint and crafting reference for SC Craft Tools data. "
-            "Owned blueprint progress is local-only.",
+            "Blueprint and crafting reference with local ownership tracking.",
         ))
 
         self.tabs = QTabWidget()
@@ -26,7 +25,7 @@ class BPOverviewTab(QWidget):
         self.tabs.addTab(self.browser_tab, "Blueprint Browser")
         self.tabs.addTab(self.owned_tab, "Owned Blueprints")
         self.tabs.addTab(CraftingRecipesTab(), "Crafting Recipes")
-        self.tabs.addTab(SourceMissionsTab(), "Source Missions")
+        self.tabs.addTab(SourceMissionsTab(), "Mission Context")
         layout.addWidget(self.tabs, 1)
 
         self.setLayout(layout)

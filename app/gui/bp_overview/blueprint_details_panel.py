@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 from app.blueprints_storage import set_blueprint_owned
 from app.event_center.service import record_event
 
-from .shared import blueprint_summary, create_card, format_duration, format_number, source_attribution_text
+from .shared import blueprint_summary, create_card, format_duration, format_number, grouped_quality_effect_lines
 
 
 class BlueprintDetailsPanel(QWidget):
@@ -31,7 +31,7 @@ class BlueprintDetailsPanel(QWidget):
         self.title_label = QLabel("No blueprint selected")
         self.title_label.setObjectName("orgName")
         self.title_label.setWordWrap(True)
-        self.subtitle_label = QLabel("Select a blueprint to inspect recipe and source details.")
+        self.subtitle_label = QLabel("Select a blueprint to inspect recipe, quality scaling and mission details.")
         self.subtitle_label.setObjectName("moduleSubtitle")
         self.subtitle_label.setWordWrap(True)
 
@@ -66,7 +66,7 @@ class BlueprintDetailsPanel(QWidget):
 
         if not blueprint:
             self.title_label.setText("No blueprint selected")
-            self.subtitle_label.setText("Select a blueprint to inspect recipe and source details.")
+            self.subtitle_label.setText("Select a blueprint to inspect recipe, quality scaling and mission details.")
             self.details_text.setPlainText("")
             return
 
@@ -83,37 +83,31 @@ class BlueprintDetailsPanel(QWidget):
 
         lines = [
             f"Blueprint: {self.blueprint.blueprint_name}",
-            f"Crafted item: {self.blueprint.crafted_item}",
-            f"Category/type: {self.blueprint.category or 'N/A'}",
+            f"Category: {self.blueprint.category or 'N/A'}",
             f"Craft time: {format_duration(self.blueprint.craft_time_seconds)}",
-            f"Patch/version: {self.blueprint.patch or 'N/A'}",
+            f"Patch / version: {self.blueprint.patch or 'N/A'}",
             f"Owned: {'Yes' if self.owned else 'No'}",
             "",
-            "Recipe/material requirements:",
+            "Recipe Materials:",
         ]
         if self.blueprint.ingredients:
             for ingredient in self.blueprint.ingredients:
-                quality = f", min quality {format_number(ingredient.min_quality)}" if ingredient.min_quality else ""
+                quality = f" | min quality {format_number(ingredient.min_quality)}" if ingredient.min_quality else ""
                 lines.append(
                     f"- {ingredient.slot}: {ingredient.name} x{format_number(ingredient.quantity)} "
                     f"{ingredient.unit}{quality}".strip()
                 )
         else:
-            lines.append("- No material data available from current source.")
+            lines.append("- No material data available.")
 
-        quality_lines = []
-        for ingredient in self.blueprint.ingredients:
-            for effect in ingredient.quality_effects:
-                quality_lines.append(f"- {ingredient.slot} / {ingredient.name}: {effect}")
-        lines.extend(["", "Quality/effect info:"])
+        quality_lines = grouped_quality_effect_lines(self.blueprint, limit=24)
+        lines.extend(["", "Quality Scaling:"])
         if quality_lines:
-            lines.extend(quality_lines[:24])
-            if len(quality_lines) > 24:
-                lines.append(f"- ...and {len(quality_lines) - 24} more")
+            lines.extend(quality_lines)
         else:
-            lines.append("- No quality-effect data available from current source.")
+            lines.append("- No quality scaling data available.")
 
-        lines.extend(["", "Mission/source context:"])
+        lines.extend(["", "Mission / Drop Context:"])
         if self.blueprint.missions:
             for mission in self.blueprint.missions[:24]:
                 chance = f" | drop chance: {mission.drop_chance}" if mission.drop_chance else ""
@@ -121,9 +115,7 @@ class BlueprintDetailsPanel(QWidget):
             if len(self.blueprint.missions) > 24:
                 lines.append(f"- ...and {len(self.blueprint.missions) - 24} more")
         else:
-            lines.append("- Mission/source data not available from current source.")
-
-        lines.extend(["", source_attribution_text()])
+            lines.append("- Mission / drop data not available.")
         return "\n".join(lines)
 
     def on_owned_changed(self, *_):

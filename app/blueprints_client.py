@@ -36,6 +36,7 @@ class BlueprintRecord:
     blueprint_name: str
     crafted_item: str
     category: str
+    ownable: bool
     craft_time_seconds: int | None
     ingredients: tuple[BlueprintIngredient, ...]
     missions: tuple[BlueprintMission, ...]
@@ -47,7 +48,7 @@ class BlueprintRecord:
     @property
     def source_summary(self):
         if not self.missions:
-            return "Mission/source data unavailable"
+            return "Mission data unavailable"
         first = self.missions[0].name
         if len(self.missions) == 1:
             return first
@@ -69,7 +70,7 @@ def fetch_blueprints():
         payload = fetch_blueprints_page(session, page)
         items = payload.get("items")
         if not isinstance(items, list):
-            raise BlueprintsError("Unexpected SC Craft Tools blueprint response format.")
+            raise BlueprintsError("Unexpected blueprint response format.")
 
         blueprints.extend(blueprint_from_record(record) for record in items)
         pagination = payload.get("pagination") if isinstance(payload.get("pagination"), dict) else {}
@@ -91,7 +92,7 @@ def fetch_blueprints_page(session, page):
     response.raise_for_status()
     payload = response.json()
     if not isinstance(payload, dict):
-        raise BlueprintsError("Unexpected SC Craft Tools blueprint response format.")
+        raise BlueprintsError("Unexpected blueprint response format.")
     return payload
 
 
@@ -105,6 +106,7 @@ def blueprint_from_record(record):
         blueprint_name=blueprint_name,
         crafted_item=blueprint_name,
         category=category,
+        ownable=not parse_bool(record.get("default_owned")),
         craft_time_seconds=parse_int(record.get("craft_time_seconds")),
         ingredients=tuple(parse_ingredient(item) for item in record.get("ingredients") or ()),
         missions=tuple(parse_mission(item) for item in record.get("missions") or ()),
@@ -135,6 +137,8 @@ def parse_quality_effect(record):
     max_value = record.get("modifier_at_max")
     if min_value is None and max_value is None:
         return stat
+    if effect_type == "multiplicative":
+        effect_type = "multiplier"
     return f"{stat}: {min_value} -> {max_value} {effect_type}".strip()
 
 
@@ -157,3 +161,13 @@ def parse_int(value):
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def parse_bool(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "y"}
+    return False

@@ -30,7 +30,6 @@ class OwnedBlueprintsTab(QWidget):
 
         self.owned_table = create_table([
             "Blueprint",
-            "Source",
             "Acquired",
             "Updated",
             "Notes",
@@ -53,7 +52,6 @@ class OwnedBlueprintsTab(QWidget):
         for row, owned in enumerate(self.owned_rows):
             values = [
                 owned.get("blueprint_name") or owned.get("blueprint_key") or "",
-                owned.get("source") or "",
                 owned.get("acquired_at") or "",
                 owned.get("updated_at") or "",
                 owned.get("notes") or "",
