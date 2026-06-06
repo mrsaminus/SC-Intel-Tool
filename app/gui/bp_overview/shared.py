@@ -8,6 +8,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from app.blueprints_storage import normalized_material_key
+
 from ..table_utils import configure_readable_table_columns
 
 
@@ -92,6 +94,13 @@ def format_number(value):
     return f"{number:,.4f}".rstrip("0").rstrip(".")
 
 
+def safe_float(value, default=None):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def format_duration(seconds):
     if seconds is None:
         return "N/A"
@@ -99,6 +108,63 @@ def format_duration(seconds):
     if minutes <= 0:
         return f"{seconds}s"
     return f"{minutes}m"
+
+
+def aggregate_blueprint_materials(blueprint):
+    materials = {}
+    for ingredient in blueprint.ingredients:
+        key = normalized_material_key(ingredient.name)
+        if not key:
+            continue
+        existing = materials.setdefault(key, {
+            "material_key": key,
+            "material_name": ingredient.name,
+            "slot": ingredient.slot or "Material",
+            "required": 0.0,
+            "unit": ingredient.unit or "scu",
+            "min_quality": ingredient.min_quality,
+        })
+        if ingredient.quantity is None:
+            existing["required"] = None
+        elif existing["required"] is not None:
+            existing["required"] += float(ingredient.quantity)
+        if ingredient.min_quality:
+            current_quality = existing.get("min_quality")
+            existing["min_quality"] = max(current_quality or 0, ingredient.min_quality)
+    return list(materials.values())
+
+
+def material_status_rows(blueprint, owned_materials):
+    rows = []
+    for material in aggregate_blueprint_materials(blueprint):
+        owned_row = owned_materials.get(material["material_key"]) or {}
+        owned = safe_float(owned_row.get("quantity"), default=0)
+        required = material.get("required")
+        if required is None:
+            missing = None
+            status = "Unknown"
+        else:
+            missing = max(required - owned, 0)
+            status = "Enough" if missing <= 0 else "Missing"
+        row = dict(material)
+        row.update({
+            "owned": owned,
+            "missing": missing,
+            "status": status,
+        })
+        rows.append(row)
+    return rows
+
+
+def craftability_status(blueprint, owned_materials):
+    rows = material_status_rows(blueprint, owned_materials)
+    if not rows:
+        return "Unknown Materials"
+    if any(row["status"] == "Unknown" for row in rows):
+        return "Unknown Materials"
+    if all(row["status"] == "Enough" for row in rows):
+        return "Craftable"
+    return "Missing Materials"
 
 
 def blueprint_summary(blueprint, owned=False):

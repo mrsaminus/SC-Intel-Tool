@@ -23,8 +23,9 @@ class CraftingRecipesTab(QWidget):
         card.layout().addWidget(text)
 
         limitations = QLabel(
-            "Deferred: OCR/screen-reader capture, account sync and deeper in-game inventory import. "
-            "Owned blueprint state remains local SQLite data only."
+            "Reward Scanner alpha is available as an optional, local-only confirmation workflow. "
+            "Full OCR engine packaging, account sync and deeper in-game inventory import remain deferred. "
+            "Owned blueprint and material state remains local SQLite data only."
         )
         limitations.setObjectName("moduleSubtitle")
         limitations.setWordWrap(True)

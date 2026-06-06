@@ -11,24 +11,25 @@ from PySide6.QtWidgets import (
 )
 
 from app.blueprints_client import fetch_blueprints
-from app.blueprints_storage import get_owned_blueprint_keys
+from app.blueprints_storage import get_owned_blueprint_keys, get_owned_crafting_materials
 
 from ..workers import BackgroundTaskMixin
 from ..table_utils import configure_readable_table_columns
 from .blueprint_details_panel import BlueprintDetailsPanel
-from .shared import ROW_ROLE, SORT_ROLE, create_card, create_header, create_table, table_item
+from .shared import ROW_ROLE, SORT_ROLE, craftability_status, create_card, create_header, create_table, table_item
 
 
 OWNED_COLUMN = 3
 
 
 class BlueprintBrowserTab(BackgroundTaskMixin, QWidget):
-    def __init__(self, owned_changed_callback=None):
+    def __init__(self, owned_changed_callback=None, blueprints_loaded_callback=None):
         super().__init__()
         self.blueprints = []
         self.visible_blueprints = []
         self.owned_keys = get_owned_blueprint_keys()
         self.owned_changed_callback = owned_changed_callback
+        self.blueprints_loaded_callback = blueprints_loaded_callback
         self.refresh_running = False
         self.filter_timer = QTimer(self)
         self.filter_timer.setSingleShot(True)
@@ -69,10 +70,12 @@ class BlueprintBrowserTab(BackgroundTaskMixin, QWidget):
         self.category_filter.addItem("All categories")
         self.owned_only_checkbox = QCheckBox("Owned only")
         self.missing_only_checkbox = QCheckBox("Missing only")
+        self.craftable_only_checkbox = QCheckBox("Craftable only")
         controls.addWidget(self.search_input, 1)
         controls.addWidget(self.category_filter)
         controls.addWidget(self.owned_only_checkbox)
         controls.addWidget(self.missing_only_checkbox)
+        controls.addWidget(self.craftable_only_checkbox)
         layout.addLayout(controls)
 
         buttons = QHBoxLayout()
@@ -106,6 +109,7 @@ class BlueprintBrowserTab(BackgroundTaskMixin, QWidget):
         self.category_filter.currentTextChanged.connect(self.populate_table)
         self.owned_only_checkbox.stateChanged.connect(self.on_owned_filter_changed)
         self.missing_only_checkbox.stateChanged.connect(self.on_missing_filter_changed)
+        self.craftable_only_checkbox.stateChanged.connect(self.populate_table)
         self.blueprint_table.itemSelectionChanged.connect(self.update_details)
 
     def refresh_blueprints(self):
@@ -131,6 +135,8 @@ class BlueprintBrowserTab(BackgroundTaskMixin, QWidget):
             f"Loaded {len(self.blueprints)} ownable blueprints. "
             f"Filtered out {total_count - len(self.blueprints)} default blueprints. Owned state is local-only."
         )
+        if self.blueprints_loaded_callback:
+            self.blueprints_loaded_callback(self.blueprints)
         self.populate_table()
 
     def on_blueprints_error(self, exc):
@@ -177,6 +183,8 @@ class BlueprintBrowserTab(BackgroundTaskMixin, QWidget):
         category = self.category_filter.currentText()
         owned_only = self.owned_only_checkbox.isChecked()
         missing_only = self.missing_only_checkbox.isChecked()
+        craftable_only = self.craftable_only_checkbox.isChecked()
+        owned_materials = get_owned_crafting_materials() if craftable_only else {}
 
         visible = []
         for blueprint in self.blueprints:
@@ -186,6 +194,8 @@ class BlueprintBrowserTab(BackgroundTaskMixin, QWidget):
             if owned_only and not owned:
                 continue
             if missing_only and owned:
+                continue
+            if craftable_only and craftability_status(blueprint, owned_materials) != "Craftable":
                 continue
             if query and query not in self.search_blob(blueprint):
                 continue
@@ -292,6 +302,10 @@ class BlueprintBrowserTab(BackgroundTaskMixin, QWidget):
     def refresh_owned_keys(self):
         self.owned_keys = get_owned_blueprint_keys()
         self.populate_table()
+
+    def refresh_material_context(self):
+        self.populate_table()
+        self.update_details()
 
     def refresh_owned_cells(self):
         self.blueprint_table.blockSignals(True)
