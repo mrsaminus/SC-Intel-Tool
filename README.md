@@ -1,10 +1,10 @@
 # SC Intel Tool
 
-SC Intel Tool is a Star Citizen desktop utility for player intel, organization context, local event tracking, mining and salvage planning, item finding, blueprint/crafting reference, Trading, Watchlists, and later OCR.
+SC Intel Tool is a Star Citizen desktop utility for player intel, organization context, local event tracking, mining and salvage planning, item finding, blueprint/crafting reference, Trading, Watchlists, and optional local OCR foundations.
 
 ## Current Status
 
-The app is in active alpha development. Home, Event Center, Player Lookup, Search History, Mining & Salvage, Trading, Item Finder, BP Overview, Watchlists, Wikelo Items, Notes, Settings, AppData persistence, and packaged update checks are usable. OCR is planned for later. Dedicated organization-intelligence mapping is not part of the public app roadmap.
+The app is in active alpha development. Home, Event Center, Player Lookup, Search History, Mining & Salvage, Trading, Item Finder, BP Overview, Watchlists, Wikelo Items, Notes, Settings, AppData persistence, and packaged update checks are usable. BP Overview includes an optional local Reward Scanner alpha foundation; full OCR engine/overlay support remains planned for later. Dedicated organization-intelligence mapping is not part of the public app roadmap.
 
 ## Install And Run
 
@@ -43,13 +43,15 @@ User data is stored outside the install folder by default, so updates should pre
 
 ## Privacy
 
-SC Intel Tool has no telemetry, analytics, tracking, or user reporting. Player notes, lookup history, Event Center events, watchlists, settings, and local database data are not sent to the developer.
+SC Intel Tool has no telemetry, analytics, tracking, or user reporting. Player notes, lookup history, Event Center events, watchlists, settings, OCR text, screenshots, and local database data are not sent to the developer.
 
 The app only makes outbound requests to public Star Citizen-related data sources needed for its features: RSI, UEX, Cornerstone, SC Focus, SC Craft Tools, SC Trade Tools, the public Wikelo Google Sheet, and GitHub Releases for update checking. SCMDB is documented as a secondary BP Overview reference and may be used in a later enrichment pass. All user data remains local unless the user explicitly exports it.
 
+The Reward Scanner is optional and off by default. It only reads a user-selected region when the user manually triggers a scan, and blueprint ownership changes require explicit confirmation.
+
 ## User Data
 
-SC Intel Tool stores local user data outside the app install folder by default so updates do not remove notes, lookup history, Event Center events, Wikelo checklist state, owned blueprint progress, Trading presets/routes, Watchlists, settings, or future local data.
+SC Intel Tool stores local user data outside the app install folder by default so updates do not remove notes, lookup history, Event Center events, Wikelo checklist state, owned blueprint progress, owned crafting materials, Trading presets/routes, Watchlists, settings, or future local data.
 
 On Windows, the default user data folder is:
 

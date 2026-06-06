@@ -2,7 +2,20 @@
 
 ## Unreleased
 
-- No unreleased changes.
+### BP Overview / Crafting
+
+- Added local-only owned crafting material tracking.
+- Added Crafting Materials subtab for manually entering material quantities.
+- Added selected-blueprint craftability status with required, owned and missing material quantities.
+- Added `Craftable only` blueprint filter as a first `What Can I Craft?` workflow.
+- Added missing-material Watchlist action from Blueprint Details.
+- Added Event Center events when owned crafting material quantities change.
+- Improved quality scaling presentation with grouped readable stat ranges.
+- Added Reward Scanner alpha foundation for local, optional blueprint reward matching.
+- Reward Scanner is off by default, reads only a user-selected region when manually triggered,
+  and never marks blueprints owned without user confirmation.
+- Added conservative blueprint reward text matcher for pasted/OCR text.
+- OCR engine integration and region overlay remain deferred; Scan Once handles missing local OCR support gracefully.
 
 ## 0.1.0-alpha.8.5 - 2026-06-06
 

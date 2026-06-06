@@ -5,7 +5,7 @@ Last updated: 2026-06-06
 SC Intel Tool is a Star Citizen intelligence and utility app for player lookup,
 organization context, mining and salvage planning, item finding, blueprint and
 crafting reference, Wikelo tracking, Trading workflows, Watchlists, local notes,
-and future OCR workflows.
+and optional local OCR-assisted workflows.
 
 The app is currently in alpha. The priority is to keep shipping practical,
 stable improvements while preserving local user data and keeping live data
@@ -48,8 +48,9 @@ Stabilization note:
 - Notes
 - Settings and update checks
 
-### Still Early / Placeholder Areas
+### Still Early / Alpha Foundation Areas
 
+- Reward Scanner OCR engine / region overlay
 - OCR / Chat Scanner
 
 ## Near-Term Alpha Priorities
@@ -77,12 +78,15 @@ tracking.
 Current status:
 
 - BP Overview is a main tab.
-- Blueprint Browser loads public SC Craft Tools blueprint data.
-- Recipe/details panel shows ingredients, quantities, quality/effect hints and
+- Blueprint Browser loads public blueprint data.
+- Recipe/details panel shows ingredients, quantities, quality scaling and
   mission drops when present.
 - Owned blueprint tracking is local-only SQLite data.
-- SCMDB is documented as a secondary/source-context reference.
-- OCR/screen-reader capture is deferred and optional.
+- Owned crafting material tracking is local-only SQLite data.
+- Selected-blueprint craftability shows required, owned and missing material quantities.
+- Craftable-only filtering provides the first `What Can I Craft?` workflow.
+- Reward Scanner alpha foundation is implemented as optional, local-only and confirmation-based.
+- Full OCR engine packaging and visual region overlay remain deferred.
 
 Implementation phases:
 
@@ -104,7 +108,11 @@ Phase 4:
 
 Phase 5:
 
-- Optional OCR/screen-reader capture later
+- Optional Reward Scanner foundation - alpha implemented
+
+Phase 6:
+
+- Local OCR engine packaging / region overlay - planned later
 
 Needs work:
 
@@ -112,6 +120,7 @@ Needs work:
   system or location cleanly.
 - Optional export/copy improvements after real use.
 - Optional SCMDB enrichment only if it can be done safely and efficiently.
+- Reward Scanner OCR engine packaging and better region selection overlay.
 
 ### 1. Trading Alpha Complete
 
