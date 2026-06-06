@@ -95,10 +95,7 @@ try {
 
     $AddDataArgs = @()
     if (Test-Path "reference_material") {
-        $ReferencePath = (Resolve-Path "reference_material").Path
-        $AddDataArgs += @("--add-data", "$ReferencePath;reference_material")
-    } else {
-        Write-Warning "reference_material was not found. The build will launch, but bundled mining reference data may be incomplete."
+        Write-Host "reference_material found locally; intentionally not bundling it in public release builds."
     }
 
     $AppIconPath = Join-Path $ProjectRoot "app\assets\Balder.ico"

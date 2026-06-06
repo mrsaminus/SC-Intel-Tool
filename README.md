@@ -106,7 +106,7 @@ Release checklist:
 2. Update `CHANGELOG.md`.
 3. Run smoke tests locally.
 4. Run `.\scripts\build_windows.ps1`.
-5. Create a GitHub Release with a matching tag, for example `v0.1.0-alpha.8.4`.
+5. Create a GitHub Release with a matching tag, for example `v0.1.0-alpha.8.5`.
 6. Upload `SC-Intel-Tool.exe` and include the SHA256 checksum in the release notes.
 
 ## Roadmap

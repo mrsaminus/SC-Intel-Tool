@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- No unreleased changes.
+
+## 0.1.0-alpha.8.5 - 2026-06-06
+
+### Release Stabilization
+
+- Prepared the app for a larger public alpha release after Trading, Watchlists,
+  Event Center, Player/org tracking and BP Overview additions.
+- Audited build hygiene so local `reference_material` data remains excluded from
+  public packaged releases.
+- Kept SC Trade Tools token storage local-only.
+- Kept update install behavior on manual restart to avoid PyInstaller OneFile
+  restart/DLL issues.
+- Ran release-readiness validation across source, packaged build and live data sources.
+
 ### BP Overview / Crafting
 
 - Added a new BP Overview main tab for Star Citizen blueprints and crafting.
