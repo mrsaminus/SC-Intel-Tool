@@ -152,8 +152,12 @@ Current status:
   gracefully when no token is configured.
 - Trading route results now include quality indicators, clearer summaries,
   copy-to-clipboard support and better empty/error states.
+- Create Routes is implemented as a smart UEX-backed route assistant for
+  ship/cargo/budget/safety-driven route generation.
 - Saved Routes and Recent Routes are stored locally in SQLite.
 - UEX Trading presets store ship, cargo, investment and filter setups locally.
+- Create Routes stores its last selected ship, cargo, filters and optimization
+  setup locally.
 - Complete route results can be saved; incomplete/reference-only results can be copied
   without inventing missing profit data.
 
@@ -179,7 +183,8 @@ Out of scope for the first Trading MVP:
 - Complex route optimization
 - Multi-stop trading
 - Risk modeling
-- Automatic best route planner
+- Complex automatic best-route planning beyond the explainable Create Routes
+  assistant
 - Fleet planning
 - Market prediction
 - OCR integration

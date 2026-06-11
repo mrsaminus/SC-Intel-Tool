@@ -2,7 +2,17 @@
 
 ## Unreleased
 
-- No unreleased changes.
+### Trading
+
+- Added `Create Routes`, a smart Trading workflow for generating UEX-backed routes
+  from ship cargo capacity, optional investment budget, system/location filters,
+  safety preferences and optimization mode.
+- Added ranked Create Routes results with cargo used, investment, expected profit,
+  profit per SCU, quality and route notes.
+- Added Create Routes details with copy summary, save route and Watchlist actions
+  using existing local Trading storage.
+- Added local-only persistence for the last Create Routes ship, cargo, filter and
+  optimization settings.
 
 ## 0.1.0-alpha.8.6 - 2026-06-06
 
