@@ -106,7 +106,7 @@ def blueprint_from_record(record):
         blueprint_name=blueprint_name,
         crafted_item=blueprint_name,
         category=category,
-        ownable=not parse_bool(record.get("default_owned")),
+        ownable=True,
         craft_time_seconds=parse_int(record.get("craft_time_seconds")),
         ingredients=tuple(parse_ingredient(item) for item in record.get("ingredients") or ()),
         missions=tuple(parse_mission(item) for item in record.get("missions") or ()),

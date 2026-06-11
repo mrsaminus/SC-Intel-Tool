@@ -1,4 +1,4 @@
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -68,6 +68,8 @@ class BlueprintBrowserTab(BackgroundTaskMixin, QWidget):
         self.search_input.setPlaceholderText("Search blueprint, material or mission...")
         self.category_filter = QComboBox()
         self.category_filter.addItem("All categories")
+        self.category_filter.setMinimumWidth(240)
+        self.category_filter.setMinimumContentsLength(24)
         self.owned_only_checkbox = QCheckBox("Owned only")
         self.missing_only_checkbox = QCheckBox("Missing only")
         self.craftable_only_checkbox = QCheckBox("Craftable only")
@@ -127,13 +129,12 @@ class BlueprintBrowserTab(BackgroundTaskMixin, QWidget):
         )
 
     def on_blueprints_loaded(self, blueprints):
-        total_count = len(blueprints)
         self.blueprints = [blueprint for blueprint in blueprints if blueprint.ownable]
         self.owned_keys = get_owned_blueprint_keys()
         self.populate_category_filter()
         self.status_label.setText(
-            f"Loaded {len(self.blueprints)} ownable blueprints. "
-            f"Filtered out {total_count - len(self.blueprints)} default blueprints. Owned state is local-only."
+            f"Loaded {len(self.blueprints)} blueprints. "
+            "Owned state is local-only."
         )
         if self.blueprints_loaded_callback:
             self.blueprints_loaded_callback(self.blueprints)
@@ -154,9 +155,22 @@ class BlueprintBrowserTab(BackgroundTaskMixin, QWidget):
         self.category_filter.clear()
         self.category_filter.addItem("All categories")
         self.category_filter.addItems(categories)
+        self.update_category_filter_width()
         index = self.category_filter.findText(current)
         self.category_filter.setCurrentIndex(index if index >= 0 else 0)
         self.category_filter.blockSignals(False)
+
+    def update_category_filter_width(self):
+        labels = [
+            self.category_filter.itemText(index)
+            for index in range(self.category_filter.count())
+        ]
+        longest = max(labels, key=len, default="All categories")
+        popup_width = min(520, max(260, self.category_filter.fontMetrics().horizontalAdvance(longest) + 48))
+        self.category_filter.setMinimumWidth(min(320, popup_width))
+        self.category_filter.view().setMinimumWidth(popup_width)
+        for index, label in enumerate(labels):
+            self.category_filter.setItemData(index, label, Qt.ToolTipRole)
 
     def queue_filter(self):
         self.filter_timer.start()
