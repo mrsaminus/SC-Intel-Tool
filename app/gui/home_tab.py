@@ -27,7 +27,7 @@ class NavigationCard(QFrame):
 
         self.setObjectName("homeNavCard")
         self.setCursor(Qt.PointingHandCursor)
-        self.setMinimumHeight(108)
+        self.setMinimumHeight(102)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.setStyleSheet("""
             QFrame#homeNavCard {
@@ -42,8 +42,8 @@ class NavigationCard(QFrame):
         """)
 
         layout = QVBoxLayout()
-        layout.setContentsMargins(14, 12, 14, 12)
-        layout.setSpacing(5)
+        layout.setContentsMargins(13, 10, 13, 10)
+        layout.setSpacing(4)
 
         if eyebrow:
             eyebrow_label = QLabel(eyebrow.upper())
@@ -100,7 +100,7 @@ class CountdownTimerWidget(QWidget):
         self.timer_display = QLabel("00:00:00")
         self.timer_display.setObjectName("orgName")
         self.timer_display.setAlignment(Qt.AlignCenter)
-        self.timer_display.setStyleSheet("font-size: 14pt;")
+        self.timer_display.setStyleSheet("font-size: 13pt;")
 
         button_row = QHBoxLayout()
         button_row.setSpacing(6)
@@ -253,15 +253,15 @@ class HomeTab(QWidget):
 
         page = QWidget()
         page_layout = QVBoxLayout()
-        page_layout.setContentsMargins(14, 14, 14, 14)
-        page_layout.setSpacing(12)
+        page_layout.setContentsMargins(12, 12, 12, 12)
+        page_layout.setSpacing(10)
 
         page_layout.addWidget(self.create_hero_panel())
         page_layout.addWidget(self.build_status_strip())
 
         main_layout = QHBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(12)
+        main_layout.setSpacing(10)
         main_layout.addWidget(self.build_left_panel(), 3, Qt.AlignTop)
         main_layout.addWidget(self.build_timer_panel(), 1, Qt.AlignTop)
 
@@ -284,7 +284,7 @@ class HomeTab(QWidget):
 
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
+        layout.setSpacing(7)
 
         layout.addWidget(self.build_navigation_panel())
         layout.addWidget(self.build_trust_line())
@@ -296,8 +296,8 @@ class HomeTab(QWidget):
         card = QFrame()
         card.setObjectName("sectionCard")
         layout = QVBoxLayout()
-        layout.setContentsMargins(12, 10, 12, 12)
-        layout.setSpacing(8)
+        layout.setContentsMargins(12, 9, 12, 11)
+        layout.setSpacing(7)
 
         title_label = QLabel("CAPABILITY OVERVIEW")
         title_label.setObjectName("sectionTitle")
@@ -305,8 +305,8 @@ class HomeTab(QWidget):
 
         grid = QGridLayout()
         grid.setContentsMargins(0, 0, 0, 0)
-        grid.setHorizontalSpacing(8)
-        grid.setVerticalSpacing(8)
+        grid.setHorizontalSpacing(7)
+        grid.setVerticalSpacing(7)
         for column in range(2):
             grid.setColumnStretch(column, 1)
 
@@ -323,11 +323,11 @@ class HomeTab(QWidget):
 
     def build_timer_panel(self):
         card = self.create_filter_card("COUNTDOWN TIMERS")
-        card.setMinimumWidth(300)
-        card.setMaximumWidth(380)
+        card.setMinimumWidth(286)
+        card.setMaximumWidth(354)
         card.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
         layout = card.layout()
-        layout.setSpacing(9)
+        layout.setSpacing(8)
         self.timer_panel_layout = layout
 
         self.add_countdown_timer(removable=False)
@@ -343,8 +343,8 @@ class HomeTab(QWidget):
         layout = card.layout()
         if layout is None:
             layout = QHBoxLayout()
-            layout.setContentsMargins(12, 7, 12, 7)
-            layout.setSpacing(7)
+            layout.setContentsMargins(12, 6, 12, 6)
+            layout.setSpacing(8)
 
         build_type = "Packaged build" if is_packaged_app() else "Source/dev run"
         title = QLabel("OPERATIONAL STATUS")
@@ -453,7 +453,7 @@ class HomeTab(QWidget):
         card.setObjectName("sectionCard")
         card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
         layout = QHBoxLayout()
-        layout.setContentsMargins(12, 8, 12, 8)
+        layout.setContentsMargins(12, 7, 12, 7)
         layout.setSpacing(8)
 
         title = QLabel("TRUST")
@@ -472,7 +472,7 @@ class HomeTab(QWidget):
         card.setObjectName("sectionCard")
         card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
         layout = QHBoxLayout()
-        layout.setContentsMargins(12, 8, 12, 8)
+        layout.setContentsMargins(12, 7, 12, 7)
         layout.setSpacing(8)
 
         title = QLabel("ALPHA FEEDBACK")
@@ -491,12 +491,12 @@ class HomeTab(QWidget):
         card.setObjectName("sectionCard")
         card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
         layout = QHBoxLayout()
-        layout.setContentsMargins(14, 12, 14, 12)
-        layout.setSpacing(14)
+        layout.setContentsMargins(14, 10, 14, 10)
+        layout.setSpacing(12)
 
         text_layout = QVBoxLayout()
         text_layout.setContentsMargins(0, 0, 0, 0)
-        text_layout.setSpacing(4)
+        text_layout.setSpacing(3)
 
         title = QLabel("SC Intel Tool")
         title.setStyleSheet("color: #f5fdff; font-size: 12pt; font-weight: 700;")
@@ -515,7 +515,7 @@ class HomeTab(QWidget):
         text_layout.addWidget(legal)
 
         layout.addLayout(text_layout, 1)
-        layout.addWidget(CommunityLogoLabel(max_size=92, min_size=62), 0, Qt.AlignRight | Qt.AlignVCenter)
+        layout.addWidget(CommunityLogoLabel(max_size=78, min_size=54), 0, Qt.AlignRight | Qt.AlignVCenter)
         card.setLayout(layout)
         return card
 
@@ -587,12 +587,12 @@ class HomeTab(QWidget):
         card.setObjectName("playerCard")
         card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
         layout = QHBoxLayout()
-        layout.setContentsMargins(16, 12, 16, 12)
-        layout.setSpacing(14)
+        layout.setContentsMargins(14, 8, 14, 8)
+        layout.setSpacing(13)
 
         text_layout = QVBoxLayout()
         text_layout.setContentsMargins(0, 0, 0, 0)
-        text_layout.setSpacing(7)
+        text_layout.setSpacing(5)
 
         title_label = QLabel("SC Intel Tool")
         title_label.setObjectName("moduleHeading")
@@ -606,7 +606,7 @@ class HomeTab(QWidget):
         mission_label.setWordWrap(True)
 
         chip_row = QHBoxLayout()
-        chip_row.setSpacing(6)
+        chip_row.setSpacing(5)
         chip_row.addWidget(self.create_chip("Alpha Build"))
         chip_row.addWidget(self.create_chip("Tracking-Free"))
         chip_row.addWidget(self.create_chip("Local Data"))
@@ -618,7 +618,7 @@ class HomeTab(QWidget):
         text_layout.addWidget(mission_label)
         text_layout.addLayout(chip_row)
 
-        layout.addWidget(AppLogoLabel(max_size=118, min_size=82), 0, Qt.AlignLeft | Qt.AlignVCenter)
+        layout.addWidget(AppLogoLabel(max_size=148, min_size=104), 0, Qt.AlignLeft | Qt.AlignVCenter)
         layout.addLayout(text_layout, 1)
         card.setLayout(layout)
         return card
@@ -643,8 +643,8 @@ class HomeTab(QWidget):
         card = QFrame()
         card.setObjectName("sectionCard")
         layout = QVBoxLayout()
-        layout.setContentsMargins(12, 10, 12, 10)
-        layout.setSpacing(6)
+        layout.setContentsMargins(12, 9, 12, 9)
+        layout.setSpacing(5)
         title_label = QLabel(title)
         title_label.setObjectName("sectionTitle")
         layout.addWidget(title_label)

@@ -64,11 +64,11 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         layout = card.layout()
 
         top_row = QHBoxLayout()
-        top_row.setSpacing(14)
+        top_row.setSpacing(12)
 
         text_layout = QVBoxLayout()
         text_layout.setContentsMargins(0, 0, 0, 0)
-        text_layout.setSpacing(4)
+        text_layout.setSpacing(3)
 
         title = QLabel(APP_NAME)
         title.setStyleSheet("color: #f5fdff; font-size: 13pt; font-weight: 700;")
@@ -93,9 +93,9 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         text_layout.addWidget(privacy)
         text_layout.addWidget(legal)
 
-        top_row.addWidget(AppLogoLabel(max_size=96, min_size=68), 0, Qt.AlignLeft | Qt.AlignTop)
+        top_row.addWidget(AppLogoLabel(max_size=108, min_size=78), 0, Qt.AlignLeft | Qt.AlignTop)
         top_row.addLayout(text_layout, 1)
-        top_row.addWidget(CommunityLogoLabel(max_size=64, min_size=46), 0, Qt.AlignRight | Qt.AlignTop)
+        top_row.addWidget(CommunityLogoLabel(max_size=56, min_size=40), 0, Qt.AlignRight | Qt.AlignTop)
         layout.addLayout(top_row)
 
         grid = QGridLayout()

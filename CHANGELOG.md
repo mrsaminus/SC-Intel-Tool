@@ -7,6 +7,7 @@
 - Added new SC Intel Tool app branding/logo as the primary application identity.
 - Updated the app/window icon and packaged build icon to use the new SC Intel Tool logo.
 - Updated Home and Settings About branding around the new primary app logo.
+- Added a UI/branding polish pass for Home, Settings and layout consistency.
 - Added a tasteful Star Citizen community branding footer on Home and a matching
   About section in Settings with concise fan-made/legal and privacy wording.
 - Kept the `Made By The Community` logo as a smaller community/trust badge.
