@@ -28,7 +28,7 @@ from app.update_checker import (
 from app.updater import UpdateInstallError, download_update, start_update_installer
 from app.version import APP_NAME, APP_VERSION, GITHUB_RELEASES_URL, GITHUB_REPOSITORY
 
-from .community_branding import CommunityLogoLabel
+from .community_branding import AppLogoLabel, CommunityLogoLabel
 from .workers import BackgroundTaskMixin
 
 
@@ -93,8 +93,9 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         text_layout.addWidget(privacy)
         text_layout.addWidget(legal)
 
+        top_row.addWidget(AppLogoLabel(max_size=96, min_size=68), 0, Qt.AlignLeft | Qt.AlignTop)
         top_row.addLayout(text_layout, 1)
-        top_row.addWidget(CommunityLogoLabel(max_size=84, min_size=58), 0, Qt.AlignRight | Qt.AlignTop)
+        top_row.addWidget(CommunityLogoLabel(max_size=64, min_size=46), 0, Qt.AlignRight | Qt.AlignTop)
         layout.addLayout(top_row)
 
         grid = QGridLayout()

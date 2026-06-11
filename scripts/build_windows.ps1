@@ -98,13 +98,28 @@ try {
         Write-Host "reference_material found locally; intentionally not bundling it in public release builds."
     }
 
-    $AppIconPath = Join-Path $ProjectRoot "app\assets\Balder.ico"
+    $AppIconPath = Join-Path $ProjectRoot "app\assets\SC-Intel-Tool.ico"
     if (Test-Path $AppIconPath) {
         $IconPath = (Resolve-Path $AppIconPath).Path
         $AddDataArgs += @("--add-data", "$IconPath;app/assets")
     } else {
-        $IconPath = ""
-        Write-Warning "app\assets\Balder.ico was not found. The build will use the default executable icon."
+        $FallbackIconPath = Join-Path $ProjectRoot "app\assets\Balder.ico"
+        if (Test-Path $FallbackIconPath) {
+            $IconPath = (Resolve-Path $FallbackIconPath).Path
+            $AddDataArgs += @("--add-data", "$IconPath;app/assets")
+            Write-Warning "app\assets\SC-Intel-Tool.ico was not found. Falling back to Balder.ico."
+        } else {
+            $IconPath = ""
+            Write-Warning "No app icon was found. The build will use the default executable icon."
+        }
+    }
+
+    $AppLogoPath = Join-Path $ProjectRoot "app\assets\SC-Intel-Tool-Logo.png"
+    if (Test-Path $AppLogoPath) {
+        $LogoPath = (Resolve-Path $AppLogoPath).Path
+        $AddDataArgs += @("--add-data", "$LogoPath;app/assets")
+    } else {
+        Write-Warning "app\assets\SC-Intel-Tool-Logo.png was not found. App branding logo will not be bundled."
     }
 
     $CommunityLogoPath = Join-Path $ProjectRoot "app\assets\MadeByTheCommunity_White.png"

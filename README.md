@@ -1,5 +1,9 @@
 # SC Intel Tool
 
+<p align="center">
+  <img src="app/assets/SC-Intel-Tool-Logo.png" alt="SC Intel Tool logo" width="160">
+</p>
+
 SC Intel Tool is a Star Citizen desktop utility for player intel, organization context, local event tracking, mining and salvage planning, item finding, blueprint/crafting reference, Trading, Watchlists, and optional local OCR foundations.
 
 ## Current Status

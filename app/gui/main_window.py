@@ -26,9 +26,13 @@ from .workers import BackgroundTaskMixin
 
 
 def app_icon():
-    icon_path = bundled_path("app", "assets", "Balder.ico")
+    icon_path = bundled_path("app", "assets", "SC-Intel-Tool.ico")
     if icon_path.exists():
         return QIcon(str(icon_path))
+
+    fallback_icon_path = bundled_path("app", "assets", "Balder.ico")
+    if fallback_icon_path.exists():
+        return QIcon(str(fallback_icon_path))
 
     return QIcon()
 

@@ -2,7 +2,7 @@ from app.paths import is_packaged_app
 from app.update_checker import is_newer_version
 from app.version import APP_VERSION
 
-from .community_branding import CommunityLogoLabel
+from .community_branding import AppLogoLabel, CommunityLogoLabel
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
@@ -586,18 +586,21 @@ class HomeTab(QWidget):
         card = QFrame()
         card.setObjectName("playerCard")
         card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
-        layout = QVBoxLayout()
+        layout = QHBoxLayout()
         layout.setContentsMargins(16, 12, 16, 12)
-        layout.setSpacing(7)
+        layout.setSpacing(14)
+
+        text_layout = QVBoxLayout()
+        text_layout.setContentsMargins(0, 0, 0, 0)
+        text_layout.setSpacing(7)
 
         title_label = QLabel("SC Intel Tool")
         title_label.setObjectName("moduleHeading")
-        subtitle_label = QLabel("One operational companion app for Star Citizen.")
+        subtitle_label = QLabel("Operational companion app for Star Citizen.")
         subtitle_label.setObjectName("moduleSubtitle")
         subtitle_label.setWordWrap(True)
         mission_label = QLabel(
-            "Player intel, organization context, mining, salvage, trading, item lookup, "
-            "Wikelo tracking and local notes - in one place."
+            "Player intel, mining, trading, crafting, item lookup, watchlists and local notes in one place."
         )
         mission_label.setObjectName("valueText")
         mission_label.setWordWrap(True)
@@ -610,10 +613,13 @@ class HomeTab(QWidget):
         chip_row.addWidget(self.create_chip("Operational Tool"))
         chip_row.addStretch(1)
 
-        layout.addWidget(title_label)
-        layout.addWidget(subtitle_label)
-        layout.addWidget(mission_label)
-        layout.addLayout(chip_row)
+        text_layout.addWidget(title_label)
+        text_layout.addWidget(subtitle_label)
+        text_layout.addWidget(mission_label)
+        text_layout.addLayout(chip_row)
+
+        layout.addWidget(AppLogoLabel(max_size=118, min_size=82), 0, Qt.AlignLeft | Qt.AlignVCenter)
+        layout.addLayout(text_layout, 1)
         card.setLayout(layout)
         return card
 
