@@ -39,7 +39,7 @@ class MiningRefineryMixin:
         content.setSpacing(12)
 
         input_card = self.create_filter_card("SHIP ORES / REFINING")
-        input_card.setMinimumWidth(690)
+        input_card.setMinimumWidth(720)
         input_layout = input_card.layout()
 
         session_row = QHBoxLayout()
@@ -121,7 +121,8 @@ class MiningRefineryMixin:
         input_layout.addWidget(self.refinery_empty_label)
 
         summary_card = self.create_filter_card("SELLING / PROFIT SUMMARY")
-        summary_card.setMinimumWidth(340)
+        summary_card.setMinimumWidth(300)
+        summary_card.setMaximumWidth(430)
         summary_layout = summary_card.layout()
         self.refinery_price_status_label = QLabel(
             "UEX prices are fetched live for this session and are not stored locally."
@@ -185,8 +186,8 @@ class MiningRefineryMixin:
             "Materials",
         ])
         self.refinery_sell_locations_table.setSortingEnabled(False)
-        self.refinery_sell_locations_table.setMinimumHeight(150)
-        self.refinery_sell_locations_table.setMinimumWidth(320)
+        self.refinery_sell_locations_table.setMinimumHeight(210)
+        self.refinery_sell_locations_table.setMinimumWidth(300)
         self.refinery_sell_locations_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         configure_readable_table_columns(self.refinery_sell_locations_table, min_width=120, max_width=520)
         summary_layout.addWidget(self.refinery_sell_locations_table, 1)
@@ -204,7 +205,7 @@ class MiningRefineryMixin:
         hint.setWordWrap(True)
         summary_layout.addWidget(hint)
 
-        content.addWidget(input_card, 2)
+        content.addWidget(input_card, 3)
         content.addWidget(summary_card, 1)
         work_layout.addLayout(content, 1)
         work_widget.setLayout(work_layout)
@@ -767,17 +768,13 @@ class MiningRefineryMixin:
                 continue
 
             has_sell_quantity = True
-            prices = self.uex_price_lists.get(material.lower(), [])
+            prices = self.deduped_refinery_sell_prices(self.uex_price_lists.get(material.lower(), []))
             has_price_rows = has_price_rows or bool(prices)
             for price in prices:
                 if not price.price_sell:
                     continue
 
-                key = (
-                    price.star_system_name,
-                    price.location_name,
-                    price.terminal_name,
-                )
+                key = self.refinery_sell_location_key(price)
                 location = grouped_locations.setdefault(key, {
                     "label": self.format_uex_terminal(price),
                     "materials": [],
@@ -822,6 +819,32 @@ class MiningRefineryMixin:
         self.refinery_sell_locations_table.setVisible(bool(rows))
         if rows:
             self.resize_refinery_sell_location_columns()
+
+
+    def deduped_refinery_sell_prices(self, prices):
+        best_by_location = {}
+        for price in prices:
+            if not price.price_sell:
+                continue
+
+            key = self.refinery_sell_location_key(price)
+            current = best_by_location.get(key)
+            if current is None or (price.price_sell or 0) > (current.price_sell or 0):
+                best_by_location[key] = price
+
+        return sorted(
+            best_by_location.values(),
+            key=lambda price: (-(price.price_sell or 0), self.format_uex_terminal(price).lower()),
+        )
+
+
+    def refinery_sell_location_key(self, price):
+        system = " ".join(str(price.star_system_name or "").lower().split())
+        location = str(price.location_name or "").strip()
+        if not location or location == "N/A":
+            location = str(price.terminal_name or "").strip()
+        location = " ".join(location.lower().replace("'", "").split())
+        return system, location
 
 
     def resize_refinery_sell_location_columns(self):

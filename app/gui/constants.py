@@ -27,7 +27,7 @@ SHIP_ORE_MATERIALS = [
     ("TITA", "Titanium"),
     ("LARA", "Laranite"),
     ("TORI", "Torite"),
-    ("DIAM", "Diamond"),
+    ("ASLA", "Aslarite"),
     ("ICE", "Ice"),
     ("QUAR", "Quartz"),
     ("HEPH", "Hephaestanite"),
