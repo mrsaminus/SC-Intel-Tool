@@ -107,6 +107,14 @@ try {
         Write-Warning "app\assets\Balder.ico was not found. The build will use the default executable icon."
     }
 
+    $CommunityLogoPath = Join-Path $ProjectRoot "app\assets\MadeByTheCommunity_White.png"
+    if (Test-Path $CommunityLogoPath) {
+        $LogoPath = (Resolve-Path $CommunityLogoPath).Path
+        $AddDataArgs += @("--add-data", "$LogoPath;app/assets")
+    } else {
+        Write-Warning "app\assets\MadeByTheCommunity_White.png was not found. Community branding logo will not be bundled."
+    }
+
     if (Test-Path "CHANGELOG.md") {
         $ChangelogPath = (Resolve-Path "CHANGELOG.md").Path
         $AddDataArgs += @("--add-data", "$ChangelogPath;.")

@@ -2,6 +2,8 @@ from app.paths import is_packaged_app
 from app.update_checker import is_newer_version
 from app.version import APP_VERSION
 
+from .community_branding import CommunityLogoLabel
+
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QFrame,
@@ -264,6 +266,7 @@ class HomeTab(QWidget):
         main_layout.addWidget(self.build_timer_panel(), 1, Qt.AlignTop)
 
         page_layout.addLayout(main_layout)
+        page_layout.addWidget(self.build_community_footer())
         page.setLayout(page_layout)
         scroll_area.setWidget(page)
         layout.addWidget(scroll_area)
@@ -480,6 +483,39 @@ class HomeTab(QWidget):
 
         layout.addWidget(title)
         layout.addWidget(note, 1)
+        card.setLayout(layout)
+        return card
+
+    def build_community_footer(self):
+        card = QFrame()
+        card.setObjectName("sectionCard")
+        card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        layout = QHBoxLayout()
+        layout.setContentsMargins(14, 12, 14, 12)
+        layout.setSpacing(14)
+
+        text_layout = QVBoxLayout()
+        text_layout.setContentsMargins(0, 0, 0, 0)
+        text_layout.setSpacing(4)
+
+        title = QLabel("SC Intel Tool")
+        title.setStyleSheet("color: #f5fdff; font-size: 12pt; font-weight: 700;")
+        subtitle = QLabel("Community-made companion app for Star Citizen")
+        subtitle.setObjectName("valueText")
+        subtitle.setWordWrap(True)
+        legal = QLabel(
+            "Unofficial fan-made application. Not affiliated with Cloud Imperium Games. "
+            "All trademarks belong to their respective owners."
+        )
+        legal.setObjectName("moduleSubtitle")
+        legal.setWordWrap(True)
+
+        text_layout.addWidget(title)
+        text_layout.addWidget(subtitle)
+        text_layout.addWidget(legal)
+
+        layout.addLayout(text_layout, 1)
+        layout.addWidget(CommunityLogoLabel(max_size=92, min_size=62), 0, Qt.AlignRight | Qt.AlignVCenter)
         card.setLayout(layout)
         return card
 

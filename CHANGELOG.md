@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Community Branding
+
+- Added a tasteful Star Citizen community branding footer on Home and a matching
+  About section in Settings with concise fan-made/legal and privacy wording.
+
 ### Trading
 
 - Added `Create Routes`, a smart Trading workflow for generating UEX-backed routes

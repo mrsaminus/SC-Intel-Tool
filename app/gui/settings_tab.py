@@ -28,6 +28,7 @@ from app.update_checker import (
 from app.updater import UpdateInstallError, download_update, start_update_installer
 from app.version import APP_NAME, APP_VERSION, GITHUB_RELEASES_URL, GITHUB_REPOSITORY
 
+from .community_branding import CommunityLogoLabel
 from .workers import BackgroundTaskMixin
 
 
@@ -59,16 +60,48 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         self.setLayout(layout)
 
     def build_about_card(self):
-        card = self.create_card("ABOUT")
+        card = self.create_card("ABOUT SC INTEL TOOL")
         layout = card.layout()
+
+        top_row = QHBoxLayout()
+        top_row.setSpacing(14)
+
+        text_layout = QVBoxLayout()
+        text_layout.setContentsMargins(0, 0, 0, 0)
+        text_layout.setSpacing(4)
+
+        title = QLabel(APP_NAME)
+        title.setStyleSheet("color: #f5fdff; font-size: 13pt; font-weight: 700;")
+        version = QLabel(f"v{APP_VERSION}")
+        version.setObjectName("valueText")
+        description = QLabel("Community-made companion app for Star Citizen")
+        description.setObjectName("valueText")
+        description.setWordWrap(True)
+        privacy = QLabel("No telemetry. No analytics. No tracking.")
+        privacy.setObjectName("moduleSubtitle")
+        privacy.setWordWrap(True)
+        legal = QLabel(
+            "Unofficial fan-made application. Not affiliated with Cloud Imperium Games. "
+            "All trademarks belong to their respective owners."
+        )
+        legal.setObjectName("moduleSubtitle")
+        legal.setWordWrap(True)
+
+        text_layout.addWidget(title)
+        text_layout.addWidget(version)
+        text_layout.addWidget(description)
+        text_layout.addWidget(privacy)
+        text_layout.addWidget(legal)
+
+        top_row.addLayout(text_layout, 1)
+        top_row.addWidget(CommunityLogoLabel(max_size=84, min_size=58), 0, Qt.AlignRight | Qt.AlignTop)
+        layout.addLayout(top_row)
 
         grid = QGridLayout()
         grid.setHorizontalSpacing(18)
         grid.setVerticalSpacing(8)
-        self.add_fact(grid, 0, "App", APP_NAME)
-        self.add_fact(grid, 1, "Version", APP_VERSION)
-        self.add_fact(grid, 2, "Repository", GITHUB_REPOSITORY)
-        self.add_fact(grid, 3, "Runtime", "Packaged build" if is_packaged_app() else "Source / development")
+        self.add_fact(grid, 0, "Repository", GITHUB_REPOSITORY)
+        self.add_fact(grid, 1, "Runtime", "Packaged build" if is_packaged_app() else "Source / development")
         layout.addLayout(grid)
         return card
 
