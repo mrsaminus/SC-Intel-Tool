@@ -25,6 +25,19 @@
 
 ### Stabilization
 
+- Fixed pre-release tester issues before publishing alpha.8.6.
+- Fixed BP Overview search so SC Craft Tools default-owned blueprints such as
+  `Field Recon Suit Arms`, `Core`, `Helmet` and `Legs` remain visible.
+- Improved BP category dropdown readability with wider field and popup sizing.
+- Polished Mining Refinery layout so the selling/profit summary is more compact
+  and sell-location options get more useful space.
+- Confirmed the main tab label is `Mining & Salvage`.
+- Deduplicated Refinery sell-location rows by normalized location and material,
+  using the best valid UEX sell value when duplicate source rows exist.
+- Added a small bundled public mining equipment data set for packaged builds
+  without bundling local `reference_material`.
+- Removed `Diamond` from refinery ore buttons.
+- Restored `Aslarite` as a refinery ore option.
 - Ran BP Overview regression coverage for blueprint loading, craftability, Reward Scanner parsing,
   manual confirmation and Event Center integration.
 - Prepared the app version for the next alpha build.

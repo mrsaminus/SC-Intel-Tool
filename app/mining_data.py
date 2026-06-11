@@ -10,6 +10,7 @@ from app.paths import bundled_path
 
 
 DEFAULT_MINING_ROOT = bundled_path("reference_material", "mining_warchest")
+PUBLIC_MINING_ROOT = bundled_path("app", "assets", "mining_public")
 
 SECTION_RE = re.compile(r"\b(Surface|Asteroid)\s*:", re.IGNORECASE)
 SYSTEM_MARKER_RE = re.compile(
@@ -424,6 +425,11 @@ def load_mining_equipment(root, errors):
     if path.exists():
         shops = load_equipment_shops(root, errors)
         return load_equipment_from_rock_data(path, shops, errors)
+
+    public_path = PUBLIC_MINING_ROOT / "Calculator" / "rock-breaking-calculator-data.json"
+    if public_path.exists():
+        shops = load_equipment_shops(PUBLIC_MINING_ROOT, errors)
+        return load_equipment_from_rock_data(public_path, shops, errors)
 
     fallback = root / "assets" / "Equipment" / "Lasers and Modules Stats.csv"
     if fallback.exists():

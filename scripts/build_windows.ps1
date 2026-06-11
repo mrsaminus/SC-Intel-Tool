@@ -129,6 +129,11 @@ try {
         $PyInstallerArgs += @("--icon", $IconPath)
     }
 
+    $MiningPublicDataPath = Join-Path $ProjectRoot "app\assets\mining_public"
+    if (Test-Path $MiningPublicDataPath) {
+        $PyInstallerArgs += @("--add-data", "$((Resolve-Path $MiningPublicDataPath).Path);app/assets/mining_public")
+    }
+
     if ($Package -eq "OneFile") {
         $PyInstallerArgs += @("--onefile", "--runtime-tmpdir", ".")
     }
