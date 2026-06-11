@@ -1,5 +1,6 @@
 from .best_buyer_tab import BestBuyerTab
 from .commodities_tab import CommoditiesTab
+from .create_routes_tab import CreateRoutesTab
 from .en_route_tab import EnRouteTab
 from .saved_routes_tab import SavedRoutesTab
 from .shops_tab import ShopsTab
@@ -11,6 +12,7 @@ from .uex_trading_tab import UEXTradingTab
 __all__ = [
     "BestBuyerTab",
     "CommoditiesTab",
+    "CreateRoutesTab",
     "EnRouteTab",
     "SavedRoutesTab",
     "ShopsTab",

@@ -2,6 +2,7 @@ from PySide6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 
 from .best_buyer_tab import BestBuyerTab
 from .commodities_tab import CommoditiesTab
+from .create_routes_tab import CreateRoutesTab
 from .en_route_tab import EnRouteTab
 from .reference_data import get_trading_reference_service
 from .saved_routes_tab import SavedRoutesTab
@@ -27,6 +28,8 @@ class TradingTab(QWidget):
         self.tabs.addTab(self.uex_trading_tab, "UEX Trading")
         self.saved_routes_tab = SavedRoutesTab()
         self.tabs.addTab(self.saved_routes_tab, "Saved Routes")
+        self.create_routes_tab = CreateRoutesTab(self.reference_service)
+        self.tabs.addTab(self.create_routes_tab, "Create Routes")
 
         self.sc_trade_tabs = {}
         for workflow in SC_TRADE_WORKFLOWS:
