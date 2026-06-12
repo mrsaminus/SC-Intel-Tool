@@ -3,6 +3,7 @@ from app.update_checker import is_newer_version
 from app.version import APP_VERSION
 
 from .community_branding import AppLogoLabel, CommunityLogoLabel
+from .themes import get_current_theme
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -68,6 +69,8 @@ class HomeTab(QWidget):
         self.update_status_chip = None
         self.update_status_dot = None
         self.update_status_text = None
+        self.update_status_label = "Not checked"
+        self.update_status_state = "neutral"
 
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
@@ -223,17 +226,22 @@ class HomeTab(QWidget):
         return chip
 
     def set_update_status(self, text, state="neutral"):
+        self.update_status_label = text
+        self.update_status_state = state
         if not self.update_status_chip or not self.update_status_dot or not self.update_status_text:
             return
 
-        colors = {
-            "neutral": ("#83a9b8", "#18333d", "#081820"),
-            "checking": ("#55d6e8", "#18333d", "#081820"),
-            "current": ("#70dfaa", "#1b4e43", "#0a1d19"),
-            "available": ("#ffb56a", "#5d3c20", "#1b130c"),
-            "error": ("#e48168", "#4a2d23", "#1a1110"),
+        theme_colors = get_current_theme().colors
+        state_colors = {
+            "neutral": theme_colors["text_secondary"],
+            "checking": theme_colors["accent_bright"],
+            "current": theme_colors["success"],
+            "available": theme_colors["warning"],
+            "error": theme_colors["danger"],
         }
-        color, border, background = colors.get(state, colors["neutral"])
+        color = state_colors.get(state, state_colors["neutral"])
+        border = theme_colors["panel_border_active"]
+        background = theme_colors.get("status_chip_bg", theme_colors["surface_alt"])
         self.update_status_chip.setStyleSheet(f"""
             QFrame#updateStatusChip {{
                 background: {background};
@@ -259,6 +267,9 @@ class HomeTab(QWidget):
                 padding: 0;
             }}
         """)
+
+    def refresh_update_status_style(self):
+        self.set_update_status(self.update_status_label, self.update_status_state)
 
     def set_update_checking(self):
         self.set_update_status("Checking...", "checking")

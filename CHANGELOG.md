@@ -39,6 +39,8 @@
   typography, gradients, tab states and control accents.
 - Added a final Windows XP and Drake authenticity pass with stronger Luna panel depth,
   glossy controls and darker Drake gunmetal/amber cockpit styling.
+- Corrected the Windows XP theme toward a more authentic Luna Blue feel with raised
+  glossy tabs, beveled panels, inset inputs and brighter early-2000s blue chrome.
 - Reworked RSI, Drake and Origin manufacturer themes with stronger palette hierarchy,
   clearer button/tab states and more recognizable manufacturer moods.
 - Improved Windows 95 and Windows XP themes with more authentic Win9x and Luna-inspired styling.

@@ -233,14 +233,19 @@ THEMES = [
         category="Retro",
         description="Luna-inspired blue chrome with soft panels and rounded plastic controls.",
         colors={
-            "background": "#3C7FF0",
+            "background": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #6BA2FF, stop:0.10 #3C7FF0, stop:0.56 #245EDB, stop:1 #1B4FAE)",
             "surface": "#DCE8F6",
             "surface_alt": "#ECF3FB",
             "surface_hover": "#FFFFFF",
-            "card_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:0.09 #ECF3FB, stop:1 #DCE8F6)",
-            "card_hover_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:0.16 #F8FBFF, stop:1 #DCE8F6)",
+            "pane_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #5A93F4, stop:0.11 #3C7FF0, stop:0.52 #245EDB, stop:1 #1B4FAE)",
+            "card_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:0.06 #FFFFFF, stop:0.18 #F4F9FF, stop:0.64 #DCE8F6, stop:1 #C6DBF4)",
+            "card_hover_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:0.18 #FFFFFF, stop:0.56 #ECF3FB, stop:1 #DCE8F6)",
             "panel_border": "#7DA2CE",
             "panel_border_active": "#1D4FBA",
+            "card_border_top": "#FFFFFF",
+            "card_border_left": "#FFFFFF",
+            "card_border_right": "#7DA2CE",
+            "card_border_bottom": "#5F8FCF",
             "text_primary": "#102044",
             "text_base": "#102044",
             "text_heading": "#0b1d4a",
@@ -251,7 +256,13 @@ THEMES = [
             "accent_soft": "#AFCBFF",
             "button_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:0.18 #F8FBFF, stop:0.52 #DDEBFF, stop:1 #AFCBFF)",
             "button_hover": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:0.20 #FFFFFF, stop:0.54 #EAF3FF, stop:1 #BBD6FF)",
+            "button_pressed": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8EB6FF, stop:0.22 #5D8FF0, stop:0.58 #2F69DD, stop:1 #1B4FAE)",
+            "button_disabled": "#D6E6FA",
             "button_border": "#7BA7E8",
+            "button_border_top": "#FFFFFF",
+            "button_border_left": "#FFFFFF",
+            "button_border_right": "#6E94D6",
+            "button_border_bottom": "#4F7BC8",
             "button_border_hover": "#245EDB",
             "checkbox_checked_bg": "#45a049",
             "home_card_border": "#7DA2CE",
@@ -259,19 +270,45 @@ THEMES = [
             "status_chip_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:1 #CFE2FF)",
             "input_bg": "#ffffff",
             "input_border": "#7DA2CE",
+            "input_border_top": "#6A87B8",
+            "input_border_left": "#6A87B8",
+            "input_border_right": "#FFFFFF",
+            "input_border_bottom": "#FFFFFF",
             "selection_bg": "#316ac5",
             "selection_text": "#ffffff",
+            "tab_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:0.12 #F6FAFF, stop:0.45 #DDEBFF, stop:1 #AFCBFF)",
+            "tab_border": "#6D9CE6",
+            "tab_border_top": "#FFFFFF",
+            "tab_border_left": "#FFFFFF",
+            "tab_border_right": "#5C8CD5",
+            "tab_border_bottom": "#245EDB",
             "tab_hover_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:0.45 #EAF3FF, stop:1 #B8D4FF)",
             "tab_hover_text": "#1D4FBA",
-            "tab_selected_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7EAEFF, stop:0.18 #4D84F0, stop:0.56 #245EDB, stop:1 #1B4FAE)",
+            "tab_selected_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9EC5FF, stop:0.10 #70A7FF, stop:0.36 #3C7FF0, stop:0.72 #245EDB, stop:1 #1B4FAE)",
             "tab_selected_border": "#0b3d91",
+            "tab_selected_border_top": "#BBD6FF",
+            "tab_selected_border_left": "#BBD6FF",
+            "tab_selected_border_right": "#0B3D91",
+            "tab_selected_border_bottom": "#1B4FAE",
             "tab_selected_text": "#FFFFFF",
             "danger": "#e35b2f",
             "success": "#45a049",
-            "table_header_bg": "#cfe2ff",
+            "table_bg": "#FFFFFF",
+            "table_header_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:0.36 #ECF3FB, stop:1 #CFE2FF)",
             "table_grid": "#b4c8e8",
         },
-        metrics={"font_family": "Tahoma", "radius": "8px", "card_radius": "8px", "button_padding": "6px 12px"},
+        metrics={
+            "font_family": "Tahoma",
+            "radius": "9px",
+            "card_radius": "10px",
+            "tab_radius": "9px",
+            "tab_padding": "7px 14px",
+            "tab_margin_right": "2px",
+            "tab_margin_top": "3px",
+            "tab_selected_margin_top": "0px",
+            "tab_selected_margin_bottom": "-1px",
+            "button_padding": "7px 14px",
+        },
     ),
     SC_INTEL_DARK.with_updates(
         key="rsi_theme",
@@ -749,17 +786,44 @@ def stylesheet_for_theme(theme):
     tokens["BUTTON_BORDER_LEFT"] = colors.get("button_border_left", tokens["BUTTON_BORDER"])
     tokens["BUTTON_BORDER_RIGHT"] = colors.get("button_border_right", tokens["BUTTON_BORDER"])
     tokens["BUTTON_BORDER_BOTTOM"] = colors.get("button_border_bottom", tokens["BUTTON_BORDER"])
+    tokens["BUTTON_PRESSED"] = colors.get("button_pressed", colors["accent_soft"])
     tokens["CARD_BG"] = colors.get("card_bg", colors["surface"])
     tokens["CARD_HOVER_BG"] = colors.get("card_hover_bg", colors["surface_hover"])
+    tokens["CARD_BORDER_TOP"] = colors.get("card_border_top", colors["panel_border"])
+    tokens["CARD_BORDER_LEFT"] = colors.get("card_border_left", colors["panel_border"])
+    tokens["CARD_BORDER_RIGHT"] = colors.get("card_border_right", colors["panel_border"])
+    tokens["CARD_BORDER_BOTTOM"] = colors.get("card_border_bottom", colors["panel_border"])
     tokens["CHECKBOX_CHECKED_BG"] = colors.get("checkbox_checked_bg", colors["accent_soft"])
     tokens["HOME_CARD_BORDER"] = colors.get("home_card_border", colors["panel_border"])
     tokens["HOME_CARD_HOVER_BORDER"] = colors.get("home_card_hover_border", colors["accent_bright"])
+    tokens["INPUT_BORDER_TOP"] = colors.get("input_border_top", colors["input_border"])
+    tokens["INPUT_BORDER_LEFT"] = colors.get("input_border_left", colors["input_border"])
+    tokens["INPUT_BORDER_RIGHT"] = colors.get("input_border_right", colors["input_border"])
+    tokens["INPUT_BORDER_BOTTOM"] = colors.get("input_border_bottom", colors["input_border"])
+    tokens["PANE_BG"] = colors.get("pane_bg", colors["background"])
+    tokens["PANE_BORDER"] = colors.get("pane_border", colors["panel_border"])
     tokens["STATUS_CHIP_BG"] = colors.get("status_chip_bg", colors["surface_alt"])
+    tokens["TAB_BG"] = colors.get("tab_bg", colors["button_bg"])
+    tokens["TAB_BORDER"] = colors.get("tab_border", colors["panel_border"])
+    tokens["TAB_BORDER_TOP"] = colors.get("tab_border_top", tokens["TAB_BORDER"])
+    tokens["TAB_BORDER_LEFT"] = colors.get("tab_border_left", tokens["TAB_BORDER"])
+    tokens["TAB_BORDER_RIGHT"] = colors.get("tab_border_right", tokens["TAB_BORDER"])
+    tokens["TAB_BORDER_BOTTOM"] = colors.get("tab_border_bottom", tokens["TAB_BORDER"])
     tokens["TAB_HOVER_BG"] = colors.get("tab_hover_bg", colors["button_hover"])
     tokens["TAB_HOVER_TEXT"] = colors.get("tab_hover_text", colors["accent_bright"])
     tokens["TAB_SELECTED_BG"] = colors.get("tab_selected_bg", colors["surface_alt"])
     tokens["TAB_SELECTED_BORDER"] = colors.get("tab_selected_border", colors["panel_border_active"])
+    tokens["TAB_SELECTED_BORDER_TOP"] = colors.get("tab_selected_border_top", tokens["TAB_SELECTED_BORDER"])
+    tokens["TAB_SELECTED_BORDER_LEFT"] = colors.get("tab_selected_border_left", tokens["TAB_SELECTED_BORDER"])
+    tokens["TAB_SELECTED_BORDER_RIGHT"] = colors.get("tab_selected_border_right", tokens["TAB_SELECTED_BORDER"])
+    tokens["TAB_SELECTED_BORDER_BOTTOM"] = colors.get("tab_selected_border_bottom", tokens["TAB_SELECTED_BORDER"])
     tokens["TAB_SELECTED_TEXT"] = colors.get("tab_selected_text", colors["accent_bright"])
+    tokens["TAB_RADIUS"] = metrics.get("tab_radius", metrics["radius"])
+    tokens["TAB_MARGIN_RIGHT"] = metrics.get("tab_margin_right", "0px")
+    tokens["TAB_MARGIN_TOP"] = metrics.get("tab_margin_top", "0px")
+    tokens["TAB_SELECTED_MARGIN_TOP"] = metrics.get("tab_selected_margin_top", "0px")
+    tokens["TAB_SELECTED_MARGIN_BOTTOM"] = metrics.get("tab_selected_margin_bottom", "0px")
+    tokens["TABLE_BG"] = colors.get("table_bg", colors["background"])
     tokens["TABLE_HEADER_BG"] = colors.get("table_header_bg", colors["surface_alt"])
     return _STYLE_TEMPLATE % tokens
 
@@ -773,15 +837,23 @@ QMainWindow, QWidget {
 }
 
 QTabWidget::pane {
-    border: 1px solid %(PANEL_BORDER)s;
-    background: %(BACKGROUND)s;
+    border: 1px solid %(PANE_BORDER)s;
+    background: %(PANE_BG)s;
+    border-radius: %(RADIUS)s;
 }
 
 QTabBar::tab {
-    background: %(BUTTON_BG)s;
+    background: %(TAB_BG)s;
     color: %(TEXT_BASE)s;
-    border: 1px solid %(PANEL_BORDER)s;
-    border-bottom: 0;
+    border: 1px solid %(TAB_BORDER)s;
+    border-top-color: %(TAB_BORDER_TOP)s;
+    border-left-color: %(TAB_BORDER_LEFT)s;
+    border-right-color: %(TAB_BORDER_RIGHT)s;
+    border-bottom-color: %(TAB_BORDER_BOTTOM)s;
+    border-top-left-radius: %(TAB_RADIUS)s;
+    border-top-right-radius: %(TAB_RADIUS)s;
+    margin-right: %(TAB_MARGIN_RIGHT)s;
+    margin-top: %(TAB_MARGIN_TOP)s;
     padding: %(TAB_PADDING)s;
 }
 
@@ -794,11 +866,21 @@ QTabBar::tab:selected {
     background: %(TAB_SELECTED_BG)s;
     color: %(TAB_SELECTED_TEXT)s;
     border-color: %(TAB_SELECTED_BORDER)s;
+    border-top-color: %(TAB_SELECTED_BORDER_TOP)s;
+    border-left-color: %(TAB_SELECTED_BORDER_LEFT)s;
+    border-right-color: %(TAB_SELECTED_BORDER_RIGHT)s;
+    border-bottom-color: %(TAB_SELECTED_BORDER_BOTTOM)s;
+    margin-top: %(TAB_SELECTED_MARGIN_TOP)s;
+    margin-bottom: %(TAB_SELECTED_MARGIN_BOTTOM)s;
 }
 
 QLineEdit, QTextEdit, QComboBox, QSpinBox, QDoubleSpinBox {
     background: %(INPUT_BG)s;
     border: 1px solid %(INPUT_BORDER)s;
+    border-top-color: %(INPUT_BORDER_TOP)s;
+    border-left-color: %(INPUT_BORDER_LEFT)s;
+    border-right-color: %(INPUT_BORDER_RIGHT)s;
+    border-bottom-color: %(INPUT_BORDER_BOTTOM)s;
     border-radius: %(RADIUS)s;
     color: %(TEXT_PRIMARY)s;
     selection-background-color: %(SELECTION_BG)s;
@@ -841,7 +923,7 @@ QPushButton:hover {
 }
 
 QPushButton:pressed {
-    background: %(ACCENT_SOFT)s;
+    background: %(BUTTON_PRESSED)s;
     border-color: %(ACCENT)s;
 }
 
@@ -923,7 +1005,7 @@ QScrollBar::add-line, QScrollBar::sub-line {
 }
 
 QTableWidget, QTableView {
-    background: %(BACKGROUND)s;
+    background: %(TABLE_BG)s;
     border: 1px solid %(PANEL_BORDER)s;
     border-radius: %(RADIUS)s;
     color: %(TEXT_PRIMARY)s;
@@ -954,6 +1036,10 @@ QHeaderView::section {
 QFrame#playerCard, QFrame#sectionCard, QFrame#orgCard, QFrame#affiliationCard {
     background: %(CARD_BG)s;
     border: 1px solid %(PANEL_BORDER)s;
+    border-top-color: %(CARD_BORDER_TOP)s;
+    border-left-color: %(CARD_BORDER_LEFT)s;
+    border-right-color: %(CARD_BORDER_RIGHT)s;
+    border-bottom-color: %(CARD_BORDER_BOTTOM)s;
     border-radius: %(CARD_RADIUS)s;
 }
 
@@ -964,6 +1050,10 @@ QFrame#playerCard {
 QFrame#homeNavCard {
     background: %(CARD_BG)s;
     border: 1px solid %(HOME_CARD_BORDER)s;
+    border-top-color: %(CARD_BORDER_TOP)s;
+    border-left-color: %(CARD_BORDER_LEFT)s;
+    border-right-color: %(CARD_BORDER_RIGHT)s;
+    border-bottom-color: %(CARD_BORDER_BOTTOM)s;
     border-radius: %(CARD_RADIUS)s;
 }
 

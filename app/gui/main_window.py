@@ -91,6 +91,7 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
 
     def apply_theme(self, theme):
         self.setStyleSheet(stylesheet_for_theme(theme))
+        self.home_tab.refresh_update_status_style()
 
     def start_startup_update_check(self):
         if self.startup_update_check_running:
