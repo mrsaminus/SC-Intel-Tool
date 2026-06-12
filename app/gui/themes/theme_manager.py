@@ -375,6 +375,7 @@ THEMES = [
             "input_bg": "#0d1224",
             "input_border": "#7482f0",
             "selection_bg": "#593884",
+            "table_header_bg": "#151b34",
             "table_grid": "#26355f",
             "warning": "#ffd166",
             "success": "#76f7a9",
@@ -420,6 +421,7 @@ def stylesheet_for_theme(theme):
     tokens = {}
     tokens.update({key.upper(): value for key, value in colors.items()})
     tokens.update({key.upper(): value for key, value in metrics.items()})
+    tokens["TABLE_HEADER_BG"] = colors.get("table_header_bg", colors["surface_alt"])
     return _STYLE_TEMPLATE % tokens
 
 
@@ -598,7 +600,7 @@ QTableWidget::item:hover, QTableView::item:hover {
 }
 
 QHeaderView::section {
-    background: %(SURFACE_ALT)s;
+    background: %(TABLE_HEADER_BG)s;
     border: 0;
     border-right: 1px solid %(PANEL_BORDER)s;
     color: %(ACCENT)s;

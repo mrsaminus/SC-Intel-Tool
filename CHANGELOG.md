@@ -34,6 +34,8 @@
 - Added core, accessibility, light, grey, retro, manufacturer-inspired and Pride themes.
 - Polished theme personality for RSI, Drake, Origin and Pride so each theme has a
   more distinct visual identity while keeping readability intact.
+- Polished Pride theme table readability by keeping table headers calm while
+  preserving Pride accents in tabs, selected states and borders.
 - Polished checkbox/filter styling, tab/table states and Home operational status presentation
   through centralized theme color tokens.
 
