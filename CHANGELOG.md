@@ -34,6 +34,8 @@
 - Added core, accessibility, light, grey, retro, manufacturer-inspired and Rainbow themes.
 - Polished theme personality for RSI, Drake, Origin and Rainbow so each theme has a
   more distinct visual identity while keeping readability intact.
+- Reworked RSI, Drake and Origin manufacturer themes with stronger palette hierarchy,
+  clearer button/tab states and more recognizable manufacturer moods.
 - Renamed the public Pride theme to Rainbow and polished button, chip and checkbox accents
   while keeping table headers calm and readable.
 - Polished checkbox/filter styling, tab/table states and Home operational status presentation
