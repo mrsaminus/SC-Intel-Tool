@@ -202,9 +202,9 @@ class HomeTab(QWidget):
             "Intel",
         ),
         (
-            "Mining & Salvage",
+            "Mining / Salvage",
             "Ore finder, refinery tools, scan IDs and salvage resources.",
-            "Mining & Salvage",
+            "Mining / Salvage",
             "Industrial",
         ),
         (

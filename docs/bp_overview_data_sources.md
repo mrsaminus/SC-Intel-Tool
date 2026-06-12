@@ -62,10 +62,12 @@ Limitations:
 - BP Overview treats the SC Craft Tools payload as live reference data, not as
   user-owned state. Owned blueprint state is stored locally in SQLite.
 
-Attribution:
+Current UI behavior:
 
-- BP Overview labels SC Craft Tools as the data source in tables and details.
-- Users can open SC Craft Tools directly from the BP Overview source panel.
+- BP Overview presents a native blueprint/crafting workflow inside SC Intel Tool.
+- This document records implementation research and source provenance, but the
+  public UI should be described as the native BP Overview / Crafting interface,
+  not as an external data-source control surface.
 
 ## Secondary Reference: SCMDB
 

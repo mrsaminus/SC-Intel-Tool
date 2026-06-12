@@ -1,6 +1,6 @@
 # Trading Data Sources
 
-Last reviewed: 2026-06-05
+Last reviewed: 2026-06-12
 
 This note captures the current research spike for possible Trading tab data
 sources. It is documentation only and does not change app behavior.
@@ -31,22 +31,19 @@ Sources:
 
 The OpenAPI document identifies the API as `SC Trade Tools API` version `11.3.1`.
 
-Current SC Intel Tool use:
+Current public SC Intel Tool use:
 
-- `Commodities` uses token-free commodity item and item-type endpoints.
-- `Shops` uses token-free commodity shop and location endpoints.
-- `Best Buyer` uses the token-required buyer endpoint when a local token is
-  configured.
-- `En Route` uses the token-required itinerary endpoint when a local token is
-  configured.
-- `Trade Routes` uses the token-required trade route endpoint when a local token
-  is configured.
+- `Commodities` uses public commodity item and item-type endpoints.
+- `Shops` uses public commodity shop and location endpoints.
+- `Trade Routes`, `Best Buyer` and `En Route` are advanced SC Trade Tools
+  workflows that are currently unavailable in the public build.
+- Public Settings does not expose advanced SC Trade Tools access fields.
 - `Saved Routes` stores complete saved and recent route summaries locally in
   SQLite.
 - `UEX Trading` presets store selected ship, Cargo SCU, investment and filter
   settings locally.
 - Trading dropdowns use searchable/type-filterable selection fields.
-- Trading reference data auto-loads token-free commodities, shops, locations and
+- Trading reference data auto-loads public commodities, shops, locations and
   ship names in the background when the Trading module opens.
 - Trading ship selectors use `app/trading_ship_cargo.py` for cargo capacity.
   The primary source is the provided `Star_Citizen_Flight_Ready_SCU_Offisiell.xlsx`
@@ -58,12 +55,14 @@ Current SC Intel Tool use:
 - Trading ship selectors filter out ships without known Cargo SCU because trade
   totals depend on capacity.
 
-SC Trade Tools token handling:
+Advanced SC Trade Tools workflows:
 
-- The token is optional.
-- The token is stored locally in the SC Intel Tool AppData database.
-- No token is sent anywhere except SC Trade Tools requests that require it.
-- If no token is configured, token-gated tabs show a helpful disabled state.
+- The useful route, buyer and itinerary endpoints are token-restricted by SC
+  Trade Tools.
+- The public app currently hides advanced access controls to avoid confusing
+  normal users.
+- Existing internal client/helper code remains available for future design work,
+  but this is not a public user workflow in alpha.8.7.
 
 Local Trading storage:
 
@@ -75,7 +74,7 @@ Local Trading storage:
 - Best Buyer remains informational when buy-side/profit data is unavailable;
   SC Intel Tool does not invent missing route profit.
 
-### Token-Free Endpoints
+### Public Endpoints
 
 These endpoints responded without authentication during the spike:
 
@@ -159,11 +158,11 @@ Useful route request fields include:
 ## Comparison With Current UEX MVP
 
 UEX is better for the current MVP because the app can load live commodity price
-rows without requiring a user token. SC Intel Tool can then calculate simple
+rows without requiring user configuration. SC Intel Tool can then calculate simple
 profit/unit, profit/SCU, cargo-limited totals and investment-limited totals
 locally.
 
-SC Trade Tools is stronger for future route quality because its token-backed
+SC Trade Tools is stronger for future route quality because its restricted
 tool endpoints already model trade-route concerns such as investment, ship,
 box size, max stops, wait times, auto-loading, hidden locations, inventory size,
 security level and route profit/time.
@@ -176,18 +175,19 @@ handling before it should drive default Trading decisions.
 
 Recommendation: **C) route-optimization source only** for now.
 
-Keep UEX as the primary Trading MVP source. Consider SC Trade Tools later as an
-optional/token-backed source for route optimization or advanced route quality
-checks.
+Keep UEX as the primary Trading MVP source. Consider SC Trade Tools later for
+route optimization or advanced route quality only after public UX and access
+handling are intentionally designed.
 
 Do not replace UEX yet.
 
 Possible future path:
 
 1. Keep the current UEX MVP table as the default simple workflow.
-2. Use token-free SC Trade Tools metadata for commodities, shops and locations
+2. Use public SC Trade Tools metadata for commodities, shops and locations
    where it improves reference workflows.
-3. Keep Trade Routes, Best Buyer and En Route as opt-in token-backed workflows.
-4. Expand route tools gradually only after real token-backed testing.
+3. Keep Trade Routes, Best Buyer and En Route disabled in the public build until
+   the workflow is clear enough for normal users.
+4. Expand route tools gradually only after real access and UX testing.
 5. Treat crowdsourced listings as experimental until outlier handling and data
    freshness rules are clear.

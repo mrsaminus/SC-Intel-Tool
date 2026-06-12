@@ -1,615 +1,204 @@
 # SC Intel Tool Roadmap
 
-Last updated: 2026-06-06
+Last updated: 2026-06-12
 
-SC Intel Tool is a Star Citizen intelligence and utility app for player lookup,
-organization context, mining and salvage planning, item finding, blueprint and
-crafting reference, Wikelo tracking, Trading workflows, Watchlists, local notes,
-and optional local OCR-assisted workflows.
+SC Intel Tool is a Star Citizen desktop companion for player lookup, local
+intel notes, mining and salvage planning, trading, item lookup, Wikelo tracking,
+blueprint/crafting reference, watchlists and local app events.
 
-The app is currently in alpha. The priority is to keep shipping practical,
-stable improvements while preserving local user data and keeping live data
-requests transparent.
+The app is in public alpha. The priority before beta is stability, truthful UI,
+local data safety, release reliability and tester-driven polish.
 
-## Current Alpha Status
+## Current Public App
 
-### Completed Alpha Foundation
+### Home / Branding
 
-- BP Overview alpha module for public blueprint/crafting reference
-
-- ✓ Home redesign into a command-board style landing page
-- ✓ Update system stabilization
-- ✓ AppData user data persistence and safe database migration
-- ✓ Wikelo checklist persistence and reset controls
-- ✓ RSI REDACTED organization support, including live visibility-restriction markup
-- ✓ Updater reliability improvements
-- ✓ Stable Windows executable filename: `SC-Intel-Tool.exe`
-- ✓ GUI split into focused top-level tab modules
-- ✓ Mining & Salvage GUI split into focused modules
-- ✓ Item Finder GUI split into focused modules
-- ✓ Worker-thread pass for slow live-data workflows
-- ✓ Release pipeline with Windows build script and GitHub pre-releases
-
-Stabilization note:
-
-- Full app smoke/regression pass completed after the Trading, Watchlists and Event Center expansion.
-
-### Usable Areas
-
-- Home command board
-- Event Center
-- Player Lookup and Search History
-- Mining & Salvage tools
-- Item Finder
-- Wikelo Items
-- Trading
-- Watchlists
-- BP Overview
-- Notes
-- Settings and update checks
-
-### Still Early / Alpha Foundation Areas
-
-- Reward Scanner OCR engine packaging
-- OCR / Chat Scanner
-
-## Near-Term Alpha Priorities
-
-### Completed Maintenance Refactor
-
-The first large-file maintenance pass is complete.
-
-- Mining & Salvage was split from one oversized file into focused modules.
-- Item Finder was split from one oversized file into focused modules.
-- Compatibility wrappers were kept for existing imports.
-- Behavior and workflows were preserved.
-
-Remaining optional cleanup:
-
-- Player Lookup can be split later if it starts slowing feature work.
-- Additional shared helpers can be extracted when duplication becomes clearer.
-
-### BP Overview / Crafting
-
-Goal: provide a public, neutral crafting workflow for blueprint reference,
-recipe/material details, mission/source context and local owned-blueprint
-tracking.
-
-Current status:
-
-- BP Overview is a main tab.
-- Blueprint Browser loads public blueprint data.
-- Recipe/details panel shows ingredients, quantities, quality scaling and
-  mission drops when present.
-- Owned blueprint tracking is local-only SQLite data.
-- Owned crafting material tracking is local-only SQLite data.
-- Selected-blueprint craftability shows required, owned and missing material quantities.
-- Craftable-only filtering provides the first `What Can I Craft?` workflow.
-- Reward Scanner alpha foundation is implemented as optional, local-only and confirmation-based.
-- Reward Scanner includes visual region selection and one-shot region preview.
-- Full OCR engine packaging remains deferred.
-
-Implementation phases:
-
-Phase 1:
-
-- Blueprint browser - alpha implemented
-
-Phase 2:
-
-- Recipe/material details - alpha implemented
-
-Phase 3:
-
-- Owned blueprint tracking - alpha implemented
-
-Phase 4:
-
-- Mission/source context - alpha implemented from currently exposed fields
-
-Phase 5:
-
-- Optional Reward Scanner foundation - alpha implemented
-
-Phase 6:
-
-- Local OCR engine packaging - planned later
-
-Needs work:
-
-- More source-context enrichment if public data exposes contractor/faction,
-  system or location cleanly.
-- Optional export/copy improvements after real use.
-- Optional SCMDB enrichment only if it can be done safely and efficiently.
-- Reward Scanner OCR engine packaging and richer region-selection polish if needed after testing.
-
-### 1. Trading Alpha Complete
-
-Goal: keep Trading useful and stable while future route optimization remains optional.
-
-Current status:
-
-- Trading is now organized as a parent tab with workflow subtabs.
-- UEX Trading is the active MVP workflow.
-- Phase 1 complete: UEX live data loading and basic buy/sell comparison table.
-- Phase 2 complete: cargo capacity, optional max investment, profit per SCU,
-  estimated buy cost, estimated total profit, filtering and numeric sorting.
-- Phase 3 complete: route quality filters and SCU-based calculations.
-- SC Trade Tools Commodities subtab now uses token-free commodity endpoints.
-- SC Trade Tools Shops subtab now uses token-free shop/location endpoints.
-- Optional local SC Trade Tools API token support is available in Settings.
-- Trading selection fields use searchable/type-filterable dropdowns.
-- Ship selection can auto-fill Cargo SCU from Trading cargo metadata where known.
-- Token-free Trading reference data now auto-loads in the background for
-  commodities, shops, locations and ships.
-- Ship dropdowns are expanded with SC Trade Tools ship names only when they can
-  be resolved to known Trading Cargo SCU metadata.
-- Trading ship dropdowns are filtered to known Cargo SCU ships so cargo/profit
-  calculations never start from unknown capacity.
-- Trading Cargo SCU metadata is now based first on the provided `SCU Kapasitet`
-  spreadsheet reference, with older local metadata only as fallback.
-- Trade Routes, Best Buyer and En Route subtabs are token-aware and degrade
-  gracefully when no token is configured.
-- Trading route results now include quality indicators, clearer summaries,
-  copy-to-clipboard support and better empty/error states.
-- Create Routes is implemented as a smart UEX-backed route assistant for
-  ship/cargo/budget/safety-driven route generation.
-- Saved Routes and Recent Routes are stored locally in SQLite.
-- UEX Trading presets store ship, cargo, investment and filter setups locally.
-- Create Routes stores its last selected ship, cargo, filters and optimization
-  setup locally.
-- Complete route results can be saved; incomplete/reference-only results can be copied
-  without inventing missing profit data.
-
-Alpha-complete scope:
-
-- Commodity list
-- Buy location
-- Sell location
-- Buy price
-- Sell price
-- Buy/sell price per SCU
-- Profit per SCU
-- Total profit based on cargo capacity
-- Basic filters:
-  - commodity
-  - system/location
-  - minimum profit
-- Use UEX live/cached data where practical
-- Keep the first workflow simple
-
-Out of scope for the first Trading MVP:
-
-- Complex route optimization
-- Multi-stop trading
-- Risk modeling
-- Complex automatic best-route planning beyond the explainable Create Routes
-  assistant
-- Fleet planning
-- Market prediction
-- OCR integration
-
-Completed implementation phases:
-
-Phase 1:
-
-- Data model and source loading - complete
-- Trading tab table layout - complete
-- Simple buy/sell comparison - complete
-
-Phase 2:
-
-- Cargo capacity input - complete
-- Profit calculations - complete
-- Filters and sorting - complete
-
-Phase 3:
-
-- Route quality polish - complete
-- Saved/recent routes - complete
-- UEX Trading presets - complete
-
-Future Trading polish:
-
-- Optional favorite route labels/groups.
-- Export/copy bundles for ops planning.
-- More token-backed route testing with real SC Trade Tools accounts.
-- Consider deeper SC Trade Tools route tools only after more user testing.
-
-Trading data source notes:
-
-- Current MVP source: UEX commodity price data.
-- UEX Trading remains the active subtab for the current MVP.
-- Commodities uses token-free SC Trade Tools commodity item and item-type
-  endpoints as a reference browser.
-- Shops uses token-free SC Trade Tools commodity shop and location endpoints.
-- Trade Routes, Best Buyer and En Route use token-required SC Trade Tools tool endpoints
-  when the user configures an optional token locally in Settings.
-- SC Trade Tools API research completed; see `docs/trading_data_sources.md`.
-- Recommendation: keep UEX as the primary MVP data source for now.
-- SC Trade Tools is best treated as an optional token-backed source for route
-  quality workflows because its most useful route/transaction endpoints require
-  a token.
-- Token-free SC Trade Tools endpoints may still be useful for commodity,
-  shop, location, ship and crowdsourced listing metadata.
-- Current Trading UX uses token-free SC Trade Tools reference data to avoid
-  first-use manual dropdown loading.
-- Public RSI Ship Matrix JSON exposes `cargocapacity` and can be used for future
-  local ship cargo metadata refreshes.
-
-### 2. Watchlists Alpha Expanded
-
-Goal: provide local-only tracking without background polling or cloud sync.
-
-Current status:
-
-- Watchlists is now a main tab.
-- Local SQLite storage tracks entries, snapshots and unread events.
-- Overview shows active watches, category counts, last checked and recent events.
-- Trading watches support UEX commodities and complete buy/sell routes.
-- UEX Trading and Saved Routes can add routes to Watchlists.
-- Item Finder can add selected items and ships to Watchlists.
-- Player Lookup and Search History can add player/org watches.
-- Player/org watchlists can be refreshed manually and create local events for
-  meaningful changes.
-- Event Center now collects watchlist, lookup and system events locally.
-- Item/Ship watch refresh currently reports a planned local state instead of
-  inventing live availability changes.
-
-Future Watchlists polish:
-
-- Better item/ship live refresh once Item Finder refresh cost is designed.
-- Better public player/org change summaries after Player Intel expansion.
-- Optional export/copy bundles for ops planning.
-- Optional threshold controls after real user testing.
-- OS notifications and scheduled refresh later, after manual tracking is stable.
-
-### 3. Player Intel Expansion
-
-Goal: make public player/org context clearer while keeping the public app neutral.
-
-- Player/org watchlist foundation is started.
-- Event Center receives conservative player/org change events.
-- Player Lookup and Search History show simple change summaries.
-- Public scope stays limited to Player Lookup, Search History, Watchlists and Event Center.
-- Advanced organization intelligence and relationship mapping are out of scope for the public app.
-- If advanced org intelligence is ever needed, it belongs in a separate private/internal version.
-- Improve affiliation context and hidden/redacted messaging where RSI exposes it.
-- Improve piracy/risk presentation without inventing data.
-- Add custom tag management.
-
-### 4. Wikelo Polish
-
-Goal: make Wikelo tracking smoother without turning it into a spreadsheet clone.
-
-- Improve grouped reward details.
-- Add small quality-of-life improvements from user testing.
-- Consider optional export/copy tools later.
-- Keep checklist data local-only.
-
-### 5. General Polish / Bugfixes
-
-Goal: keep alpha builds comfortable to test.
-
-- Fix layout issues found in real desktop use.
-- Improve loading/error states.
-- Keep update flow reliable.
-- Add more small smoke tests for high-value workflows.
-
-## Feature Areas
-
-### Home
-
-Implemented:
-
-- Command-board landing page
-- Capability overview
-- Operational status strip
-- Home update status indicator
-- Automatic background update check on launch
-- Countdown timers with dynamic add/remove behavior
-- Local privacy/trust messaging
-
-Needs work:
-
-- Keep layout polished as more modules mature
-- Avoid turning Home into a cluttered dashboard
+- Command-board Home page with app branding.
+- Capability overview for major workflows.
+- Operational status strip and update status indicator.
+- Automatic background update check on launch.
+- Dynamic countdown timers.
+- Community-made footer and About branding.
 
 ### Player Lookup / Search History
 
-Implemented:
+- RSI player lookup with avatar/profile card.
+- Main organization and affiliation display.
+- RSI REDACTED/hidden organization handling.
+- Local notes, tags and search history.
+- Piracy state shown conservatively from visible org data.
+- Player/org watchlist actions and conservative change summaries.
 
-- RSI player lookup
-- Avatar/profile card
-- Main org and affiliations
-- Org logos
-- Local notes and tags
-- Search history with piracy summary
-- Hidden/redacted org handling
-- Player/org watchlist actions
-- Lookup change summaries
-- Search History pin/favorite flags
+### Mining / Salvage
 
-Needs work:
-
-- Better org context
-- Better risk/intel presentation
-- Export/copy summaries
-- Custom tag management
-
-### Mining & Salvage
-
-Implemented:
-
-- Ore Finder
-- Locations
-- Scan ID
-- Quality Bands
-- Refinery sessions and history
-- Salvage materials
-- Gem selling
-- Sell Location Options
-- Rock Breaker
-- Equipment finder
-- Focused GUI modules for safer future maintenance
-
-Needs work:
-
-- Verify refinery formulas against current game data
-- Improve sell-location recommendations
-- Improve rock breaker scoring
-- Improve equipment details
-
-### Item Finder
-
-Implemented:
-
-- Live Cornerstone item lookup
-- SC Focus ship sale/rental data
-- Category filtering
-- Location details
-- Stable table sizing and readability
-- Ship deduplication and special/Wikelo handling
-- Location search by city, station and shop
-- Focused GUI modules for safer future maintenance
-
-Needs work:
-
-- Better loading/progress feedback
-- More Watchlists polish for live item/ship refresh
-- More robust category coverage as sources change
-- Export/copy location results
-
-### Wikelo Items
-
-Implemented:
-
-- Dedicated Wikelo Items tab
-- Grouped reward rows
-- Details panel with required materials
-- Checklist persistence in local SQLite
-- Reset selected reward / reset all progress
-- Retired item filtering
-
-Needs work:
-
-- More polish around grouped option details
-- Optional export/copy checklist
-- User feedback pass after more real use
-
-### BP Overview / Crafting
-
-Implemented:
-
-- BP Overview main tab
-- Public SC Craft Tools blueprint browser
-- Search, category/source filters, owned-only and missing-only filters
-- Details panel with ingredients, quantities, quality/effect hints and mission
-  drops where available
-- Copy Recipe Summary
-- Local-only owned blueprint tracking in SQLite
-- Owned Blueprints subtab
-- Data-source research doc for SC Craft Tools and SCMDB
-
-Needs work:
-
-- Richer mission/source context if public data exposes more normalized fields.
-- Optional export/copy improvements.
-- Optional OCR/screen-reader capture later.
+- Ore Finder, Locations, Scan ID and Quality Bands.
+- Refinery sessions, history, salvage materials and gem selling.
+- Sell Location Options, Rock Breaker and Equipment tools.
+- Packaged builds include the public/minimal bundled mining equipment data
+  needed by the app.
+- `reference_material/` is maintainer/dev-only and is not bundled wholesale in
+  public releases.
 
 ### Trading
 
-Status: alpha-complete operational workflow.
+- Trading parent tab with workflow subtabs.
+- UEX Trading is the main live commodity workflow.
+- Create Routes is the smart UEX-backed route assistant for ship/cargo/budget
+  planning.
+- Saved Routes and Recent Routes are stored locally.
+- UEX Trading presets are stored locally.
+- Commodity, shop and location reference tools are available.
+- Trade Routes, Best Buyer and En Route are advanced SC Trade Tools workflows
+  that are currently unavailable in the public build.
+- Public Settings keeps advanced SC Trade Tools access controls hidden until
+  the workflow is clearer for normal users.
 
-Near-term goal:
+### Item Finder
 
-- Keep the small commodity route/profit workflow stable without jumping straight
-  to full route optimization.
-- Keep UEX Trading as the active MVP subtab.
-- Keep SC Trade Tools subtabs as planned workflows until token/auth handling is
-  intentionally designed.
-- Avoid trying to solve every market scenario in the first pass.
+- Live item lookup for gear, ships and shopping intel.
+- Cornerstone item/location data.
+- SC Focus ship sale/rental data.
+- Search by item, city, station or shop.
+- Location details, ship deduplication and readable tables.
 
-MVP inputs and outputs:
+### Wikelo Items
 
-- Commodity
-- Buy location and buy price
-- Sell location and sell price
-- Buy/sell price per SCU
-- Profit per SCU
-- Cargo capacity
-- Total profit
+- Wikelo reward browser.
+- Grouped reward rows and trade-in option details.
+- Local checklist persistence in SQLite.
+- Reset selected reward / reset all progress.
+- Retired item filtering.
 
-MVP filters:
+### BP Overview / Crafting
 
-- Commodity
-- System/location
-- Minimum profit
-
-First implementation phases:
-
-- Phase 1: data loading, table layout and simple buy/sell comparison - complete.
-- Phase 2: cargo capacity, profit calculations, filters and sorting - complete.
-- Phase 3: route quality polish and SCU calculation cleanup - complete.
-- Phase 4: saved/recent routes and presets - complete.
-- Route summary quality/copy polish - complete.
-
-Current subtab structure:
-
-- UEX Trading - active MVP workflow.
-- Commodities - token-free SC Trade Tools commodity reference browser.
-- Shops - token-free SC Trade Tools shop/location reference browser.
-- Trade Routes - token-aware SC Trade Tools trade route workflow.
-- Best Buyer - token-aware SC Trade Tools buyer lookup workflow.
-- En Route - token-aware SC Trade Tools along-route workflow.
-- Saved Routes - local saved/recent Trading route library.
-- Watchlists - local manual tracking for selected Trading routes and commodities.
-
-Trading Data Sources:
-
-- UEX remains the primary MVP source because it currently supports token-free
-  live commodity price loading in the app.
-- SC Trade Tools has useful public metadata endpoints for commodities, shops,
-  locations, ships and crowdsourced commodity listings.
-- SC Trade Tools trade routes, buyer-finder and itinerary workflows are
-  available when a user configures an optional local API token in Settings.
-- SC Trade Tools commodity transaction and commodity report endpoints still
-  require a token and need a focused design pass before they become production
-  workflows.
-- Future path: consider SC Trade Tools as an opt-in/token-backed source for
-  route optimization once the basic Trading workflow is stable.
-- Saved routes, recent routes and presets are local-only SQLite data.
+- Native BP Overview and crafting reference workflow.
+- Blueprint Browser with search and filters.
+- Details panel with ingredients, quantities, quality/effect hints and mission
+  drops where public data exposes them.
+- Local-only owned blueprint tracking.
+- Local-only owned crafting material tracking.
+- Craftability and missing-material views.
+- Reward Scanner alpha: optional, local-only, region-based and confirmation
+  based.
 
 ### Watchlists
 
-Status: expanded alpha local tracking workflow.
-
-Implemented:
-
-- Main Watchlists tab
-- Overview with active counts, unread events and recent events
-- Trading watchlists for UEX commodities and complete routes
-- Items & Ships watchlists for Item Finder selections
-- Player watchlists
-- Organization watchlists
-- Manual player/org refresh
-- Event Center integration
-- Manual refresh selected/all
-- Enable/disable and delete watches
-- Copy watch summaries
-- Local-only SQLite entries, snapshots and events
-
-Needs work:
-
-- Item/Ship live refresh design
-- Better public player/org change summaries
-- Optional thresholds/favorite grouping after user testing
+- Local Watchlists tab for Trading routes/commodities, items/ships, players and
+  organizations.
+- Manual refresh actions.
+- Local snapshots and unread events.
+- Event Center integration.
 
 ### Event Center
 
-Implemented:
-
-- Main Event Center tab
-- Persistent local `notification_events`
-- Search, category filter, severity filter and unread-only toggle
-- Mark selected/all read
-- Clear read events
-- Copy event summaries
-- Watchlists, Player Lookup and Search History can create events
-
-Needs work:
-
-- OS notifications later
-- Scheduled refresh later
-- Export/import later
-- Discord/webhook integration later, only if intentionally added
-
-Out of scope for MVP:
-
-- Multi-stop route optimization
-- Risk modeling
-- Automatic best-route planning
-- Fleet planning
-- Market prediction
-- OCR integration
+- Persistent local app events.
+- Search, category filter, severity filter and unread-only toggle.
+- Mark read, clear read and copy summaries.
+- Receives events from Watchlists, Player Lookup, Search History, Trading and
+  BP Overview.
 
 ### Notes
 
-Implemented:
-
-- Notes tab
-- Changelog display
-- Player-specific notes through Player Lookup
-
-Needs work:
-
-- Global notes improvements
-- Search notes
-- Import/export later
+- General notes.
+- Local player notes through Player Lookup.
+- Changelog display.
 
 ### Settings / Updates
 
-Implemented:
+- App version and About section.
+- Active data folder and database path display.
+- Check for updates.
+- Packaged Windows update install with manual restart.
+- GitHub Releases link.
 
-- Version display
-- Active data folder and database path display
-- Check for updates
-- Install Update for packaged Windows builds
-- GitHub Releases link
-- AppData migration visibility
+## Completed Alpha Foundation
 
-Needs work:
+- AppData user data storage and safe migration.
+- Local-only SQLite persistence for notes, history, Wikelo progress, watchlists,
+  trading presets/routes, owned blueprints and owned crafting materials.
+- Windows packaged build pipeline with stable `SC-Intel-Tool.exe` filename.
+- Manual-restart updater flow for PyInstaller OneFile reliability.
+- Home redesign and branding pass.
+- RSI REDACTED organization support.
+- GUI split for Mining / Salvage and Item Finder modules.
+- Worker-thread pass for slow live-data workflows.
+- Table readability and layout polish across major workflows.
 
-- Backup/restore tools
-- Optional live data timeout settings
-- Code signing later to reduce SmartScreen warnings
+## Near-Term Alpha Priorities
+
+### 1. Beta Readiness
+
+- Keep public app scope stable.
+- Fix tester-reported regressions.
+- Improve launch/update reliability.
+- Keep packaged build hygiene tight.
+- Avoid major new feature branches before the beta stabilization pass.
+
+### 2. Maintenance / Refactor
+
+- Continue reducing oversized GUI modules when it is low risk.
+- Player Lookup can be split later if it starts slowing feature work.
+- Extract shared helpers only when duplication is obvious.
+- Keep behavior-preserving refactors separate from feature work.
+
+### 3. UX Polish
+
+- Tighten layouts after real tester screenshots.
+- Improve empty/loading/error states.
+- Improve copy/export summaries where users actually need them.
+- Keep Home informative without turning it into a cluttered dashboard.
+
+### 4. Trading Polish
+
+- Keep UEX Trading and Create Routes as the public operational trading tools.
+- Improve saved/recent route organization.
+- Improve route copy/export formatting.
+- Consider more SC Trade Tools integration only after the public UX and access
+  handling have a proper design.
+
+### 5. BP Overview / Crafting Polish
+
+- Improve Blueprint category readability and filtering.
+- Improve crafting material entry quality of life.
+- Keep Reward Scanner optional, local-only and confirmation-based.
+- Package or document OCR support only when it is reliable enough for normal
+  users.
+
+### 6. Watchlists / Event Center Polish
+
+- Improve manual refresh summaries.
+- Add optional export/import later.
+- Consider OS notifications later, after manual local events are stable.
+- Keep everything local-only by default.
 
 ## Later Backlog
 
-### Watchlists and Public Intel Polish
-
-- Better public player/org watchlist summaries
-- Clearer public change history
-- Export/import local watchlist data
-- Export/import local intel notes
-
-Advanced organization intelligence, org-network mapping and relationship mapping
-are out of scope for the public roadmap. If ever needed, they belong in a
-separate private/internal version.
-
-### OCR / Chat Scanner
-
-- Region selector
-- OCR pipeline
-- Extract handles from chat
-- Auto lookup with rate limiting
-- Scan history
-- Warnings for known risk tags
-
-### Release Automation
-
-- Consider GitHub Actions build automation
-- Consider signed Windows releases
-- Keep manual release validation until alpha update flow has more real-world mileage
+- Optional OCR improvements for Reward Scanner.
+- Optional chat/OCR scanner after privacy and UX are fully designed.
+- Optional import/export for notes, watchlists and saved routes.
+- Optional backup/restore tools.
+- Optional signed Windows releases to reduce SmartScreen warnings.
+- Optional GitHub Actions release automation after alpha update flow has more
+  mileage.
 
 ## Product Direction
 
-The desired feel is:
+SC Intel Tool should feel:
 
 - Dark
 - Clean
 - Fast
-- Useful
-- Serious
-- Expandable
-- Operational intel, not a toy utility
+- Practical
+- Local-first
+- Serious but approachable
+- Operational, not noisy
 
 Each section should answer a practical player question:
 
 - Who is this player?
-- What orgs are they connected to?
-- Is there known risk?
+- What public org context is visible?
+- What should I track?
 - Where can I mine, refine, buy or sell this?
 - What is this scan signature?
 - Which refinery/session is active?
-- What should I track next?
+- What route or crafting decision is worth doing next?

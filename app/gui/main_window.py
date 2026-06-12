@@ -68,7 +68,7 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
         self.tabs.addTab(self.home_tab, "Home")
         self.tabs.addTab(self.player_tab, "Player Lookup")
         self.tabs.addTab(self.history_tab, "Search History")
-        self.tabs.addTab(self.mining_tab, "Mining & Salvage")
+        self.tabs.addTab(self.mining_tab, "Mining / Salvage")
         self.tabs.addTab(self.trading_tab, "Trading")
         self.tabs.addTab(self.item_finder_tab, "Item Finder")
         self.tabs.addTab(self.watchlists_tab, "Watchlists")

@@ -8,7 +8,9 @@ SC Intel Tool is a Star Citizen desktop utility for player intel, organization c
 
 ## Current Status
 
-The app is in active alpha development. Home, Event Center, Player Lookup, Search History, Mining & Salvage, Trading, Item Finder, BP Overview, Watchlists, Wikelo Items, Notes, Settings, AppData persistence, and packaged update checks are usable. BP Overview includes an optional local Reward Scanner alpha foundation with manual region selection; full OCR engine packaging remains planned for later. Dedicated organization-intelligence mapping is not part of the public app roadmap.
+The app is in active alpha development. Home, Event Center, Player Lookup, Search History, Mining / Salvage, Trading, Item Finder, BP Overview, Watchlists, Wikelo Items, Notes, Settings, AppData persistence, and packaged update checks are usable. BP Overview includes an optional local Reward Scanner alpha foundation with manual region selection; full OCR engine packaging remains planned for later.
+
+Public Trading currently focuses on UEX Trading, Create Routes, Saved Routes, Commodities/Shops reference tools and local workflows. Advanced SC Trade Tools route workflows are not available in the public build yet.
 
 ## Install And Run
 
@@ -20,7 +22,7 @@ pip install -r requirements.txt
 python main.py
 ```
 
-Full Mining & Salvage reference data expects the local `reference_material/mining_warchest` folder used by the maintainer build.
+Packaged releases include the public/minimal mining equipment data needed by the app. The local `reference_material/` folder is maintainer/developer-only and is not bundled wholesale in public releases.
 
 ### Packaged Release
 

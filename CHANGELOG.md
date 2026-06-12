@@ -24,6 +24,13 @@
 - Added local-only persistence for the last Create Routes ship, cargo, filter and
   optimization settings.
 
+### Documentation / Polish
+
+- Updated public alpha documentation to match the current app scope and Trading
+  availability.
+- Renamed the main tab label to `Mining / Salvage` so Qt does not treat `&` as
+  a hidden mnemonic marker.
+
 ## 0.1.0-alpha.8.6 - 2026-06-06
 
 ### BP Overview / Crafting
@@ -51,7 +58,7 @@
 - Improved BP category dropdown readability with wider field and popup sizing.
 - Polished Mining Refinery layout so the selling/profit summary is more compact
   and sell-location options get more useful space.
-- Confirmed the main tab label is `Mining & Salvage`.
+- Confirmed the main mining tab label.
 - Deduplicated Refinery sell-location rows by normalized location and material,
   using the best valid UEX sell value when duplicate source rows exist.
 - Added a small bundled public mining equipment data set for packaged builds
@@ -70,7 +77,7 @@
   Event Center, Player/org tracking and BP Overview additions.
 - Audited build hygiene so local `reference_material` data remains excluded from
   public packaged releases.
-- Kept SC Trade Tools token storage local-only.
+- Kept advanced access storage local-only.
 - Kept update install behavior on manual restart to avoid PyInstaller OneFile
   restart/DLL issues.
 - Ran release-readiness validation across source, packaged build and live data sources.
@@ -80,8 +87,8 @@
 - Added a new BP Overview main tab for Star Citizen blueprints and crafting.
 - Added a Blueprint Browser powered by the public SC Craft Tools blueprint endpoint.
 - Added blueprint search, category/source filters, owned-only and missing-only filters.
-- Added recipe/details view with ingredients, quantities, quality/effect hints,
-  mission/source context where available and source attribution.
+- Added recipe/details view with ingredients, quantities, quality/effect hints
+  and mission/source context where available.
 - Added Copy Recipe Summary for Discord-friendly crafting summaries.
 - Added local-only `owned_blueprints` SQLite storage for owned blueprint tracking.
 - Added an Owned Blueprints subtab for local progress review.
@@ -90,9 +97,8 @@
 
 ### Roadmap / Public Scope
 
-- Removed Dedicated Organization Intel from the public roadmap.
 - Clarified that public Player Lookup, Search History, Watchlists and Event Center stay neutral.
-- Clarified that advanced organization intelligence or relationship mapping is out of scope for the public app.
+- Clarified that advanced private intel mapping is out of scope for the public app.
 
 ### Stabilization
 
@@ -134,17 +140,16 @@
 - Moved the existing UEX commodity workflow into the `UEX Trading` subtab.
 - Added planned SC Trade Tools workflow tabs for Trade Routes, Best Buyer,
   En Route, Commodities and Shops.
-- Added a token-free SC Trade Tools Commodities browser.
-- Added optional local SC Trade Tools API token support in Settings.
-- Added a token-free SC Trade Tools Shops browser.
-- Added token-aware SC Trade Tools Best Buyer and En Route workflow tabs.
-- Added graceful no-token states for token-gated SC Trade Tools workflows.
+- Added SC Trade Tools Commodities browser.
+- Added SC Trade Tools Shops browser.
+- Added advanced SC Trade Tools Best Buyer and En Route workflow scaffolding.
+- Added graceful unavailable states for advanced SC Trade Tools workflows.
 - Added searchable dropdown behavior across Trading selection fields.
 - Added ship selection with local cargo-capacity autofill for Trading workflows.
-- Added SC Trade Tools-backed Trade Routes workflow with token-aware fallback.
-- Added automatic token-free Trading reference-data loading for commodities,
+- Added SC Trade Tools-backed Trade Routes workflow scaffolding with public fallback.
+- Added automatic public Trading reference-data loading for commodities,
   shops, locations and ships.
-- Expanded Trading ship dropdowns with token-free SC Trade Tools ship names,
+- Expanded Trading ship dropdowns with SC Trade Tools reference ship names,
   while keeping Cargo SCU autofill limited to known local ship metadata.
 - Filtered Trading ship dropdowns to only include ships with known Cargo SCU
   capacity.
@@ -155,7 +160,7 @@
 - Improved Trading route/buyer summaries with clearer buy/sell, cargo, cost,
   profit, source and warning details.
 - Added Copy Route Summary actions for Trading route-style workflows.
-- Improved no-token, empty-result and request-failure states in Trading workflows.
+- Improved unavailable, empty-result and request-failure states in Trading workflows.
 - Added local Saved Routes and Recent Routes storage for complete Trading routes.
 - Added a Saved Routes subtab with search, details, copy, delete saved and clear recent actions.
 - Added UEX Trading presets for ship, cargo, investment and filter settings.
@@ -166,7 +171,7 @@
 
 ### Maintenance
 
-- Split Mining & Salvage GUI into focused modules.
+- Split Mining / Salvage GUI into focused modules.
 - Split Item Finder GUI into focused modules.
 - Kept compatibility wrappers for existing imports.
 - No behavior changes intended.
@@ -276,7 +281,7 @@
 
 ## 0.1.0-alpha.7 - 2026-05-30
 
-- Improved table readability across Player Intel, Mining & Salvage and Item Finder views.
+- Improved table readability across Player Intel, Mining / Salvage and Item Finder views.
 - Added Refinery scroll/layout protection so small windows stay readable instead of compressing controls.
 - Cleaned up unused imports and generated Python cache files.
 - Improved README privacy, install, run and update guidance.
