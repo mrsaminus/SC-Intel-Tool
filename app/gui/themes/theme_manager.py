@@ -233,38 +233,43 @@ THEMES = [
         category="Retro",
         description="Luna-inspired blue chrome with soft panels and rounded plastic controls.",
         colors={
-            "background": "#17407f",
-            "surface": "#e8f2ff",
-            "surface_alt": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffffff, stop:0.45 #dcecff, stop:1 #8fb8f4)",
-            "surface_hover": "#f6fbff",
-            "panel_border": "#6f9ee6",
-            "panel_border_active": "#1f58bd",
+            "background": "#245EDB",
+            "surface": "#DCE8F6",
+            "surface_alt": "#EEF5FF",
+            "surface_hover": "#F8FBFF",
+            "panel_border": "#7BA7E8",
+            "panel_border_active": "#1D4FBA",
             "text_primary": "#102044",
             "text_base": "#102044",
-            "text_heading": "#07183d",
-            "text_secondary": "#334f83",
+            "text_heading": "#0b1d4a",
+            "text_secondary": "#31507e",
             "text_muted": "#667da4",
-            "accent": "#1f58bd",
-            "accent_bright": "#0d3f9b",
-            "accent_soft": "#c6dcff",
-            "button_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffffff, stop:0.45 #dcecff, stop:1 #8fb8f4)",
-            "button_hover": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffffff, stop:0.45 #eaf4ff, stop:1 #a7c8fb)",
-            "button_border": "#3d6bc7",
-            "button_border_hover": "#1f58bd",
+            "accent": "#245EDB",
+            "accent_bright": "#1D4FBA",
+            "accent_soft": "#b9d3fb",
+            "button_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffffff, stop:0.18 #f9fcff, stop:0.50 #d9eaff, stop:1 #98bdf4)",
+            "button_hover": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffffff, stop:0.22 #ffffff, stop:0.54 #e9f4ff, stop:1 #afd0ff)",
+            "button_border": "#7BA7E8",
+            "button_border_hover": "#245EDB",
             "checkbox_checked_bg": "#45a049",
             "home_card_border": "#6f9ee6",
             "home_card_hover_border": "#1f58bd",
             "status_chip_bg": "#d9e9ff",
             "input_bg": "#ffffff",
-            "input_border": "#6c8fc8",
+            "input_border": "#7BA7E8",
             "selection_bg": "#316ac5",
             "selection_text": "#ffffff",
+            "tab_hover_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffffff, stop:1 #c9defb)",
+            "tab_hover_text": "#1D4FBA",
+            "tab_selected_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #5f90f2, stop:0.45 #245EDB, stop:1 #1D4FBA)",
+            "tab_selected_border": "#0b3d91",
+            "tab_selected_text": "#FFFFFF",
             "danger": "#d0342c",
             "success": "#45a049",
             "table_header_bg": "#cfe2ff",
             "table_grid": "#b4c8e8",
         },
-        metrics={"radius": "7px", "card_radius": "8px"},
+        metrics={"font_family": "Tahoma", "radius": "8px", "card_radius": "8px", "button_padding": "6px 12px"},
     ),
     SC_INTEL_DARK.with_updates(
         key="rsi_theme",
@@ -313,41 +318,46 @@ THEMES = [
         category="Manufacturer",
         description="Rugged cockpit software with industrial steel, olive panels and warning accents.",
         colors={
-            "background": "#12161A",
-            "surface": "#19201f",
-            "surface_alt": "#2A3A2B",
-            "surface_hover": "#314832",
-            "panel_border": "#3A444C",
-            "panel_border_active": "#FF9900",
-            "text_primary": "#f3eadb",
-            "text_base": "#d9cdb8",
-            "text_heading": "#fff3de",
-            "text_secondary": "#b7c6a5",
-            "text_muted": "#87917d",
-            "accent": "#FF9900",
-            "accent_bright": "#4EFE50",
-            "accent_soft": "#2b2a18",
-            "button_bg": "#20272a",
-            "button_hover": "#2f392f",
-            "button_disabled": "#171b1f",
-            "button_border": "#5f5b32",
-            "button_border_hover": "#FF9900",
-            "checkbox_checked_bg": "#2A3A2B",
-            "home_card_border": "#3A444C",
-            "home_card_hover_border": "#FF9900",
-            "status_chip_bg": "#20291f",
-            "input_bg": "#14191d",
-            "input_border": "#3A444C",
-            "selection_bg": "#233f2a",
-            "selection_text": "#f8fff0",
-            "warning": "#ffb165",
+            "background": "#0E1012",
+            "surface": "#171C1D",
+            "surface_alt": "#202728",
+            "surface_hover": "#2b3334",
+            "panel_border": "#32373B",
+            "panel_border_active": "#FF8A1C",
+            "text_primary": "#f0e7d8",
+            "text_base": "#d8c9b4",
+            "text_heading": "#fff1dd",
+            "text_secondary": "#caa778",
+            "text_muted": "#8f8273",
+            "accent": "#FF8A1C",
+            "accent_bright": "#FFB347",
+            "accent_soft": "#3a2614",
+            "button_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #2a3132, stop:0.48 #202728, stop:1 #171C1D)",
+            "button_hover": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #383c3b, stop:0.48 #2d302c, stop:1 #241b14)",
+            "button_disabled": "#181b1d",
+            "button_border": "#32373B",
+            "button_border_hover": "#FF8A1C",
+            "checkbox_checked_bg": "#D87816",
+            "home_card_border": "#32373B",
+            "home_card_hover_border": "#FF8A1C",
+            "status_chip_bg": "#241b14",
+            "input_bg": "#111516",
+            "input_border": "#4a3e31",
+            "selection_bg": "#5a3413",
+            "selection_text": "#fff1dd",
+            "tab_hover_bg": "#242a2b",
+            "tab_hover_text": "#FF8A1C",
+            "tab_selected_bg": "#202728",
+            "tab_selected_border": "#FF8A1C",
+            "tab_selected_text": "#FFB347",
+            "warning": "#FFB347",
             "danger": "#AC0000",
-            "success": "#4EFE50",
-            "table_header_bg": "#222b28",
+            "success": "#7EA048",
+            "table_header_bg": "#202728",
             "table_grid": "#303a3f",
             "avatar_bg": "#101417",
-            "avatar_border": "#FF9900",
-            "avatar_text": "#4EFE50",
+            "avatar_border": "#FF8A1C",
+            "avatar_text": "#7EA048",
         },
         metrics={"radius": "2px", "card_radius": "3px"},
     ),
@@ -728,6 +738,7 @@ def stylesheet_for_theme(theme):
     tokens = {}
     tokens.update({key.upper(): value for key, value in colors.items()})
     tokens.update({key.upper(): value for key, value in metrics.items()})
+    tokens["FONT_FAMILY"] = metrics.get("font_family", "Segoe UI")
     tokens["BUTTON_BORDER"] = colors.get("button_border", colors["panel_border"])
     tokens["BUTTON_BORDER_HOVER"] = colors.get("button_border_hover", colors["accent_bright"])
     tokens["BUTTON_BORDER_TOP"] = colors.get("button_border_top", tokens["BUTTON_BORDER"])
@@ -738,6 +749,11 @@ def stylesheet_for_theme(theme):
     tokens["HOME_CARD_BORDER"] = colors.get("home_card_border", colors["panel_border"])
     tokens["HOME_CARD_HOVER_BORDER"] = colors.get("home_card_hover_border", colors["accent_bright"])
     tokens["STATUS_CHIP_BG"] = colors.get("status_chip_bg", colors["surface_alt"])
+    tokens["TAB_HOVER_BG"] = colors.get("tab_hover_bg", colors["button_hover"])
+    tokens["TAB_HOVER_TEXT"] = colors.get("tab_hover_text", colors["accent_bright"])
+    tokens["TAB_SELECTED_BG"] = colors.get("tab_selected_bg", colors["surface_alt"])
+    tokens["TAB_SELECTED_BORDER"] = colors.get("tab_selected_border", colors["panel_border_active"])
+    tokens["TAB_SELECTED_TEXT"] = colors.get("tab_selected_text", colors["accent_bright"])
     tokens["TABLE_HEADER_BG"] = colors.get("table_header_bg", colors["surface_alt"])
     return _STYLE_TEMPLATE % tokens
 
@@ -746,7 +762,7 @@ _STYLE_TEMPLATE = """
 QMainWindow, QWidget {
     background: %(BACKGROUND)s;
     color: %(TEXT_BASE)s;
-    font-family: Segoe UI;
+    font-family: %(FONT_FAMILY)s;
     font-size: %(FONT_SIZE)s;
 }
 
@@ -764,14 +780,14 @@ QTabBar::tab {
 }
 
 QTabBar::tab:hover {
-    background: %(BUTTON_HOVER)s;
-    color: %(ACCENT_BRIGHT)s;
+    background: %(TAB_HOVER_BG)s;
+    color: %(TAB_HOVER_TEXT)s;
 }
 
 QTabBar::tab:selected {
-    background: %(SURFACE_ALT)s;
-    color: %(ACCENT_BRIGHT)s;
-    border-color: %(PANEL_BORDER_ACTIVE)s;
+    background: %(TAB_SELECTED_BG)s;
+    color: %(TAB_SELECTED_TEXT)s;
+    border-color: %(TAB_SELECTED_BORDER)s;
 }
 
 QLineEdit, QTextEdit, QComboBox, QSpinBox, QDoubleSpinBox {

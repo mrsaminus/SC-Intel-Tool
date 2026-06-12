@@ -35,6 +35,8 @@
 - Added Aegis, Anvil, Crusader, MISC, Consolidated Outland and ARGO manufacturer themes.
 - Polished theme personality for RSI, Drake, Origin and Rainbow so each theme has a
   more distinct visual identity while keeping readability intact.
+- Deepened Windows XP Luna and Drake cockpit authenticity with stronger theme-specific
+  typography, gradients, tab states and control accents.
 - Reworked RSI, Drake and Origin manufacturer themes with stronger palette hierarchy,
   clearer button/tab states and more recognizable manufacturer moods.
 - Improved Windows 95 and Windows XP themes with more authentic Win9x and Luna-inspired styling.
