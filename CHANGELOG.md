@@ -32,6 +32,8 @@
   a hidden mnemonic marker.
 - Added an advanced Appearance theme system with persistent local theme selection.
 - Added core, accessibility, light, grey, retro, manufacturer-inspired and Pride themes.
+- Polished theme personality for RSI, Drake, Origin and Pride so each theme has a
+  more distinct visual identity while keeping readability intact.
 - Polished checkbox/filter styling, tab/table states and Home operational status presentation
   through centralized theme color tokens.
 
