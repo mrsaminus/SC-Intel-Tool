@@ -18,7 +18,8 @@ from .notes_tab import NotesTab
 from .player_lookup_tab import PlayerLookupTab
 from .search_history_tab import SearchHistoryTab
 from .settings_tab import SettingsTab
-from .styles import APP_STYLE
+from .styles import current_app_style
+from .themes import stylesheet_for_theme
 from .trading_tab import TradingTab
 from .wikelo_tab import WikeloItemsTab
 from .watchlists_tab import WatchlistsTab
@@ -44,7 +45,7 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
         self.setWindowTitle(f"SC Intel Tool {APP_VERSION}")
         self.setWindowIcon(app_icon())
         self.setMinimumSize(1120, 780)
-        self.setStyleSheet(APP_STYLE)
+        self.setStyleSheet(current_app_style())
 
         self.tabs = QTabWidget()
 
@@ -62,6 +63,7 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
         self.settings_tab = SettingsTab(
             update_status_callback=self.home_tab.apply_update_check_result,
             update_error_callback=self.home_tab.apply_update_check_error,
+            theme_changed_callback=self.apply_theme,
         )
         self.startup_update_check_running = False
 
@@ -86,6 +88,9 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
             if self.tabs.tabText(index) == tab_name:
                 self.tabs.setCurrentIndex(index)
                 return
+
+    def apply_theme(self, theme):
+        self.setStyleSheet(stylesheet_for_theme(theme))
 
     def start_startup_update_check(self):
         if self.startup_update_check_running:

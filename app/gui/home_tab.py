@@ -327,7 +327,7 @@ class HomeTab(QWidget):
         text_layout.setSpacing(3)
 
         title = QLabel("SC Intel Tool")
-        title.setStyleSheet("color: #f5fdff; font-size: 12pt; font-weight: 700;")
+        title.setObjectName("appTitle")
         subtitle = QLabel("Community-made companion app for Star Citizen")
         subtitle.setObjectName("valueText")
         subtitle.setWordWrap(True)
@@ -454,17 +454,6 @@ class HomeTab(QWidget):
     def create_chip(self, text):
         label = QLabel(text)
         label.setObjectName("statusChip")
-        label.setStyleSheet("""
-            QLabel#statusChip {
-                background: #0d2530;
-                border: 1px solid #2b7386;
-                border-radius: 10px;
-                color: #8ff4ff;
-                font-size: 8pt;
-                font-weight: 700;
-                padding: 3px 8px;
-            }
-        """)
         return label
 
     def create_filter_card(self, title):

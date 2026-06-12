@@ -19,19 +19,8 @@ class NavigationCard(QFrame):
 
         self.setObjectName("homeNavCard")
         self.setCursor(Qt.PointingHandCursor)
-        self.setMinimumHeight(102)
+        self.setMinimumHeight(96)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.setStyleSheet("""
-            QFrame#homeNavCard {
-                background: #0b1820;
-                border: 1px solid #1e5060;
-                border-radius: 6px;
-            }
-            QFrame#homeNavCard:hover {
-                background: #102735;
-                border-color: #34d8f5;
-            }
-        """)
 
         layout = QVBoxLayout()
         layout.setContentsMargins(13, 10, 13, 10)
@@ -43,7 +32,7 @@ class NavigationCard(QFrame):
             layout.addWidget(eyebrow_label)
 
         title_label = QLabel(title)
-        title_label.setStyleSheet("color: #f5fdff; font-size: 13pt; font-weight: 700;")
+        title_label.setObjectName("homeCardTitle")
         description_label = QLabel(description)
         description_label.setObjectName("moduleSubtitle")
         description_label.setWordWrap(True)

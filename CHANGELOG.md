@@ -30,8 +30,10 @@
   availability.
 - Renamed the main tab label to `Mining / Salvage` so Qt does not treat `&` as
   a hidden mnemonic marker.
-- Polished checkbox/filter styling and Home operational status presentation,
-  with centralized theme color tokens as groundwork for future theme support.
+- Added an advanced Appearance theme system with persistent local theme selection.
+- Added core, accessibility, light, grey, retro, manufacturer-inspired and Pride themes.
+- Polished checkbox/filter styling, tab/table states and Home operational status presentation
+  through centralized theme color tokens.
 
 ## 0.1.0-alpha.8.6 - 2026-06-06
 

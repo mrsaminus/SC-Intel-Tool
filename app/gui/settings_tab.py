@@ -2,6 +2,7 @@ from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication,
+    QComboBox,
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -29,19 +30,22 @@ from app.updater import UpdateInstallError, download_update, start_update_instal
 from app.version import APP_NAME, APP_VERSION, GITHUB_RELEASES_URL, GITHUB_REPOSITORY
 
 from .community_branding import AppLogoLabel, CommunityLogoLabel
+from .themes import available_themes, get_current_theme_key, set_current_theme
 from .workers import BackgroundTaskMixin
 
 
 class SettingsTab(BackgroundTaskMixin, QWidget):
-    def __init__(self, update_status_callback=None, update_error_callback=None):
+    def __init__(self, update_status_callback=None, update_error_callback=None, theme_changed_callback=None):
         super().__init__()
 
         self.update_status_callback = update_status_callback
         self.update_error_callback = update_error_callback
+        self.theme_changed_callback = theme_changed_callback
         self.update_check_running = False
         self.update_install_running = False
         self.latest_release_url = GITHUB_RELEASES_URL
         self.latest_update_info = None
+        self.loading_theme_combo = False
 
         layout = QVBoxLayout()
         layout.setContentsMargins(12, 12, 12, 12)
@@ -52,6 +56,7 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
             "App version, update checks and local data paths.",
         ))
         layout.addWidget(self.build_about_card())
+        layout.addWidget(self.build_appearance_card())
         layout.addWidget(self.build_updates_card())
         layout.addWidget(self.build_data_card())
         layout.addStretch(1)
@@ -70,7 +75,7 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         text_layout.setSpacing(3)
 
         title = QLabel(APP_NAME)
-        title.setStyleSheet("color: #f5fdff; font-size: 13pt; font-weight: 700;")
+        title.setObjectName("appTitle")
         version = QLabel(f"v{APP_VERSION}")
         version.setObjectName("valueText")
         description = QLabel("Community-made companion app for Star Citizen")
@@ -103,6 +108,46 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         self.add_fact(grid, 0, "Repository", GITHUB_REPOSITORY)
         self.add_fact(grid, 1, "Runtime", "Packaged build" if is_packaged_app() else "Source / development")
         layout.addLayout(grid)
+        return card
+
+    def build_appearance_card(self):
+        card = self.create_card("APPEARANCE")
+        layout = card.layout()
+
+        hint = QLabel(
+            "Choose the app theme. Themes apply immediately, are stored locally and do not affect logos or external images."
+        )
+        hint.setObjectName("moduleSubtitle")
+        hint.setWordWrap(True)
+        layout.addWidget(hint)
+
+        row = QHBoxLayout()
+        row.setSpacing(8)
+        label = QLabel("Theme")
+        label.setObjectName("labelText")
+        self.theme_combo = QComboBox()
+        self.theme_combo.setMinimumWidth(240)
+
+        self.loading_theme_combo = True
+        current_key = get_current_theme_key()
+        current_index = 0
+        for index, theme in enumerate(available_themes()):
+            self.theme_combo.addItem(f"{theme.category} - {theme.name}", theme.key)
+            self.theme_combo.setItemData(index, theme.description, Qt.ToolTipRole)
+            if theme.key == current_key:
+                current_index = index
+        self.theme_combo.setCurrentIndex(current_index)
+        self.loading_theme_combo = False
+
+        self.theme_combo.currentIndexChanged.connect(self.on_theme_selected)
+        self.theme_status_label = QLabel("Theme stored locally.")
+        self.theme_status_label.setObjectName("moduleSubtitle")
+        self.theme_status_label.setWordWrap(True)
+
+        row.addWidget(label)
+        row.addWidget(self.theme_combo, 1)
+        layout.addLayout(row)
+        layout.addWidget(self.theme_status_label)
         return card
 
     def build_updates_card(self):
@@ -188,6 +233,15 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         row.addStretch(1)
         layout.addLayout(row)
         return card
+
+    def on_theme_selected(self):
+        if self.loading_theme_combo:
+            return
+        theme_key = self.theme_combo.currentData()
+        theme = set_current_theme(theme_key)
+        if self.theme_changed_callback:
+            self.theme_changed_callback(theme)
+        self.theme_status_label.setText(f"Active theme: {theme.name}. Stored locally.")
 
     def check_for_updates(self):
         if self.update_check_running:
