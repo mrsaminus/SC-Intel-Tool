@@ -53,7 +53,6 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         ))
         layout.addWidget(self.build_about_card())
         layout.addWidget(self.build_updates_card())
-        layout.addWidget(self.build_sc_trade_tools_card())
         layout.addWidget(self.build_data_card())
         layout.addStretch(1)
 

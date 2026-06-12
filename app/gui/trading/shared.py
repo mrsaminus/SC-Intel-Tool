@@ -1,3 +1,8 @@
+PUBLIC_TOKEN_WORKFLOW_UNAVAILABLE = (
+    "This advanced SC Trade Tools workflow is currently unavailable in the public build."
+)
+
+
 SC_TRADE_WORKFLOWS = (
     {
         "title": "Trade Routes",

@@ -85,7 +85,7 @@ class ShopsTab(BackgroundTaskMixin, QWidget):
         title = QLabel("Shops")
         title.setObjectName("moduleHeading")
         subtitle = QLabel(
-            "Token-free SC Trade Tools commodity shop and location reference."
+            "SC Trade Tools commodity shop and location reference."
         )
         subtitle.setObjectName("moduleSubtitle")
         subtitle.setWordWrap(True)
@@ -117,7 +117,7 @@ class ShopsTab(BackgroundTaskMixin, QWidget):
         controls.addWidget(self.open_source_button)
         layout.addLayout(controls)
 
-        self.status_label = QLabel("Loading token-free SC Trade Tools shop data...")
+        self.status_label = QLabel("Loading SC Trade Tools shop data...")
         self.status_label.setObjectName("moduleSubtitle")
         self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
@@ -207,7 +207,7 @@ class ShopsTab(BackgroundTaskMixin, QWidget):
         if state == "loading":
             self.refresh_button.setEnabled(False)
             self.refresh_button.setText("Loading...")
-            self.status_label.setText("Loading token-free SC Trade Tools shop data...")
+            self.status_label.setText("Loading SC Trade Tools shop data...")
         else:
             self.refresh_button.setEnabled(True)
             self.refresh_button.setText("Refresh Reference Data")
@@ -267,7 +267,7 @@ class ShopsTab(BackgroundTaskMixin, QWidget):
             f"Type: {shop.category}\n"
             f"Hierarchy: {shop.hierarchy}\n"
             "Source: SC Trade Tools\n"
-            "Note: detailed shop transaction data requires a SC Trade Tools token."
+            "Note: advanced shop transaction details are not available in the public build."
         )
 
     def copy_details(self):

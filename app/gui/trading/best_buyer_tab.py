@@ -25,6 +25,7 @@ from ..workers import BackgroundTaskMixin
 from .reference_data import get_trading_reference_service
 from .route_quality import copy_to_clipboard
 from .searchable_combo import configure_searchable_combo, selected_combo_text, set_combo_items
+from .shared import PUBLIC_TOKEN_WORKFLOW_UNAVAILABLE
 from .ship_selection import configure_ship_combo, fill_cargo_from_ship, update_ship_combo
 
 
@@ -111,7 +112,7 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
         title = QLabel("Best Buyer")
         title.setObjectName("moduleHeading")
         subtitle = QLabel(
-            "Find best commodity buyers through SC Trade Tools. This workflow requires an optional local API token."
+            "Find best commodity buyers through SC Trade Tools when advanced public integration is enabled."
         )
         subtitle.setObjectName("moduleSubtitle")
         subtitle.setWordWrap(True)
@@ -201,7 +202,7 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
         set_combo_items(self.commodity_combo, (commodity.name for commodity in self.commodities))
         update_ship_combo(self.ship_combo, data.ships)
         self.status_label.setText(
-            f"Loaded {len(self.commodities)} commodities. Buyer lookup requires a configured token."
+            f"Loaded {len(self.commodities)} commodities. Advanced buyer lookup is disabled in this public build."
         )
 
     def on_reference_state_changed(self, state):
@@ -222,10 +223,8 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
 
         token = get_app_setting(SC_TRADE_TOOLS_TOKEN_SETTING, "")
         if not token.strip():
-            self.status_label.setText(
-                "SC Trade Tools token is not configured. Add it in Settings to use Best Buyer."
-            )
-            self.empty_label.setText("Token required: configure a SC Trade Tools API token in Settings, then search.")
+            self.status_label.setText(PUBLIC_TOKEN_WORKFLOW_UNAVAILABLE)
+            self.empty_label.setText(PUBLIC_TOKEN_WORKFLOW_UNAVAILABLE)
             self.buyers = []
             self.populate_buyers_table()
             return
@@ -266,7 +265,9 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
 
     def on_error(self, exc):
         self.status_label.setText(f"SC Trade Tools request failed: {exc}")
-        self.empty_label.setText("SC Trade Tools buyer lookup failed. Check token/network and try again.")
+        self.empty_label.setText(
+            "SC Trade Tools buyer lookup failed. This advanced workflow is currently unavailable in the public build."
+        )
         self.buyers = []
         self.populate_buyers_table()
 
@@ -312,9 +313,7 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
     def update_details(self):
         buyer = self.selected_buyer()
         if not buyer:
-            self.detail_label.setText(
-                "Buyer results require a SC Trade Tools token. Configure it in Settings, then search a commodity."
-            )
+            self.detail_label.setText(PUBLIC_TOKEN_WORKFLOW_UNAVAILABLE)
             self.copy_summary_button.setEnabled(False)
             return
 

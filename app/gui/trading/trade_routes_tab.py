@@ -36,6 +36,7 @@ from .route_summary import (
     notes_from_flags,
 )
 from .searchable_combo import configure_searchable_combo, selected_combo_text, set_combo_items
+from .shared import PUBLIC_TOKEN_WORKFLOW_UNAVAILABLE
 from .ship_selection import configure_ship_combo, fill_cargo_from_ship, selected_ship_name, update_ship_combo
 
 
@@ -131,7 +132,7 @@ class TradeRoutesTab(BackgroundTaskMixin, QWidget):
         title = QLabel("Trade Routes")
         title.setObjectName("moduleHeading")
         subtitle = QLabel(
-            "SC Trade Tools-backed profitable trade routes. Requires an optional local API token."
+            "SC Trade Tools-backed profitable trade routes. Advanced public integration is not enabled yet."
         )
         subtitle.setObjectName("moduleSubtitle")
         subtitle.setWordWrap(True)
@@ -243,7 +244,7 @@ class TradeRoutesTab(BackgroundTaskMixin, QWidget):
         update_ship_combo(self.ship_combo, data.ships)
         self.status_label.setText(
             f"Loaded {len(self.shops)} shops, {len(self.locations)} locations and "
-            f"{len(self.commodities)} commodities. Route lookup requires a configured token."
+            f"{len(self.commodities)} commodities. Advanced route lookup is disabled in this public build."
         )
 
     def on_reference_state_changed(self, state):
@@ -264,8 +265,8 @@ class TradeRoutesTab(BackgroundTaskMixin, QWidget):
 
         token = get_app_setting(SC_TRADE_TOOLS_TOKEN_SETTING, "")
         if not token.strip():
-            self.status_label.setText("SC Trade Tools token required for Trade Routes.")
-            self.empty_label.setText("Token required: configure a SC Trade Tools API token in Settings, then search.")
+            self.status_label.setText(PUBLIC_TOKEN_WORKFLOW_UNAVAILABLE)
+            self.empty_label.setText(PUBLIC_TOKEN_WORKFLOW_UNAVAILABLE)
             self.routes = []
             self.populate_routes_table()
             return
@@ -317,7 +318,9 @@ class TradeRoutesTab(BackgroundTaskMixin, QWidget):
 
     def on_error(self, exc):
         self.status_label.setText(f"SC Trade Tools request failed: {exc}")
-        self.empty_label.setText("SC Trade Tools route lookup failed. Check token/network and try again.")
+        self.empty_label.setText(
+            "SC Trade Tools route lookup failed. This advanced workflow is currently unavailable in the public build."
+        )
         self.routes = []
         self.populate_routes_table()
 
@@ -374,9 +377,7 @@ class TradeRoutesTab(BackgroundTaskMixin, QWidget):
     def update_details(self):
         route = self.selected_route()
         if not route:
-            self.detail_label.setText(
-                "Trade Routes requires a SC Trade Tools token. Configure it in Settings, then search routes."
-            )
+            self.detail_label.setText(PUBLIC_TOKEN_WORKFLOW_UNAVAILABLE)
             self.copy_summary_button.setEnabled(False)
             self.save_route_button.setEnabled(False)
             return

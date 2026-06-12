@@ -31,7 +31,7 @@ class SCTradePlaceholderTab(QWidget):
         purpose_label.setWordWrap(True)
 
         planned_label = QLabel(
-            "Planned integration. Some SC Trade Tools endpoints may require token/auth."
+            "Planned integration. Advanced SC Trade Tools workflows are not available in the public build yet."
         )
         planned_label.setObjectName("moduleSubtitle")
         planned_label.setWordWrap(True)

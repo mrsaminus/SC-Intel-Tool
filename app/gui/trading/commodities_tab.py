@@ -96,7 +96,7 @@ class CommoditiesTab(BackgroundTaskMixin, QWidget):
         title = QLabel("Commodities")
         title.setObjectName("moduleHeading")
         subtitle = QLabel(
-            "Token-free SC Trade Tools commodity reference. Transaction and route data remain planned."
+            "SC Trade Tools commodity reference. Advanced transaction and route details remain planned."
         )
         subtitle.setObjectName("moduleSubtitle")
         subtitle.setWordWrap(True)
@@ -138,7 +138,7 @@ class CommoditiesTab(BackgroundTaskMixin, QWidget):
         controls.addWidget(self.open_source_button)
         layout.addLayout(controls)
 
-        self.status_label = QLabel("Loading token-free SC Trade Tools commodity data...")
+        self.status_label = QLabel("Loading SC Trade Tools commodity data...")
         self.status_label.setObjectName("moduleSubtitle")
         self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
@@ -233,7 +233,7 @@ class CommoditiesTab(BackgroundTaskMixin, QWidget):
         if state == "loading":
             self.refresh_button.setEnabled(False)
             self.refresh_button.setText("Loading...")
-            self.status_label.setText("Loading token-free SC Trade Tools commodity data...")
+            self.status_label.setText("Loading SC Trade Tools commodity data...")
         else:
             self.refresh_button.setEnabled(True)
             self.refresh_button.setText("Refresh Reference Data")
@@ -255,7 +255,7 @@ class CommoditiesTab(BackgroundTaskMixin, QWidget):
                 suffix = f" (+{len(self.commodity_types) - 8} more)"
             self.type_catalog_label.setText(
                 f"Type catalog loaded: {names}{suffix}. "
-                "The token-free commodity item endpoint does not map commodities to these types."
+                "The public commodity item data does not map commodities to these types."
             )
         else:
             self.type_catalog_label.setText("Commodity type catalog not loaded.")
@@ -316,9 +316,9 @@ class CommoditiesTab(BackgroundTaskMixin, QWidget):
             f"Commodity: {commodity.name}\n"
             "Type / category: N/A\n"
             "Flags: N/A\n"
-            "Metadata: token-free endpoint exposes commodity name only.\n"
+            "Metadata: public commodity data exposes commodity name only.\n"
             "Source: SC Trade Tools\n"
-            "Note: detailed transaction, buyer and route data require token/auth and are planned later."
+            "Note: advanced transaction, buyer and route details are not available in the public build."
         )
 
     def copy_details(self):
