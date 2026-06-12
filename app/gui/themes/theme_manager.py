@@ -233,11 +233,13 @@ THEMES = [
         category="Retro",
         description="Luna-inspired blue chrome with soft panels and rounded plastic controls.",
         colors={
-            "background": "#245EDB",
+            "background": "#3C7FF0",
             "surface": "#DCE8F6",
-            "surface_alt": "#EEF5FF",
-            "surface_hover": "#F8FBFF",
-            "panel_border": "#7BA7E8",
+            "surface_alt": "#ECF3FB",
+            "surface_hover": "#FFFFFF",
+            "card_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:0.09 #ECF3FB, stop:1 #DCE8F6)",
+            "card_hover_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:0.16 #F8FBFF, stop:1 #DCE8F6)",
+            "panel_border": "#7DA2CE",
             "panel_border_active": "#1D4FBA",
             "text_primary": "#102044",
             "text_base": "#102044",
@@ -246,25 +248,25 @@ THEMES = [
             "text_muted": "#667da4",
             "accent": "#245EDB",
             "accent_bright": "#1D4FBA",
-            "accent_soft": "#b9d3fb",
-            "button_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffffff, stop:0.18 #f9fcff, stop:0.50 #d9eaff, stop:1 #98bdf4)",
-            "button_hover": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffffff, stop:0.22 #ffffff, stop:0.54 #e9f4ff, stop:1 #afd0ff)",
+            "accent_soft": "#AFCBFF",
+            "button_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:0.18 #F8FBFF, stop:0.52 #DDEBFF, stop:1 #AFCBFF)",
+            "button_hover": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:0.20 #FFFFFF, stop:0.54 #EAF3FF, stop:1 #BBD6FF)",
             "button_border": "#7BA7E8",
             "button_border_hover": "#245EDB",
             "checkbox_checked_bg": "#45a049",
-            "home_card_border": "#6f9ee6",
+            "home_card_border": "#7DA2CE",
             "home_card_hover_border": "#1f58bd",
-            "status_chip_bg": "#d9e9ff",
+            "status_chip_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:1 #CFE2FF)",
             "input_bg": "#ffffff",
-            "input_border": "#7BA7E8",
+            "input_border": "#7DA2CE",
             "selection_bg": "#316ac5",
             "selection_text": "#ffffff",
-            "tab_hover_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffffff, stop:1 #c9defb)",
+            "tab_hover_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:0.45 #EAF3FF, stop:1 #B8D4FF)",
             "tab_hover_text": "#1D4FBA",
-            "tab_selected_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #5f90f2, stop:0.45 #245EDB, stop:1 #1D4FBA)",
+            "tab_selected_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7EAEFF, stop:0.18 #4D84F0, stop:0.56 #245EDB, stop:1 #1B4FAE)",
             "tab_selected_border": "#0b3d91",
             "tab_selected_text": "#FFFFFF",
-            "danger": "#d0342c",
+            "danger": "#e35b2f",
             "success": "#45a049",
             "table_header_bg": "#cfe2ff",
             "table_grid": "#b4c8e8",
@@ -320,44 +322,46 @@ THEMES = [
         colors={
             "background": "#0E1012",
             "surface": "#171C1D",
-            "surface_alt": "#202728",
-            "surface_hover": "#2b3334",
+            "surface_alt": "#1B2224",
+            "surface_hover": "#2A2E31",
+            "card_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #1B2224, stop:0.08 #202728, stop:1 #121719)",
+            "card_hover_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #252d2f, stop:0.12 #2A2E31, stop:1 #171C1D)",
             "panel_border": "#32373B",
             "panel_border_active": "#FF8A1C",
-            "text_primary": "#f0e7d8",
-            "text_base": "#d8c9b4",
-            "text_heading": "#fff1dd",
-            "text_secondary": "#caa778",
-            "text_muted": "#8f8273",
+            "text_primary": "#f3e7d5",
+            "text_base": "#d4c1a6",
+            "text_heading": "#fff0d8",
+            "text_secondary": "#c79555",
+            "text_muted": "#8a7760",
             "accent": "#FF8A1C",
             "accent_bright": "#FFB347",
-            "accent_soft": "#3a2614",
-            "button_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #2a3132, stop:0.48 #202728, stop:1 #171C1D)",
-            "button_hover": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #383c3b, stop:0.48 #2d302c, stop:1 #241b14)",
+            "accent_soft": "#3a2210",
+            "button_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #2A2E31, stop:0.16 #202728, stop:0.82 #141819, stop:1 #0B0D0E)",
+            "button_hover": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3a3d3c, stop:0.18 #2A2E31, stop:0.66 #2b241c, stop:1 #211409)",
             "button_disabled": "#181b1d",
-            "button_border": "#32373B",
+            "button_border": "#4A433A",
             "button_border_hover": "#FF8A1C",
             "checkbox_checked_bg": "#D87816",
-            "home_card_border": "#32373B",
+            "home_card_border": "#4A433A",
             "home_card_hover_border": "#FF8A1C",
-            "status_chip_bg": "#241b14",
+            "status_chip_bg": "#24170d",
             "input_bg": "#111516",
-            "input_border": "#4a3e31",
+            "input_border": "#4A433A",
             "selection_bg": "#5a3413",
             "selection_text": "#fff1dd",
-            "tab_hover_bg": "#242a2b",
+            "tab_hover_bg": "#2A2E31",
             "tab_hover_text": "#FF8A1C",
-            "tab_selected_bg": "#202728",
+            "tab_selected_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #2A2E31, stop:0.55 #1B2224, stop:1 #24170d)",
             "tab_selected_border": "#FF8A1C",
             "tab_selected_text": "#FFB347",
             "warning": "#FFB347",
             "danger": "#AC0000",
             "success": "#7EA048",
-            "table_header_bg": "#202728",
-            "table_grid": "#303a3f",
-            "avatar_bg": "#101417",
+            "table_header_bg": "#1B2224",
+            "table_grid": "#2f3437",
+            "avatar_bg": "#0B0D0E",
             "avatar_border": "#FF8A1C",
-            "avatar_text": "#7EA048",
+            "avatar_text": "#D87816",
         },
         metrics={"radius": "2px", "card_radius": "3px"},
     ),
@@ -745,6 +749,8 @@ def stylesheet_for_theme(theme):
     tokens["BUTTON_BORDER_LEFT"] = colors.get("button_border_left", tokens["BUTTON_BORDER"])
     tokens["BUTTON_BORDER_RIGHT"] = colors.get("button_border_right", tokens["BUTTON_BORDER"])
     tokens["BUTTON_BORDER_BOTTOM"] = colors.get("button_border_bottom", tokens["BUTTON_BORDER"])
+    tokens["CARD_BG"] = colors.get("card_bg", colors["surface"])
+    tokens["CARD_HOVER_BG"] = colors.get("card_hover_bg", colors["surface_hover"])
     tokens["CHECKBOX_CHECKED_BG"] = colors.get("checkbox_checked_bg", colors["accent_soft"])
     tokens["HOME_CARD_BORDER"] = colors.get("home_card_border", colors["panel_border"])
     tokens["HOME_CARD_HOVER_BORDER"] = colors.get("home_card_hover_border", colors["accent_bright"])
@@ -946,7 +952,7 @@ QHeaderView::section {
 }
 
 QFrame#playerCard, QFrame#sectionCard, QFrame#orgCard, QFrame#affiliationCard {
-    background: %(SURFACE)s;
+    background: %(CARD_BG)s;
     border: 1px solid %(PANEL_BORDER)s;
     border-radius: %(CARD_RADIUS)s;
 }
@@ -956,13 +962,13 @@ QFrame#playerCard {
 }
 
 QFrame#homeNavCard {
-    background: %(SURFACE)s;
+    background: %(CARD_BG)s;
     border: 1px solid %(HOME_CARD_BORDER)s;
     border-radius: %(CARD_RADIUS)s;
 }
 
 QFrame#homeNavCard:hover {
-    background: %(SURFACE_HOVER)s;
+    background: %(CARD_HOVER_BG)s;
     border-color: %(HOME_CARD_HOVER_BORDER)s;
 }
 
