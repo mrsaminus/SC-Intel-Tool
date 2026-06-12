@@ -31,11 +31,11 @@
 - Renamed the main tab label to `Mining / Salvage` so Qt does not treat `&` as
   a hidden mnemonic marker.
 - Added an advanced Appearance theme system with persistent local theme selection.
-- Added core, accessibility, light, grey, retro, manufacturer-inspired and Pride themes.
-- Polished theme personality for RSI, Drake, Origin and Pride so each theme has a
+- Added core, accessibility, light, grey, retro, manufacturer-inspired and Rainbow themes.
+- Polished theme personality for RSI, Drake, Origin and Rainbow so each theme has a
   more distinct visual identity while keeping readability intact.
-- Polished Pride theme table readability by keeping table headers calm while
-  preserving Pride accents in tabs, selected states and borders.
+- Renamed the public Pride theme to Rainbow and polished button, chip and checkbox accents
+  while keeping table headers calm and readable.
 - Polished checkbox/filter styling, tab/table states and Home operational status presentation
   through centralized theme color tokens.
 

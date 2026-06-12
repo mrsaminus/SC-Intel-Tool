@@ -352,9 +352,9 @@ THEMES = [
     ),
     SC_INTEL_DARK.with_updates(
         key="pride_theme",
-        name="Pride",
+        name="Rainbow",
         category="Community",
-        description="Dark professional base with respectful rainbow accent touches.",
+        description="Dark professional base with readable rainbow accents.",
         colors={
             "background": "#070a13",
             "surface": "#101424",
@@ -370,11 +370,17 @@ THEMES = [
             "text_heading": "#ffffff",
             "text_secondary": "#c9c2ff",
             "text_muted": "#9d98c3",
-            "button_bg": "#182142",
-            "button_hover": "#283570",
+            "button_bg": "qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #18183d, stop:0.30 #172b50, stop:0.58 #163c46, stop:0.78 #332f35, stop:1 #421e35)",
+            "button_hover": "qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #26205c, stop:0.26 #203b72, stop:0.52 #185b68, stop:0.76 #4b4420, stop:1 #63233b)",
+            "button_border": "#ff82d7",
+            "button_border_hover": "#80f4ff",
             "input_bg": "#0d1224",
             "input_border": "#7482f0",
             "selection_bg": "#593884",
+            "checkbox_checked_bg": "qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #a74ee8, stop:0.35 #2b70ff, stop:0.70 #13a66b, stop:1 #ff6b8b)",
+            "home_card_border": "#6c70e8",
+            "home_card_hover_border": "#ff82d7",
+            "status_chip_bg": "qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #2b225c, stop:0.30 #183d70, stop:0.60 #14533f, stop:1 #5a2437)",
             "table_header_bg": "#151b34",
             "table_grid": "#26355f",
             "warning": "#ffd166",
@@ -421,6 +427,12 @@ def stylesheet_for_theme(theme):
     tokens = {}
     tokens.update({key.upper(): value for key, value in colors.items()})
     tokens.update({key.upper(): value for key, value in metrics.items()})
+    tokens["BUTTON_BORDER"] = colors.get("button_border", colors["panel_border"])
+    tokens["BUTTON_BORDER_HOVER"] = colors.get("button_border_hover", colors["accent_bright"])
+    tokens["CHECKBOX_CHECKED_BG"] = colors.get("checkbox_checked_bg", colors["accent_soft"])
+    tokens["HOME_CARD_BORDER"] = colors.get("home_card_border", colors["panel_border"])
+    tokens["HOME_CARD_HOVER_BORDER"] = colors.get("home_card_hover_border", colors["accent_bright"])
+    tokens["STATUS_CHIP_BG"] = colors.get("status_chip_bg", colors["surface_alt"])
     tokens["TABLE_HEADER_BG"] = colors.get("table_header_bg", colors["surface_alt"])
     return _STYLE_TEMPLATE % tokens
 
@@ -486,7 +498,7 @@ QComboBox QAbstractItemView {
 
 QPushButton {
     background: %(BUTTON_BG)s;
-    border: 1px solid %(PANEL_BORDER)s;
+    border: 1px solid %(BUTTON_BORDER)s;
     border-radius: %(RADIUS)s;
     color: %(TEXT_PRIMARY)s;
     padding: %(BUTTON_PADDING)s;
@@ -494,7 +506,7 @@ QPushButton {
 
 QPushButton:hover {
     background: %(BUTTON_HOVER)s;
-    border-color: %(ACCENT_BRIGHT)s;
+    border-color: %(BUTTON_BORDER_HOVER)s;
 }
 
 QPushButton:pressed {
@@ -542,7 +554,7 @@ QCheckBox::indicator:hover {
 }
 
 QCheckBox::indicator:checked {
-    background: %(ACCENT_SOFT)s;
+    background: %(CHECKBOX_CHECKED_BG)s;
     border-color: %(ACCENT_BRIGHT)s;
 }
 
@@ -620,13 +632,13 @@ QFrame#playerCard {
 
 QFrame#homeNavCard {
     background: %(SURFACE)s;
-    border: 1px solid %(PANEL_BORDER)s;
+    border: 1px solid %(HOME_CARD_BORDER)s;
     border-radius: %(CARD_RADIUS)s;
 }
 
 QFrame#homeNavCard:hover {
     background: %(SURFACE_HOVER)s;
-    border-color: %(ACCENT_BRIGHT)s;
+    border-color: %(HOME_CARD_HOVER_BORDER)s;
 }
 
 QFrame#updateStatusChip {
@@ -665,7 +677,7 @@ QLabel#appTitle {
 }
 
 QLabel#statusChip {
-    background: %(SURFACE_ALT)s;
+    background: %(STATUS_CHIP_BG)s;
     border: 1px solid %(PANEL_BORDER_ACTIVE)s;
     border-radius: 10px;
     color: %(ACCENT_BRIGHT)s;
