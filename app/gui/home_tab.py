@@ -177,6 +177,7 @@ class HomeTab(QWidget):
         title = QLabel("OPERATIONAL STATUS")
         title.setObjectName("sectionTitle")
         info_panel = QWidget()
+        info_panel.setObjectName("statusInfoPanel")
         info_panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
         info_layout = QVBoxLayout()
         info_layout.setContentsMargins(0, 0, 0, 0)

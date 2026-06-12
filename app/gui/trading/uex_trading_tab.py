@@ -202,7 +202,8 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         layout.addLayout(controls)
 
         filters = QHBoxLayout()
-        filters.setSpacing(8)
+        filters.setContentsMargins(0, 2, 0, 0)
+        filters.setSpacing(10)
         filters.addWidget(self.min_profit_input)
         filters.addWidget(self.min_total_profit_input)
         filters.addWidget(self.show_unprofitable_checkbox)

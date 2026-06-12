@@ -213,8 +213,9 @@ class CreateRoutesTab(BackgroundTaskMixin, QWidget):
         layout.addLayout(locations_row)
 
         checkbox_grid = QGridLayout()
-        checkbox_grid.setHorizontalSpacing(16)
-        checkbox_grid.setVerticalSpacing(6)
+        checkbox_grid.setContentsMargins(0, 2, 0, 0)
+        checkbox_grid.setHorizontalSpacing(14)
+        checkbox_grid.setVerticalSpacing(4)
         self.avoid_dangerous_checkbox = QCheckBox("Avoid dangerous routes")
         self.avoid_hidden_checkbox = QCheckBox("Avoid hidden locations")
         self.avoid_non_armistice_checkbox = QCheckBox("Avoid non-armistice")

@@ -30,6 +30,8 @@
   availability.
 - Renamed the main tab label to `Mining / Salvage` so Qt does not treat `&` as
   a hidden mnemonic marker.
+- Polished checkbox/filter styling and Home operational status presentation,
+  with centralized theme color tokens as groundwork for future theme support.
 
 ## 0.1.0-alpha.8.6 - 2026-06-06
 
