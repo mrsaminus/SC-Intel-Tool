@@ -1,8 +1,4 @@
-import difflib
-import re
-
-from PySide6.QtCore import QRect, Qt, Signal
-from PySide6.QtGui import QColor, QPainter, QPen, QPixmap
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -24,89 +20,18 @@ from app.database import get_app_setting, set_app_setting
 from app.event_center.service import record_event
 
 from ..workers import BackgroundTaskMixin
+from .reward_scanner_matching import (
+    CONFIRM_THRESHOLD,
+    STRONG_MATCH_THRESHOLD,
+    capture_region_image,
+    match_blueprint_text,
+    pixmap_from_image,
+)
+from .reward_scanner_overlay import RegionSelectionOverlay
 from .shared import ROW_ROLE, create_card, create_table, table_item
 
 
 REGION_SETTING_KEY = "bp_reward_scanner_region"
-CONFIRM_THRESHOLD = 0.55
-STRONG_MATCH_THRESHOLD = 0.75
-
-
-class RegionSelectionOverlay(QWidget):
-    region_selected = Signal(tuple)
-    region_cancelled = Signal()
-
-    def __init__(self, screen=None):
-        super().__init__(None)
-        self.screen = screen or QApplication.primaryScreen()
-        self.start_pos = None
-        self.current_pos = None
-        self.selection_rect = QRect()
-        self.setWindowFlags(
-            Qt.FramelessWindowHint
-            | Qt.WindowStaysOnTopHint
-            | Qt.Tool
-        )
-        self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setMouseTracking(True)
-        self.setCursor(Qt.CrossCursor)
-        if self.screen:
-            self.setGeometry(self.screen.geometry())
-
-    def paintEvent(self, _event):
-        painter = QPainter(self)
-        painter.fillRect(self.rect(), QColor(0, 0, 0, 120))
-        painter.setPen(QPen(QColor(0, 220, 255), 2))
-        painter.setBrush(QColor(0, 220, 255, 35))
-        if not self.selection_rect.isNull():
-            painter.drawRect(self.selection_rect.normalized())
-        painter.setPen(QColor(210, 245, 255))
-        painter.drawText(
-            24,
-            32,
-            "Drag to select reward popup region. Release to confirm. ESC cancels.",
-        )
-
-    def mousePressEvent(self, event):
-        if event.button() != Qt.LeftButton:
-            return
-        self.start_pos = event.position().toPoint()
-        self.current_pos = self.start_pos
-        self.selection_rect = QRect(self.start_pos, self.current_pos)
-        self.update()
-
-    def mouseMoveEvent(self, event):
-        if self.start_pos is None:
-            return
-        self.current_pos = event.position().toPoint()
-        self.selection_rect = QRect(self.start_pos, self.current_pos).normalized()
-        self.update()
-
-    def mouseReleaseEvent(self, event):
-        if event.button() != Qt.LeftButton or self.start_pos is None:
-            return
-        self.current_pos = event.position().toPoint()
-        rect = QRect(self.start_pos, self.current_pos).normalized()
-        self.start_pos = None
-        if rect.width() < 8 or rect.height() < 8:
-            self.region_cancelled.emit()
-            self.close()
-            return
-        screen_geometry = self.geometry()
-        self.region_selected.emit((
-            screen_geometry.x() + rect.x(),
-            screen_geometry.y() + rect.y(),
-            rect.width(),
-            rect.height(),
-        ))
-        self.close()
-
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Escape:
-            self.region_cancelled.emit()
-            self.close()
-            return
-        super().keyPressEvent(event)
 
 
 class RewardScannerTab(BackgroundTaskMixin, QWidget):
@@ -512,75 +437,3 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
             return
         set_app_setting(REGION_SETTING_KEY, ",".join(str(value) for value in region))
         self.status_label.setText("Reward scanner region saved locally.")
-
-
-def match_blueprint_text(text, blueprints, limit=8):
-    normalized_text = normalize_match_text(text)
-    lines = [
-        normalize_match_text(line)
-        for line in text.splitlines()
-        if normalize_match_text(line)
-    ]
-    matches = []
-    for blueprint in blueprints:
-        name = blueprint.blueprint_name
-        normalized_name = normalize_match_text(name)
-        if not normalized_name:
-            continue
-        if normalized_name in normalized_text:
-            confidence = 1.0
-            match_type = "exact"
-        else:
-            line_score = max(
-                (difflib.SequenceMatcher(None, normalized_name, line).ratio() for line in lines),
-                default=0,
-            )
-            whole_score = difflib.SequenceMatcher(None, normalized_name, normalized_text).ratio()
-            token_score = token_overlap_score(normalized_name, normalized_text)
-            confidence = max(line_score, whole_score, token_score)
-            match_type = "partial" if confidence >= CONFIRM_THRESHOLD else "none"
-        if confidence >= 0.35:
-            matches.append({
-                "blueprint": blueprint,
-                "confidence": confidence,
-                "match_type": match_type,
-                "name_length": len(normalized_name),
-            })
-
-    matches.sort(key=lambda item: (
-        -item["confidence"],
-        -item["name_length"],
-        item["blueprint"].blueprint_name.lower(),
-    ))
-    return matches[:limit]
-
-
-def normalize_match_text(text):
-    text = str(text or "").lower()
-    text = re.sub(r"[^a-z0-9]+", " ", text)
-    return " ".join(text.split())
-
-
-def token_overlap_score(name, text):
-    name_tokens = set(name.split())
-    text_tokens = set(text.split())
-    if not name_tokens:
-        return 0
-    overlap = len(name_tokens & text_tokens) / len(name_tokens)
-    if overlap < 0.5:
-        return overlap * 0.5
-    return min(0.85, overlap)
-
-
-def capture_region_image(region):
-    from PIL import ImageGrab
-
-    x, y, width, height = region
-    return ImageGrab.grab(bbox=(x, y, x + width, y + height))
-
-
-def pixmap_from_image(image):
-    from PIL.ImageQt import ImageQt
-
-    qimage = ImageQt(image.convert("RGBA"))
-    return QPixmap.fromImage(qimage)

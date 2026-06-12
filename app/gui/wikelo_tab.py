@@ -26,11 +26,11 @@ from app.database import (
 )
 from app.wikelo_client import WIKELO_SOURCE_URL, fetch_wikelo_items, normalized_key
 
+from .sortable_table_item import SORT_ROLE, SortableTableWidgetItem
 from .table_utils import configure_readable_table_columns
 from .workers import BackgroundTaskMixin
 
 
-SORT_ROLE = Qt.UserRole + 1
 CHECKLIST_ROLE = Qt.UserRole + 2
 
 
@@ -44,25 +44,6 @@ class WikeloItemGroup:
     options: tuple
     retired: bool
     source_url: str
-
-
-class SortableTableWidgetItem(QTableWidgetItem):
-    def __lt__(self, other):
-        left = self.data(SORT_ROLE)
-        right = other.data(SORT_ROLE) if isinstance(other, QTableWidgetItem) else None
-        if left is not None or right is not None:
-            return self.sort_key(left) < self.sort_key(right)
-
-        return super().__lt__(other)
-
-    @staticmethod
-    def sort_key(value):
-        if value is None:
-            return (2, "")
-        if isinstance(value, (int, float)):
-            return (0, float(value))
-
-        return (1, str(value).lower())
 
 
 class WikeloItemsTab(BackgroundTaskMixin, QWidget):
