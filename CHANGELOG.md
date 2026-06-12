@@ -31,11 +31,13 @@
 - Renamed the main tab label to `Mining / Salvage` so Qt does not treat `&` as
   a hidden mnemonic marker.
 - Added an advanced Appearance theme system with persistent local theme selection.
-- Added core, accessibility, light, grey, retro, manufacturer-inspired and Rainbow themes.
+- Added core, accessibility, light, grey, retro, expanded manufacturer-inspired and Rainbow themes.
+- Added Aegis, Anvil, Crusader, MISC, Consolidated Outland and ARGO manufacturer themes.
 - Polished theme personality for RSI, Drake, Origin and Rainbow so each theme has a
   more distinct visual identity while keeping readability intact.
 - Reworked RSI, Drake and Origin manufacturer themes with stronger palette hierarchy,
   clearer button/tab states and more recognizable manufacturer moods.
+- Improved Windows 95 and Windows XP themes with more authentic Win9x and Luna-inspired styling.
 - Renamed the public Pride theme to Rainbow and polished button, chip and checkbox accents
   while keeping table headers calm and readable.
 - Polished checkbox/filter styling, tab/table states and Home operational status presentation
