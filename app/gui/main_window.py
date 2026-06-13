@@ -1,8 +1,8 @@
 import sys
 
 from PySide6.QtCore import QTimer
-from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QApplication, QMainWindow, QTabWidget
+from PySide6.QtGui import QColor, QIcon, QLinearGradient, QPalette
+from PySide6.QtWidgets import QApplication, QMainWindow, QStyle, QStyleOptionTab, QStylePainter, QTabBar, QTabWidget
 
 from app.database import init_db
 from app.paths import bundled_path
@@ -19,7 +19,7 @@ from .player_lookup_tab import PlayerLookupTab
 from .search_history_tab import SearchHistoryTab
 from .settings_tab import SettingsTab
 from .styles import current_app_style
-from .themes import stylesheet_for_theme
+from .themes import get_current_theme_key, stylesheet_for_theme
 from .trading_tab import TradingTab
 from .wikelo_tab import WikeloItemsTab
 from .watchlists_tab import WatchlistsTab
@@ -48,6 +48,7 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
         self.setStyleSheet(current_app_style())
 
         self.tabs = QTabWidget()
+        self.tabs.setTabBar(ThemeAwareTabBar())
 
         self.home_tab = HomeTab(self.open_tab)
         self.event_center_tab = EventCenterTab()
@@ -116,6 +117,53 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
 
     def finish_startup_update_check(self):
         self.startup_update_check_running = False
+
+
+class ThemeAwareTabBar(QTabBar):
+    def paintEvent(self, _event):
+        if get_current_theme_key() != "windows_xp":
+            super().paintEvent(_event)
+            return
+
+        painter = QStylePainter(self)
+        painter.setRenderHint(QStylePainter.Antialiasing, True)
+        option = QStyleOptionTab()
+        for index in range(self.count()):
+            if index == 0:
+                continue
+            self.initStyleOption(option, index)
+            painter.drawControl(QStyle.CE_TabBarTab, option)
+
+        self.initStyleOption(option, 0)
+        if self.currentIndex() == 0:
+            painter.drawControl(QStyle.CE_TabBarTab, option)
+        else:
+            self.draw_xp_start_tab(painter, option)
+
+    def draw_xp_start_tab(self, painter, option):
+        rect = option.rect.adjusted(0, 3, -1, -1)
+        gradient = QLinearGradient(rect.topLeft(), rect.bottomLeft())
+        gradient.setColorAt(0.00, QColor("#B6FF9A"))
+        gradient.setColorAt(0.16, QColor("#6FD643"))
+        gradient.setColorAt(0.54, QColor("#43B72A"))
+        gradient.setColorAt(1.00, QColor("#2B8F1B"))
+
+        painter.save()
+        painter.setPen(QColor("#1F7D18"))
+        painter.setBrush(gradient)
+        painter.drawRoundedRect(rect, 9, 9)
+        painter.setPen(QColor("#D2FFBF"))
+        painter.drawLine(rect.left() + 7, rect.top() + 1, rect.right() - 7, rect.top() + 1)
+        painter.setPen(QColor("#176B14"))
+        painter.drawLine(rect.left() + 5, rect.bottom(), rect.right() - 5, rect.bottom())
+        painter.restore()
+
+        label_option = QStyleOptionTab(option)
+        label_option.palette.setColor(QPalette.WindowText, QColor("#FFFFFF"))
+        label_option.palette.setColor(QPalette.ButtonText, QColor("#FFFFFF"))
+        label_option.palette.setColor(QPalette.Text, QColor("#FFFFFF"))
+        label_option.state |= QStyle.State_Raised
+        painter.drawControl(QStyle.CE_TabBarTabLabel, label_option)
 
 
 def run_app():

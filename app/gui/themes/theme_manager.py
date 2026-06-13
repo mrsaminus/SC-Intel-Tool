@@ -5,6 +5,12 @@ from .theme_models import Theme
 
 THEME_SETTING_KEY = "appearance.theme"
 DEFAULT_THEME_KEY = "sc_intel_dark"
+RELEASE_THEME_KEYS = (
+    "sc_intel_dark",
+    "white_mode",
+    "windows_xp",
+    "windows_95",
+)
 
 
 BASE_COLORS = {
@@ -184,7 +190,7 @@ THEMES = [
     ),
     SC_INTEL_DARK.with_updates(
         key="windows_95",
-        name="Windows 95",
+        name="Windows 95 Classic",
         category="Retro",
         description="Classic Win9x grey controls, navy active chrome and hard bevels.",
         colors={
@@ -229,23 +235,25 @@ THEMES = [
     ),
     SC_INTEL_DARK.with_updates(
         key="windows_xp",
-        name="Windows XP",
+        name="Windows XP Luna",
         category="Retro",
         description="Luna-inspired blue chrome with soft panels and rounded plastic controls.",
         colors={
-            "background": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #6BA2FF, stop:0.10 #3C7FF0, stop:0.56 #245EDB, stop:1 #1B4FAE)",
+            "background": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7FB2FF, stop:0.11 #3C7FF0, stop:0.52 #245EDB, stop:1 #1B4FAE)",
             "surface": "#DCE8F6",
-            "surface_alt": "#ECF3FB",
+            "surface_alt": "#EEF4FD",
             "surface_hover": "#FFFFFF",
-            "pane_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #5A93F4, stop:0.11 #3C7FF0, stop:0.52 #245EDB, stop:1 #1B4FAE)",
-            "card_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:0.06 #FFFFFF, stop:0.18 #F4F9FF, stop:0.64 #DCE8F6, stop:1 #C6DBF4)",
-            "card_hover_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:0.18 #FFFFFF, stop:0.56 #ECF3FB, stop:1 #DCE8F6)",
-            "panel_border": "#7DA2CE",
+            "top_bar_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #B8D6FF, stop:0.08 #7FB2FF, stop:0.34 #3A7BEB, stop:0.74 #245EDB, stop:1 #1B4FAE)",
+            "top_bar_border": "#2C5FD5",
+            "pane_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7FB2FF, stop:0.10 #3A7BEB, stop:0.62 #245EDB, stop:1 #1B4FAE)",
+            "card_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:0.05 #FFFFFF, stop:0.16 #F8FBFF, stop:0.48 #EEF4FD, stop:0.78 #DCE8F6, stop:1 #C4DAF4)",
+            "card_hover_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:0.20 #FFFFFF, stop:0.58 #F1F7FF, stop:1 #D7E8FA)",
+            "panel_border": "#7EA9F2",
             "panel_border_active": "#1D4FBA",
             "card_border_top": "#FFFFFF",
             "card_border_left": "#FFFFFF",
-            "card_border_right": "#7DA2CE",
-            "card_border_bottom": "#5F8FCF",
+            "card_border_right": "#7EA9F2",
+            "card_border_bottom": "#4E89F5",
             "text_primary": "#102044",
             "text_base": "#102044",
             "text_heading": "#0b1d4a",
@@ -254,43 +262,52 @@ THEMES = [
             "accent": "#245EDB",
             "accent_bright": "#1D4FBA",
             "accent_soft": "#AFCBFF",
-            "button_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:0.18 #F8FBFF, stop:0.52 #DDEBFF, stop:1 #AFCBFF)",
-            "button_hover": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:0.20 #FFFFFF, stop:0.54 #EAF3FF, stop:1 #BBD6FF)",
-            "button_pressed": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8EB6FF, stop:0.22 #5D8FF0, stop:0.58 #2F69DD, stop:1 #1B4FAE)",
+            "button_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:0.16 #FFFFFF, stop:0.50 #E8F1FF, stop:1 #BDD7FF)",
+            "button_hover": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:0.24 #FFFFFF, stop:0.54 #F0F7FF, stop:1 #CCE2FF)",
+            "button_pressed": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7BAAF7, stop:0.18 #5A8AEF, stop:0.56 #2F69DD, stop:1 #1B4FAE)",
             "button_disabled": "#D6E6FA",
-            "button_border": "#7BA7E8",
+            "button_border": "#5A8AEF",
             "button_border_top": "#FFFFFF",
             "button_border_left": "#FFFFFF",
-            "button_border_right": "#6E94D6",
-            "button_border_bottom": "#4F7BC8",
+            "button_border_right": "#5A8AEF",
+            "button_border_bottom": "#2C5FD5",
             "button_border_hover": "#245EDB",
             "checkbox_checked_bg": "#45a049",
-            "home_card_border": "#7DA2CE",
-            "home_card_hover_border": "#1f58bd",
+            "home_card_border": "#7EA9F2",
+            "home_card_hover_border": "#4E89F5",
             "status_chip_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:1 #CFE2FF)",
             "input_bg": "#ffffff",
-            "input_border": "#7DA2CE",
+            "input_border": "#7EA9F2",
             "input_border_top": "#6A87B8",
             "input_border_left": "#6A87B8",
             "input_border_right": "#FFFFFF",
             "input_border_bottom": "#FFFFFF",
             "selection_bg": "#316ac5",
             "selection_text": "#ffffff",
-            "tab_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:0.12 #F6FAFF, stop:0.45 #DDEBFF, stop:1 #AFCBFF)",
-            "tab_border": "#6D9CE6",
+            "tab_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #F0F6FF, stop:0.17 #E8F2FF, stop:0.58 #BCD6FF, stop:1 #7DAAF7)",
+            "tab_border": "#4E89F5",
             "tab_border_top": "#FFFFFF",
             "tab_border_left": "#FFFFFF",
-            "tab_border_right": "#5C8CD5",
-            "tab_border_bottom": "#245EDB",
-            "tab_hover_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:0.45 #EAF3FF, stop:1 #B8D4FF)",
+            "tab_border_right": "#2C5FD5",
+            "tab_border_bottom": "#1B4FAE",
+            "tab_hover_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:0.20 #FFFFFF, stop:0.56 #D8E9FF, stop:1 #8EBBFF)",
             "tab_hover_text": "#1D4FBA",
-            "tab_selected_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9EC5FF, stop:0.10 #70A7FF, stop:0.36 #3C7FF0, stop:0.72 #245EDB, stop:1 #1B4FAE)",
-            "tab_selected_border": "#0b3d91",
-            "tab_selected_border_top": "#BBD6FF",
-            "tab_selected_border_left": "#BBD6FF",
-            "tab_selected_border_right": "#0B3D91",
-            "tab_selected_border_bottom": "#1B4FAE",
-            "tab_selected_text": "#FFFFFF",
+            "tab_selected_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #F7FBFF, stop:0.15 #FFFFFF, stop:0.52 #D8E9FF, stop:1 #A9CBFF)",
+            "tab_selected_border": "#4E89F5",
+            "tab_selected_border_top": "#FFFFFF",
+            "tab_selected_border_left": "#FFFFFF",
+            "tab_selected_border_right": "#4E89F5",
+            "tab_selected_border_bottom": "#7FB2FF",
+            "tab_selected_text": "#0b1d4a",
+            "home_tab_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #B6FF9A, stop:0.16 #6FD643, stop:0.54 #43B72A, stop:1 #2B8F1B)",
+            "home_tab_hover_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #D2FFBF, stop:0.20 #82E65A, stop:0.58 #4EC83A, stop:1 #2F9A20)",
+            "home_tab_border": "#1F7D18",
+            "home_tab_border_top": "#B6FF9A",
+            "home_tab_border_left": "#B6FF9A",
+            "home_tab_border_right": "#1F7D18",
+            "home_tab_border_bottom": "#1F7D18",
+            "home_tab_text": "#FFFFFF",
+            "home_tab_font_weight": "700",
             "danger": "#e35b2f",
             "success": "#45a049",
             "table_bg": "#FFFFFF",
@@ -303,10 +320,11 @@ THEMES = [
             "card_radius": "10px",
             "tab_radius": "9px",
             "tab_padding": "7px 14px",
+            "top_bar_padding": "4px 5px 0 5px",
             "tab_margin_right": "2px",
-            "tab_margin_top": "3px",
+            "tab_margin_top": "4px",
             "tab_selected_margin_top": "0px",
-            "tab_selected_margin_bottom": "-1px",
+            "tab_selected_margin_bottom": "-2px",
             "button_padding": "7px 14px",
         },
     ),
@@ -749,7 +767,7 @@ THEMES_BY_KEY = {theme.key: theme for theme in THEMES}
 
 
 def available_themes():
-    return THEMES
+    return [THEMES_BY_KEY[key] for key in RELEASE_THEME_KEYS if key in THEMES_BY_KEY]
 
 
 def get_theme(key):
@@ -758,7 +776,7 @@ def get_theme(key):
 
 def get_current_theme_key():
     key = get_app_setting(THEME_SETTING_KEY, DEFAULT_THEME_KEY)
-    if key not in THEMES_BY_KEY:
+    if key not in THEMES_BY_KEY or key not in RELEASE_THEME_KEYS:
         return DEFAULT_THEME_KEY
     return key
 
@@ -768,6 +786,8 @@ def get_current_theme():
 
 
 def set_current_theme(key):
+    if key not in RELEASE_THEME_KEYS:
+        key = DEFAULT_THEME_KEY
     theme = get_theme(key)
     set_app_setting(THEME_SETTING_KEY, theme.key)
     return theme
@@ -803,6 +823,9 @@ def stylesheet_for_theme(theme):
     tokens["PANE_BG"] = colors.get("pane_bg", colors["background"])
     tokens["PANE_BORDER"] = colors.get("pane_border", colors["panel_border"])
     tokens["STATUS_CHIP_BG"] = colors.get("status_chip_bg", colors["surface_alt"])
+    tokens["TOP_BAR_BG"] = colors.get("top_bar_bg", colors["background"])
+    tokens["TOP_BAR_BORDER"] = colors.get("top_bar_border", colors["panel_border"])
+    tokens["TOP_BAR_PADDING"] = metrics.get("top_bar_padding", "0px")
     tokens["TAB_BG"] = colors.get("tab_bg", colors["button_bg"])
     tokens["TAB_BORDER"] = colors.get("tab_border", colors["panel_border"])
     tokens["TAB_BORDER_TOP"] = colors.get("tab_border_top", tokens["TAB_BORDER"])
@@ -818,6 +841,15 @@ def stylesheet_for_theme(theme):
     tokens["TAB_SELECTED_BORDER_RIGHT"] = colors.get("tab_selected_border_right", tokens["TAB_SELECTED_BORDER"])
     tokens["TAB_SELECTED_BORDER_BOTTOM"] = colors.get("tab_selected_border_bottom", tokens["TAB_SELECTED_BORDER"])
     tokens["TAB_SELECTED_TEXT"] = colors.get("tab_selected_text", colors["accent_bright"])
+    tokens["HOME_TAB_BG"] = colors.get("home_tab_bg", tokens["TAB_BG"])
+    tokens["HOME_TAB_HOVER_BG"] = colors.get("home_tab_hover_bg", tokens["TAB_HOVER_BG"])
+    tokens["HOME_TAB_BORDER"] = colors.get("home_tab_border", tokens["TAB_BORDER"])
+    tokens["HOME_TAB_BORDER_TOP"] = colors.get("home_tab_border_top", tokens["TAB_BORDER_TOP"])
+    tokens["HOME_TAB_BORDER_LEFT"] = colors.get("home_tab_border_left", tokens["TAB_BORDER_LEFT"])
+    tokens["HOME_TAB_BORDER_RIGHT"] = colors.get("home_tab_border_right", tokens["TAB_BORDER_RIGHT"])
+    tokens["HOME_TAB_BORDER_BOTTOM"] = colors.get("home_tab_border_bottom", tokens["TAB_BORDER_BOTTOM"])
+    tokens["HOME_TAB_TEXT"] = colors.get("home_tab_text", colors["text_base"])
+    tokens["HOME_TAB_FONT_WEIGHT"] = colors.get("home_tab_font_weight", "400")
     tokens["TAB_RADIUS"] = metrics.get("tab_radius", metrics["radius"])
     tokens["TAB_MARGIN_RIGHT"] = metrics.get("tab_margin_right", "0px")
     tokens["TAB_MARGIN_TOP"] = metrics.get("tab_margin_top", "0px")
@@ -842,6 +874,14 @@ QTabWidget::pane {
     border-radius: %(RADIUS)s;
 }
 
+QTabBar {
+    background: %(TOP_BAR_BG)s;
+    border: 1px solid %(TOP_BAR_BORDER)s;
+    border-top-color: %(ACCENT_BRIGHT)s;
+    border-bottom-color: %(TAB_SELECTED_BORDER_BOTTOM)s;
+    padding: %(TOP_BAR_PADDING)s;
+}
+
 QTabBar::tab {
     background: %(TAB_BG)s;
     color: %(TEXT_BASE)s;
@@ -857,9 +897,41 @@ QTabBar::tab {
     padding: %(TAB_PADDING)s;
 }
 
+QTabBar::tab:first {
+    background: %(HOME_TAB_BG)s;
+    color: %(HOME_TAB_TEXT)s;
+    border-color: %(HOME_TAB_BORDER)s;
+    border-top-color: %(HOME_TAB_BORDER_TOP)s;
+    border-left-color: %(HOME_TAB_BORDER_LEFT)s;
+    border-right-color: %(HOME_TAB_BORDER_RIGHT)s;
+    border-bottom-color: %(HOME_TAB_BORDER_BOTTOM)s;
+    font-weight: %(HOME_TAB_FONT_WEIGHT)s;
+}
+
+QTabBar::tab:first:!selected {
+    background: %(HOME_TAB_BG)s;
+    color: %(HOME_TAB_TEXT)s;
+    border-color: %(HOME_TAB_BORDER)s;
+    border-top-color: %(HOME_TAB_BORDER_TOP)s;
+    border-left-color: %(HOME_TAB_BORDER_LEFT)s;
+    border-right-color: %(HOME_TAB_BORDER_RIGHT)s;
+    border-bottom-color: %(HOME_TAB_BORDER_BOTTOM)s;
+    font-weight: %(HOME_TAB_FONT_WEIGHT)s;
+}
+
 QTabBar::tab:hover {
     background: %(TAB_HOVER_BG)s;
     color: %(TAB_HOVER_TEXT)s;
+}
+
+QTabBar::tab:first:hover {
+    background: %(HOME_TAB_HOVER_BG)s;
+    color: %(HOME_TAB_TEXT)s;
+}
+
+QTabBar::tab:first:hover:!selected {
+    background: %(HOME_TAB_HOVER_BG)s;
+    color: %(HOME_TAB_TEXT)s;
 }
 
 QTabBar::tab:selected {
@@ -872,6 +944,16 @@ QTabBar::tab:selected {
     border-bottom-color: %(TAB_SELECTED_BORDER_BOTTOM)s;
     margin-top: %(TAB_SELECTED_MARGIN_TOP)s;
     margin-bottom: %(TAB_SELECTED_MARGIN_BOTTOM)s;
+}
+
+QTabBar::tab:first:selected {
+    background: %(TAB_SELECTED_BG)s;
+    color: %(TAB_SELECTED_TEXT)s;
+    border-color: %(TAB_SELECTED_BORDER)s;
+    border-top-color: %(TAB_SELECTED_BORDER_TOP)s;
+    border-left-color: %(TAB_SELECTED_BORDER_LEFT)s;
+    border-right-color: %(TAB_SELECTED_BORDER_RIGHT)s;
+    border-bottom-color: %(TAB_SELECTED_BORDER_BOTTOM)s;
 }
 
 QLineEdit, QTextEdit, QComboBox, QSpinBox, QDoubleSpinBox {

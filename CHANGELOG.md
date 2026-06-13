@@ -31,21 +31,15 @@
 - Renamed the main tab label to `Mining / Salvage` so Qt does not treat `&` as
   a hidden mnemonic marker.
 - Added an advanced Appearance theme system with persistent local theme selection.
-- Added core, accessibility, light, grey, retro, expanded manufacturer-inspired and Rainbow themes.
-- Added Aegis, Anvil, Crusader, MISC, Consolidated Outland and ARGO manufacturer themes.
-- Polished theme personality for RSI, Drake, Origin and Rainbow so each theme has a
-  more distinct visual identity while keeping readability intact.
-- Deepened Windows XP Luna and Drake cockpit authenticity with stronger theme-specific
-  typography, gradients, tab states and control accents.
-- Added a final Windows XP and Drake authenticity pass with stronger Luna panel depth,
-  glossy controls and darker Drake gunmetal/amber cockpit styling.
+- Limited public release theme selection to polished stable themes:
+  SC Intel Dark, White Mode, Windows XP Luna and Windows 95 Classic.
+- Hid manufacturer-inspired and other experimental themes from the public release
+  theme picker until they can receive a fuller authenticity pass.
 - Corrected the Windows XP theme toward a more authentic Luna Blue feel with raised
   glossy tabs, beveled panels, inset inputs and brighter early-2000s blue chrome.
-- Reworked RSI, Drake and Origin manufacturer themes with stronger palette hierarchy,
-  clearer button/tab states and more recognizable manufacturer moods.
+- Added stronger Windows XP Luna chrome with a glossy top tab bar and Start-button-style
+  inactive Home tab.
 - Improved Windows 95 and Windows XP themes with more authentic Win9x and Luna-inspired styling.
-- Renamed the public Pride theme to Rainbow and polished button, chip and checkbox accents
-  while keeping table headers calm and readable.
 - Polished checkbox/filter styling, tab/table states and Home operational status presentation
   through centralized theme color tokens.
 
