@@ -153,7 +153,6 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         detail_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         detail_scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         detail_content = QWidget()
-        detail_content.setMinimumWidth(380)
         self.detail_layout = QVBoxLayout()
         self.detail_layout.setContentsMargins(0, 0, 0, 0)
         self.detail_layout.setSpacing(12)
@@ -169,9 +168,9 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         splitter.setChildrenCollapsible(False)
         splitter.addWidget(list_card)
         splitter.addWidget(detail_scroll)
-        splitter.setStretchFactor(0, 3)
-        splitter.setStretchFactor(1, 2)
-        splitter.setSizes([680, 440])
+        splitter.setStretchFactor(0, 11)
+        splitter.setStretchFactor(1, 9)
+        splitter.setSizes([610, 500])
         layout.addWidget(splitter)
         self.setLayout(layout)
 
@@ -252,30 +251,38 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
     def build_history_player_card(self):
         card = QFrame()
         card.setObjectName("playerCard")
-        card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        layout = QHBoxLayout()
+        card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        layout = QVBoxLayout()
         layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(16)
+        layout.setSpacing(12)
 
-        self.detail_avatar = self.create_image_label("NO\nIMAGE", 112)
-        layout.addWidget(self.detail_avatar)
+        top_row = QHBoxLayout()
+        top_row.setSpacing(14)
+        self.detail_avatar = self.create_image_label("NO\nIMAGE", 88)
+        top_row.addWidget(self.detail_avatar, 0, Qt.AlignTop)
 
         info_column = QVBoxLayout()
+        info_column.setSpacing(8)
         self.detail_handle = QLabel("No history row selected")
         self.detail_handle.setObjectName("heroHandle")
         self.detail_handle.setWordWrap(True)
-        self.detail_handle.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.detail_handle.setMinimumWidth(0)
+        self.detail_handle.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         self.detail_handle.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.detail_display_name = QLabel("Click a lookup row to open a dossier here.")
         self.detail_display_name.setObjectName("heroSubtitle")
         self.detail_display_name.setWordWrap(True)
+        self.detail_display_name.setMinimumWidth(0)
+        self.detail_display_name.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         self.detail_display_name.setTextInteractionFlags(Qt.TextSelectableByMouse)
 
         info_column.addWidget(self.detail_handle)
         info_column.addWidget(self.detail_display_name)
+        top_row.addLayout(info_column, 1)
+        layout.addLayout(top_row)
 
         facts_grid = QGridLayout()
-        facts_grid.setHorizontalSpacing(18)
+        facts_grid.setHorizontalSpacing(10)
         facts_grid.setVerticalSpacing(7)
         fields = [
             ("citizen_record", "Citizen Record"),
@@ -286,21 +293,28 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         for row, (key, label) in enumerate(fields):
             self.add_fact_pair(facts_grid, row, 0, label, self.detail_player_facts, key)
 
-        info_column.addLayout(facts_grid)
+        layout.addLayout(facts_grid)
         self.detail_change_summary_label = QLabel("Change summary: Select a row to compare fresh RSI data.")
         self.detail_change_summary_label.setObjectName("moduleSubtitle")
         self.detail_change_summary_label.setWordWrap(True)
+        self.detail_change_summary_label.setMinimumWidth(0)
+        self.detail_change_summary_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         self.detail_change_summary_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        info_column.addWidget(self.detail_change_summary_label)
-        layout.addLayout(info_column, 1)
+        layout.addWidget(self.detail_change_summary_label)
 
         action_column = QVBoxLayout()
+        action_column.setContentsMargins(0, 0, 0, 0)
+        action_column.setSpacing(8)
         self.detail_open_profile_button = QPushButton("Open Profile")
         self.detail_open_orgs_button = QPushButton("Open Organizations")
         self.detail_open_main_org_button = QPushButton("Open Main Org")
-        action_column.addWidget(self.detail_open_profile_button)
-        action_column.addWidget(self.detail_open_orgs_button)
-        action_column.addWidget(self.detail_open_main_org_button)
+        for button in (
+            self.detail_open_profile_button,
+            self.detail_open_orgs_button,
+            self.detail_open_main_org_button,
+        ):
+            button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            action_column.addWidget(button)
         layout.addLayout(action_column)
 
         card.setLayout(layout)
@@ -309,7 +323,7 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
     def build_history_main_org_card(self):
         card = QFrame()
         card.setObjectName("sectionCard")
-        card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
         layout = QVBoxLayout()
         layout.setContentsMargins(16, 14, 16, 16)
         layout.setSpacing(12)
@@ -320,31 +334,37 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
 
         body = QHBoxLayout()
         body.setSpacing(14)
-        self.detail_main_org_logo = self.create_image_label("ORG\nLOGO", 104)
-        body.addWidget(self.detail_main_org_logo)
+        self.detail_main_org_logo = self.create_image_label("ORG\nLOGO", 84)
+        body.addWidget(self.detail_main_org_logo, 0, Qt.AlignTop)
 
         details_column = QVBoxLayout()
-        details_column.setSpacing(12)
+        details_column.setSpacing(7)
 
-        header = QHBoxLayout()
         org_identity = QVBoxLayout()
+        org_identity.setSpacing(4)
         self.detail_main_org_name = QLabel("No main organization loaded")
         self.detail_main_org_name.setObjectName("orgName")
         self.detail_main_org_name.setWordWrap(True)
+        self.detail_main_org_name.setMinimumWidth(0)
+        self.detail_main_org_name.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         self.detail_main_org_sid = QLabel("SID: N/A")
         self.detail_main_org_sid.setObjectName("orgSid")
         self.detail_main_org_sid.setWordWrap(True)
+        self.detail_main_org_sid.setMinimumWidth(0)
+        self.detail_main_org_sid.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         org_identity.addWidget(self.detail_main_org_name)
         org_identity.addWidget(self.detail_main_org_sid)
-        header.addLayout(org_identity, 1)
+        details_column.addLayout(org_identity)
 
         self.detail_main_org_piracy = QLabel("Piracy: N/A")
-        self.detail_main_org_piracy.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        header.addWidget(self.detail_main_org_piracy)
-        details_column.addLayout(header)
+        self.detail_main_org_piracy.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.detail_main_org_piracy.setWordWrap(True)
+        self.detail_main_org_piracy.setMinimumWidth(0)
+        self.detail_main_org_piracy.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        details_column.addWidget(self.detail_main_org_piracy)
 
         facts_grid = QGridLayout()
-        facts_grid.setHorizontalSpacing(18)
+        facts_grid.setHorizontalSpacing(10)
         facts_grid.setVerticalSpacing(7)
         fields = [
             ("rank", "Rank"),
@@ -353,10 +373,8 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
             ("commitment", "Commitment"),
             ("exclusivity", "Exclusivity"),
         ]
-        for index, (key, label) in enumerate(fields):
-            row = index // 3
-            col = (index % 3) * 2
-            self.add_fact_pair(facts_grid, row, col, label, self.detail_org_facts, key)
+        for row, (key, label) in enumerate(fields):
+            self.add_fact_pair(facts_grid, row, 0, label, self.detail_org_facts, key)
 
         details_column.addLayout(facts_grid)
         body.addLayout(details_column, 1)
@@ -386,6 +404,7 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         self.detail_affiliations_grid = QGridLayout()
         self.detail_affiliations_grid.setHorizontalSpacing(12)
         self.detail_affiliations_grid.setVerticalSpacing(12)
+        self.detail_affiliations_grid.setColumnStretch(0, 1)
         layout.addLayout(self.detail_affiliations_grid)
 
         self.detail_affiliations_empty = QLabel("No profile selected.")
@@ -764,9 +783,12 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
     def add_fact_pair(self, layout, row, col, label, registry, key):
         label_widget = QLabel(label.upper())
         label_widget.setObjectName("labelText")
+        label_widget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
         value_widget = QLabel("N/A")
         value_widget.setObjectName("valueText")
         value_widget.setWordWrap(True)
+        value_widget.setMinimumWidth(0)
+        value_widget.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         value_widget.setTextInteractionFlags(Qt.TextSelectableByMouse)
         registry[key] = value_widget
 
@@ -802,18 +824,16 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         self.detail_affiliation_count_label.setText(f"{len(affiliations)} linked orgs")
 
         for index, org in enumerate(affiliations):
-            row = index // 2
-            col = index % 2
             self.detail_affiliations_grid.addWidget(
                 self.create_detail_affiliation_card(org),
-                row,
-                col,
+                index,
+                0,
             )
 
     def create_detail_affiliation_card(self, org):
         card = QFrame()
         card.setObjectName("affiliationCard")
-        card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
         layout = QHBoxLayout()
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(12)
@@ -827,15 +847,25 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         name = QLabel(org["name"])
         name.setObjectName("orgName")
         name.setWordWrap(True)
+        name.setMinimumWidth(0)
+        name.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         sid = QLabel(f"SID: {org['sid']}")
         sid.setObjectName("orgSid")
+        sid.setWordWrap(True)
+        sid.setMinimumWidth(0)
+        sid.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         details = QLabel(
             f"Rank: {org['rank']}  |  Members: {org['member_count']}  |  "
             f"{org['type']} / {org['commitment']} / {org['exclusivity']}"
         )
         details.setObjectName("valueText")
         details.setWordWrap(True)
+        details.setMinimumWidth(0)
+        details.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         piracy = QLabel()
+        piracy.setWordWrap(True)
+        piracy.setMinimumWidth(0)
+        piracy.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         self.set_piracy_badge(piracy, org["piracy"])
 
         text_layout.addWidget(name)
