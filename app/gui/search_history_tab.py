@@ -12,6 +12,8 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QScrollArea,
+    QSplitter,
+    QHeaderView,
     QSizePolicy,
     QTableWidget,
     QTableWidgetItem,
@@ -73,6 +75,8 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
 
         list_card = QFrame()
         list_card.setObjectName("sectionCard")
+        list_card.setMinimumWidth(420)
+        list_card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         list_layout = QVBoxLayout()
         list_layout.setContentsMargins(16, 14, 16, 16)
         list_layout.setSpacing(10)
@@ -92,14 +96,22 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         header.addWidget(self.refresh_button)
         list_layout.addLayout(header)
 
-        history_actions = QHBoxLayout()
-        history_actions.addWidget(self.rerun_lookup_button)
-        history_actions.addWidget(self.pin_selected_button)
-        history_actions.addWidget(self.favorite_selected_button)
-        history_actions.addWidget(self.watch_player_button)
-        history_actions.addWidget(self.watch_org_button)
-        history_actions.addWidget(self.remove_selected_button)
-        history_actions.addWidget(self.clear_history_button)
+        history_actions = QGridLayout()
+        history_actions.setContentsMargins(0, 0, 0, 0)
+        history_actions.setHorizontalSpacing(8)
+        history_actions.setVerticalSpacing(8)
+        action_buttons = [
+            self.rerun_lookup_button,
+            self.pin_selected_button,
+            self.favorite_selected_button,
+            self.watch_player_button,
+            self.watch_org_button,
+            self.remove_selected_button,
+            self.clear_history_button,
+        ]
+        for index, button in enumerate(action_buttons):
+            button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            history_actions.addWidget(button, index // 4, index % 4)
         list_layout.addLayout(history_actions)
 
         filter_row = QHBoxLayout()
@@ -125,17 +137,23 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         self.history_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.history_table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.history_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.history_table.setMinimumWidth(0)
+        self.history_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         configure_readable_table_columns(self.history_table, min_width=95, max_width=260)
+        self.configure_history_table_columns()
         self.history_table.horizontalHeader().setSectionsClickable(True)
         self.history_table.horizontalHeader().setSortIndicatorShown(False)
         list_layout.addWidget(self.history_table)
 
         list_card.setLayout(list_layout)
-        layout.addWidget(list_card, 2)
 
         detail_scroll = QScrollArea()
         detail_scroll.setWidgetResizable(True)
+        detail_scroll.setMinimumWidth(400)
+        detail_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        detail_scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         detail_content = QWidget()
+        detail_content.setMinimumWidth(380)
         self.detail_layout = QVBoxLayout()
         self.detail_layout.setContentsMargins(0, 0, 0, 0)
         self.detail_layout.setSpacing(12)
@@ -147,7 +165,14 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         self.build_history_affiliations_card()
         self.detail_layout.addStretch(1)
 
-        layout.addWidget(detail_scroll, 3)
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.setChildrenCollapsible(False)
+        splitter.addWidget(list_card)
+        splitter.addWidget(detail_scroll)
+        splitter.setStretchFactor(0, 3)
+        splitter.setStretchFactor(1, 2)
+        splitter.setSizes([680, 440])
+        layout.addWidget(splitter)
         self.setLayout(layout)
 
         self.refresh_button.clicked.connect(lambda: self.refresh_history())
@@ -172,6 +197,20 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         self.detail_open_main_org_button.clicked.connect(
             lambda: self.open_url(self.current_main_org_url, "No main org URL available.")
         )
+
+    def configure_history_table_columns(self):
+        header = self.history_table.horizontalHeader()
+        header.setStretchLastSection(False)
+        header.setMinimumSectionSize(42)
+
+        header.setSectionResizeMode(0, QHeaderView.Interactive)
+        header.setSectionResizeMode(1, QHeaderView.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.Interactive)
+        header.setSectionResizeMode(3, QHeaderView.Interactive)
+
+        self.history_table.setColumnWidth(0, 155)
+        self.history_table.setColumnWidth(2, 76)
+        self.history_table.setColumnWidth(3, 124)
 
     def reset_detail_panel(self):
         self.current_profile_url = None
@@ -224,9 +263,12 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         info_column = QVBoxLayout()
         self.detail_handle = QLabel("No history row selected")
         self.detail_handle.setObjectName("heroHandle")
+        self.detail_handle.setWordWrap(True)
+        self.detail_handle.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.detail_handle.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.detail_display_name = QLabel("Click a lookup row to open a dossier here.")
         self.detail_display_name.setObjectName("heroSubtitle")
+        self.detail_display_name.setWordWrap(True)
         self.detail_display_name.setTextInteractionFlags(Qt.TextSelectableByMouse)
 
         info_column.addWidget(self.detail_handle)
@@ -288,8 +330,10 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         org_identity = QVBoxLayout()
         self.detail_main_org_name = QLabel("No main organization loaded")
         self.detail_main_org_name.setObjectName("orgName")
+        self.detail_main_org_name.setWordWrap(True)
         self.detail_main_org_sid = QLabel("SID: N/A")
         self.detail_main_org_sid.setObjectName("orgSid")
+        self.detail_main_org_sid.setWordWrap(True)
         org_identity.addWidget(self.detail_main_org_name)
         org_identity.addWidget(self.detail_main_org_sid)
         header.addLayout(org_identity, 1)
@@ -402,6 +446,7 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
 
         self.history_table.setUpdatesEnabled(True)
         configure_readable_table_columns(self.history_table, min_width=95, max_width=260)
+        self.configure_history_table_columns()
         self.history_count_label.setText(f"{len(filtered_rows)} / {len(self.history_rows)} shown")
 
         if self.history_sort_column is None:
