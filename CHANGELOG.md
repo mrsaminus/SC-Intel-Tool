@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.8.7 - 2026-06-13
+
 ### Community Branding
 
 - Added new SC Intel Tool app branding/logo as the primary application identity.
