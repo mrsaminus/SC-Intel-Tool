@@ -14,7 +14,10 @@ class MiningRockBreakerMixin:
         self.rock_mass_input = QLineEdit()
         self.rock_mass_input.setPlaceholderText("Mass...")
         self.rock_resistance_input = QLineEdit()
-        self.rock_resistance_input.setPlaceholderText("Resistance...")
+        self.rock_resistance_input.setPlaceholderText("Resistance %...")
+        self.rock_resistance_input.setToolTip(
+            "Resistance % - enter 10 for 10% or 0.10; both are accepted."
+        )
         self.rock_instability_input = QLineEdit()
         self.rock_instability_input.setPlaceholderText("Instability...")
         self.rock_laser_filter = self.create_combo(["Any laser", "Ship mining", "Vehicle mining", "Hand mining"])
@@ -51,9 +54,10 @@ class MiningRockBreakerMixin:
             if self.rock_laser_matches_filter(laser)
         ]
         mass = self.parse_float(self.rock_mass_input.text())
-        resistance = self.parse_float(self.rock_resistance_input.text())
+        resistance_text = self.rock_resistance_input.text().strip()
+        resistance = self.normalize_rock_resistance(self.parse_float(resistance_text))
         instability = self.parse_float(self.rock_instability_input.text())
-        has_power_stats = mass > 0 and resistance > 0
+        has_power_stats = mass > 0 and bool(resistance_text)
 
         if not has_power_stats:
             rows = [
@@ -108,6 +112,18 @@ class MiningRockBreakerMixin:
         if selected in {"Vehicle mining", "Hand mining"}:
             return laser.size == 0
         return True
+
+
+    def normalize_rock_resistance(self, value):
+        resistance = max(float(value or 0), 0.0)
+        if resistance >= 1:
+            resistance /= 100
+        return resistance
+
+
+    def format_rock_resistance_percent(self, value):
+        text = f"{value * 100:.2f}".rstrip("0").rstrip(".")
+        return f"{text}%"
 
 
     def rock_module_candidates(self):
@@ -195,6 +211,7 @@ class MiningRockBreakerMixin:
 
         notes = (
             f"S{laser.size} | Slots {laser.module_slots} | "
+            f"Input Res {self.format_rock_resistance_percent(resistance)} | "
             f"Res x{resistance_factor:.2f} | Instab x{effective_instability:.2f} | "
             f"Window x{charge_window:.2f} | Rate x{charge_rate:.2f}"
         )
