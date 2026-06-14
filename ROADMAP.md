@@ -113,6 +113,11 @@ local data safety, release reliability and tester-driven polish.
 
 ## Completed Alpha Foundation
 
+- Initial pytest-based regression test foundation for updater/version handling,
+  AppData paths, SQLite persistence, Mining public runtime data, Reward Scanner
+  matching, Watchlists and Trading helpers.
+- Maintainer beta-readiness checklist covering smoke tests, packaging, updater,
+  migration, privacy and runtime asset validation.
 - AppData user data storage and safe migration.
 - Local-only SQLite persistence for notes, history, Wikelo progress, watchlists,
   trading presets/routes, owned blueprints and owned crafting materials.
@@ -137,7 +142,8 @@ local data safety, release reliability and tester-driven polish.
 ### 2. Maintenance / Refactor
 
 - Continue reducing oversized GUI modules when it is low risk.
-- Player Lookup can be split later if it starts slowing feature work.
+- Refinery, Search History, Trading tabs, Wikelo and Player Lookup remain the
+  highest-risk large modules for future behavior-preserving splits.
 - Extract shared helpers only when duplication is obvious.
 - Keep behavior-preserving refactors separate from feature work.
 

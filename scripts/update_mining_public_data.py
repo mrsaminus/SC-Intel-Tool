@@ -65,6 +65,15 @@ def main() -> int:
     source_root = args.source_root.resolve()
     target_root = args.target_root.resolve()
 
+    if not source_root.exists():
+        print(f"Mining reference source was not found: {source_root}")
+        print(
+            "This helper is maintainer-only. Public/source builds do not need "
+            "reference_material to run; use this script only when refreshing "
+            "the bundled public runtime data from an approved local reference checkout."
+        )
+        return 1
+
     missing = []
     for source_relative, _target_relative in APPROVED_FILES:
         source_path = source_root / source_relative

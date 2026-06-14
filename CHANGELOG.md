@@ -18,6 +18,17 @@
   `2` and similar entries as percentages.
 - Fixed Rock Breaker calculations when resistance is entered as `0`.
 
+### Hardening / Maintainability
+
+- Added an initial pytest regression test foundation for version comparison,
+  updater script safety, AppData path handling, SQLite persistence, Mining
+  public runtime data, Reward Scanner matching, Watchlists and Trading helpers.
+- Added a beta-readiness checklist for source validation, packaged build
+  hygiene, updater checks, migration checks, privacy verification and runtime
+  asset validation.
+- Updated maintainer release documentation to include compile and pytest
+  validation before packaged release builds.
+
 ## 0.1.0-alpha.8.7 - 2026-06-13
 
 ### Community Branding
