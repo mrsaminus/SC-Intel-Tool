@@ -20,12 +20,25 @@
 
 ### Hardening / Maintainability
 
+- Added local rotating file logging for startup, version/runtime paths, database
+  path selection, updater checks, failed web requests and background task
+  failures.
+- Added a safe Copy Diagnostics helper in Settings for tester bug reports with
+  redacted local paths and runtime asset status only.
+- Hardened logging setup so logging initialization is idempotent and does not
+  crash startup if file logging is unavailable.
 - Added an initial pytest regression test foundation for version comparison,
   updater script safety, AppData path handling, SQLite persistence, Mining
   public runtime data, Reward Scanner matching, Watchlists and Trading helpers.
+- Expanded hardening regression tests for settings fallback, diagnostics
+  redaction, optional asset availability, updater no-digest handling, Wikelo
+  grouping/checklist persistence and database initialization.
 - Added a beta-readiness checklist for source validation, packaged build
   hygiene, updater checks, migration checks, privacy verification and runtime
   asset validation.
+- Added an alpha tester checklist covering smoke-test areas, bug report info,
+  local logs, SHA256 verification, known alpha limitations and diagnostics
+  privacy.
 - Updated maintainer release documentation to include compile and pytest
   validation before packaged release builds.
 

@@ -1,4 +1,5 @@
 import re
+import logging
 from dataclasses import dataclass
 
 import requests
@@ -6,6 +7,7 @@ import requests
 from .version import APP_VERSION, GITHUB_RELEASES_API, GITHUB_RELEASES_URL
 
 WINDOWS_EXECUTABLE_NAME = "SC-Intel-Tool.exe"
+logger = logging.getLogger(__name__)
 
 
 class UpdateCheckError(Exception):
@@ -27,6 +29,7 @@ class UpdateInfo:
 
 
 def check_for_updates(timeout=10):
+    logger.info("Checking GitHub Releases for updates.")
     try:
         response = requests.get(
             GITHUB_RELEASES_API,
@@ -38,8 +41,10 @@ def check_for_updates(timeout=10):
         )
         response.raise_for_status()
     except requests.HTTPError as exc:
+        logger.warning("GitHub update check failed with HTTP %s.", response.status_code)
         raise update_error_from_response(response) from exc
     except requests.RequestException as exc:
+        logger.warning("GitHub update check request failed: %s", exc)
         raise UpdateCheckError(f"Could not contact GitHub Releases: {exc}") from exc
 
     payload = response.json()
@@ -55,6 +60,16 @@ def check_for_updates(timeout=10):
         raise UpdateCheckError("Latest GitHub Release did not include a version tag.")
 
     asset = find_windows_asset(release) or {}
+    update_available = is_newer_version(latest_version, APP_VERSION)
+    logger.info(
+        "Latest release found: current=%s latest=%s update_available=%s asset=%s size=%s digest=%s",
+        APP_VERSION,
+        latest_version,
+        update_available,
+        asset.get("name") or "",
+        asset.get("size") or 0,
+        bool(asset.get("digest")),
+    )
 
     return UpdateInfo(
         current_version=APP_VERSION,
@@ -62,7 +77,7 @@ def check_for_updates(timeout=10):
         release_name=str(release.get("name") or latest_version),
         release_url=str(release.get("html_url") or GITHUB_RELEASES_URL),
         published_at=str(release.get("published_at") or ""),
-        update_available=is_newer_version(latest_version, APP_VERSION),
+        update_available=update_available,
         asset_name=str(asset.get("name") or ""),
         asset_url=str(asset.get("browser_download_url") or ""),
         asset_size=int(asset.get("size") or 0),

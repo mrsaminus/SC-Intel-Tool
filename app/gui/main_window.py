@@ -1,11 +1,13 @@
+import logging
 import sys
 
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QColor, QIcon, QLinearGradient, QPalette
 from PySide6.QtWidgets import QApplication, QMainWindow, QStyle, QStyleOptionTab, QStylePainter, QTabBar, QTabWidget
 
-from app.database import init_db
-from app.paths import bundled_path
+from app.database import DB_PATH, init_db
+from app.logging_config import configure_logging, install_exception_hook
+from app.paths import bundled_path, get_active_data_dir, is_packaged_app
 from app.update_checker import check_for_updates as fetch_update_info
 from app.version import APP_VERSION
 
@@ -25,6 +27,8 @@ from .wikelo_tab import WikeloItemsTab
 from .watchlists_tab import WatchlistsTab
 from .workers import BackgroundTaskMixin
 
+logger = logging.getLogger(__name__)
+
 
 def app_icon():
     icon_path = bundled_path("app", "assets", "SC-Intel-Tool.ico")
@@ -33,8 +37,10 @@ def app_icon():
 
     fallback_icon_path = bundled_path("app", "assets", "Balder.ico")
     if fallback_icon_path.exists():
+        logger.warning("Primary app icon missing; using fallback icon at %s", fallback_icon_path)
         return QIcon(str(fallback_icon_path))
 
+    logger.warning("No app icon asset found.")
     return QIcon()
 
 
@@ -98,6 +104,7 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
         if self.startup_update_check_running:
             return
 
+        logger.info("Starting background update check.")
         self.startup_update_check_running = True
         self.home_tab.set_update_checking()
         self.start_background_task(
@@ -108,10 +115,18 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
         )
 
     def on_startup_update_check_finished(self, result):
+        logger.info(
+            "Update check finished: current=%s latest=%s available=%s asset=%s",
+            result.current_version,
+            result.latest_version,
+            result.update_available,
+            bool(result.asset_url),
+        )
         self.home_tab.apply_update_check_result(result)
         self.settings_tab.apply_update_check_result(result, notify=False)
 
     def on_startup_update_check_error(self, exc):
+        logger.warning("Startup update check failed: %s", exc)
         self.home_tab.apply_update_check_error(exc)
         self.settings_tab.apply_update_check_error(exc, show_popup=False, notify=False)
 
@@ -167,6 +182,15 @@ class ThemeAwareTabBar(QTabBar):
 
 
 def run_app():
+    configure_logging()
+    install_exception_hook()
+    logger.info(
+        "Starting SC Intel Tool %s runtime=%s data_dir=%s database=%s",
+        APP_VERSION,
+        "packaged" if is_packaged_app() else "source",
+        get_active_data_dir(),
+        DB_PATH,
+    )
     init_db()
 
     app = QApplication(sys.argv)

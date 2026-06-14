@@ -1,6 +1,7 @@
 import os
 import shutil
 import sys
+import logging
 from pathlib import Path
 
 
@@ -37,6 +38,7 @@ def log_path_message(message):
 
     _LOGGED_PATH_MESSAGES.add(message)
     print(f"[SC Intel Tool] {message}")
+    logging.getLogger(__name__).info(message)
 
 
 def default_user_data_dir():

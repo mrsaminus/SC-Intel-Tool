@@ -42,6 +42,8 @@ starts cleanly, keeps user data safe, and fails gracefully.
   region after a manual action.
 - Confirm no screenshots, OCR text, notes, watchlists, player history or local
   database contents are uploaded to the developer.
+- Confirm Settings > About SC Intel Tool > Copy Diagnostics contains only safe
+  runtime/path/asset status details and masks user-specific path prefixes.
 
 ## 3. User Data / Migration
 
@@ -180,7 +182,24 @@ starts cleanly, keeps user data safe, and fails gracefully.
 - `.previous` rollback file is preserved on failure and cleaned after successful
   replacement.
 
-## 8. Release Hygiene
+## 8. Tester Diagnostics
+
+- Confirm local logging exists at:
+
+  ```text
+  %LOCALAPPDATA%\SC-Intel-Tool\logs\sc_intel_tool.log
+  ```
+
+- Confirm startup logs include app version, runtime mode, active data directory
+  and database path.
+- Confirm failed update checks and background task errors are logged locally.
+- Confirm tester-facing instructions are current in:
+
+  ```text
+  docs/alpha_tester_checklist.md
+  ```
+
+## 9. Release Hygiene
 
 - `git status --short` is clean before tagging.
 - Version in `app/version.py` matches the tag.
@@ -190,7 +209,7 @@ starts cleanly, keeps user data safe, and fails gracefully.
 - GitHub release is marked pre-release until beta.
 - Artifact attached is exactly `SC-Intel-Tool.exe`.
 
-## 9. Known Beta Limitations
+## 10. Known Beta Limitations
 
 - Builds are unsigned, so SmartScreen warnings are expected.
 - Live data sources can fail or change format.

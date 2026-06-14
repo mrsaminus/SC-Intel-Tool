@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import os
 import subprocess
 import sys
@@ -10,6 +11,7 @@ import requests
 from .paths import get_user_data_dir, is_packaged_app
 
 WINDOWS_EXECUTABLE_NAME = "SC-Intel-Tool.exe"
+logger = logging.getLogger(__name__)
 
 
 class UpdateInstallError(Exception):
@@ -33,6 +35,14 @@ def download_update(update_info, timeout=120):
     asset_name = safe_asset_name(update_info.asset_name, update_info.latest_version)
     target_path = updates_dir / asset_name
     temp_path = target_path.with_suffix(target_path.suffix + ".download")
+    logger.info(
+        "Downloading update asset=%s version=%s target=%s expected_size=%s digest_available=%s",
+        asset_name,
+        update_info.latest_version,
+        target_path,
+        update_info.asset_size,
+        bool(update_info.asset_digest),
+    )
 
     if temp_path.exists():
         temp_path.unlink()
@@ -60,6 +70,7 @@ def download_update(update_info, timeout=120):
 
     if update_info.asset_size and downloaded_size != update_info.asset_size:
         temp_path.unlink(missing_ok=True)
+        logger.error("Downloaded update size mismatch: got=%s expected=%s", downloaded_size, update_info.asset_size)
         raise UpdateInstallError(
             f"Downloaded update size did not match GitHub metadata "
             f"({downloaded_size} bytes vs {update_info.asset_size} bytes)."
@@ -69,11 +80,13 @@ def download_update(update_info, timeout=120):
     expected_digest = expected_sha256(update_info.asset_digest)
     if expected_digest and digest != expected_digest:
         temp_path.unlink(missing_ok=True)
+        logger.error("Downloaded update SHA256 mismatch.")
         raise UpdateInstallError("Downloaded update failed SHA256 verification.")
 
     if target_path.exists():
         target_path.unlink()
     temp_path.replace(target_path)
+    logger.info("Update downloaded and verified: path=%s size=%s sha256=%s", target_path, downloaded_size, digest.upper())
 
     return DownloadedUpdate(path=target_path, size=downloaded_size, sha256=digest.upper())
 
@@ -91,6 +104,7 @@ def start_update_installer(downloaded_update):
 
     script_path = get_user_data_dir() / "updates" / "install_update.ps1"
     script_path.write_text(update_script(), encoding="utf-8")
+    logger.info("Starting update installer script=%s source=%s target=%s", script_path, downloaded_update.path, target_exe)
 
     subprocess.Popen(
         [

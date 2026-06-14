@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 
 import requests
@@ -5,6 +6,7 @@ import requests
 
 UEX_API_BASE = "https://api.uexcorp.uk/2.0"
 UEX_TIMEOUT_SECONDS = 15
+logger = logging.getLogger(__name__)
 
 
 class UEXError(Exception):
@@ -23,12 +25,16 @@ class UEXCommodityPrice:
 
 
 def fetch_commodity_sell_prices(commodity_name):
-    response = requests.get(
-        f"{UEX_API_BASE}/commodities_prices",
-        params={"commodity_name": commodity_name},
-        timeout=UEX_TIMEOUT_SECONDS,
-    )
-    response.raise_for_status()
+    try:
+        response = requests.get(
+            f"{UEX_API_BASE}/commodities_prices",
+            params={"commodity_name": commodity_name},
+            timeout=UEX_TIMEOUT_SECONDS,
+        )
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        logger.warning("UEX commodity sell price request failed for %s: %s", commodity_name, exc)
+        raise
 
     payload = response.json()
     records = extract_records(payload)
@@ -48,11 +54,15 @@ def fetch_commodity_sell_prices(commodity_name):
 
 
 def fetch_all_commodity_prices():
-    response = requests.get(
-        f"{UEX_API_BASE}/commodities_prices_all",
-        timeout=UEX_TIMEOUT_SECONDS,
-    )
-    response.raise_for_status()
+    try:
+        response = requests.get(
+            f"{UEX_API_BASE}/commodities_prices_all",
+            timeout=UEX_TIMEOUT_SECONDS,
+        )
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        logger.warning("UEX all commodity prices request failed: %s", exc)
+        raise
 
     payload = response.json()
     return [

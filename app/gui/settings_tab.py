@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.database import DB_PATH, get_app_setting, set_app_setting
+from app.diagnostics import safe_diagnostics_text
 from app.paths import get_active_data_dir, is_packaged_app
 from app.sc_trade_tools_client import (
     SC_TRADE_TOOLS_TOKEN_SETTING,
@@ -108,6 +109,16 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         self.add_fact(grid, 0, "Repository", GITHUB_REPOSITORY)
         self.add_fact(grid, 1, "Runtime", "Packaged build" if is_packaged_app() else "Source / development")
         layout.addLayout(grid)
+
+        diagnostics_row = QHBoxLayout()
+        self.copy_diagnostics_button = QPushButton("Copy Diagnostics")
+        self.copy_diagnostics_button.clicked.connect(self.copy_diagnostics)
+        diagnostics_hint = QLabel("Copies safe local version/path/runtime info for bug reports.")
+        diagnostics_hint.setObjectName("moduleSubtitle")
+        diagnostics_hint.setWordWrap(True)
+        diagnostics_row.addWidget(self.copy_diagnostics_button)
+        diagnostics_row.addWidget(diagnostics_hint, 1)
+        layout.addLayout(diagnostics_row)
         return card
 
     def build_appearance_card(self):
@@ -424,6 +435,14 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
     def finish_sc_trade_token_test(self):
         self.test_sc_trade_token_button.setEnabled(True)
         self.test_sc_trade_token_button.setText("Test Connection")
+
+    def copy_diagnostics(self):
+        QApplication.clipboard().setText(safe_diagnostics_text(database_path=DB_PATH))
+        QMessageBox.information(
+            self,
+            "Diagnostics copied",
+            "Safe diagnostics were copied to the clipboard. They include version, runtime, paths and asset status only.",
+        )
 
     def open_releases_page(self):
         QDesktopServices.openUrl(QUrl(self.latest_release_url or GITHUB_RELEASES_URL))

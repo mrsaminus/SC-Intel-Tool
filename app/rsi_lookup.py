@@ -1,3 +1,4 @@
+import logging
 import re
 import time
 from functools import lru_cache
@@ -13,6 +14,7 @@ class RSILookupError(Exception):
 
 BASE_URL = "https://robertsspaceindustries.com"
 TIMEOUT_SECONDS = 15
+logger = logging.getLogger(__name__)
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 SC-Intel-Tool",
@@ -146,11 +148,13 @@ def request_with_retry(url):
             response = _SESSION.get(url, timeout=TIMEOUT_SECONDS)
         except requests.RequestException as exc:
             last_error = exc
+            logger.warning("RSI request failed for %s: %s", url, exc)
             if attempt == 0:
                 time.sleep(1)
             continue
 
         if response.status_code in (429, 503) and attempt == 0:
+            logger.warning("RSI request returned %s for %s; retrying once.", response.status_code, url)
             time.sleep(3)
             continue
 
