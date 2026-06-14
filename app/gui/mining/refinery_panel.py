@@ -30,7 +30,7 @@ class MiningRefineryMixin:
         self.refinery_stack = QStackedWidget()
 
         work_widget = QWidget()
-        work_widget.setMinimumSize(1050, 700)
+        work_widget.setMinimumSize(980, 700)
         work_layout = QVBoxLayout()
         work_layout.setContentsMargins(0, 0, 0, 0)
         work_layout.setSpacing(12)
@@ -39,7 +39,7 @@ class MiningRefineryMixin:
         content.setSpacing(12)
 
         input_card = self.create_filter_card("SHIP ORES / REFINING")
-        input_card.setMinimumWidth(720)
+        input_card.setMinimumWidth(600)
         input_layout = input_card.layout()
 
         session_row = QHBoxLayout()
@@ -121,8 +121,7 @@ class MiningRefineryMixin:
         input_layout.addWidget(self.refinery_empty_label)
 
         summary_card = self.create_filter_card("SELLING / PROFIT SUMMARY")
-        summary_card.setMinimumWidth(300)
-        summary_card.setMaximumWidth(430)
+        summary_card.setMinimumWidth(400)
         summary_layout = summary_card.layout()
         self.refinery_price_status_label = QLabel(
             "UEX prices are fetched live for this session and are not stored locally."
@@ -177,7 +176,7 @@ class MiningRefineryMixin:
         timer_row.addWidget(self.refinery_timer_reset_button)
         summary_layout.addLayout(timer_row)
 
-        sell_locations_label = QLabel("SELL LOCATION OPTIONS")
+        sell_locations_label = QLabel("BEST SHARED SELL LOCATIONS")
         sell_locations_label.setObjectName("sectionTitle")
         summary_layout.addWidget(sell_locations_label)
         self.refinery_sell_locations_table = self.create_table([
@@ -187,7 +186,7 @@ class MiningRefineryMixin:
         ])
         self.refinery_sell_locations_table.setSortingEnabled(False)
         self.refinery_sell_locations_table.setMinimumHeight(210)
-        self.refinery_sell_locations_table.setMinimumWidth(300)
+        self.refinery_sell_locations_table.setMinimumWidth(380)
         self.refinery_sell_locations_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         configure_readable_table_columns(self.refinery_sell_locations_table, min_width=120, max_width=520)
         summary_layout.addWidget(self.refinery_sell_locations_table, 1)
@@ -205,8 +204,8 @@ class MiningRefineryMixin:
         hint.setWordWrap(True)
         summary_layout.addWidget(hint)
 
-        content.addWidget(input_card, 3)
-        content.addWidget(summary_card, 1)
+        content.addWidget(input_card, 5)
+        content.addWidget(summary_card, 4)
         work_layout.addLayout(content, 1)
         work_widget.setLayout(work_layout)
 
@@ -759,7 +758,8 @@ class MiningRefineryMixin:
             return
 
         session = session or self.refinery_session()
-        grouped_locations = {}
+        locations_by_material = {}
+        required_materials = []
         has_sell_quantity = False
         has_price_rows = False
         for material, entry in session.get("materials", {}).items():
@@ -768,24 +768,45 @@ class MiningRefineryMixin:
                 continue
 
             has_sell_quantity = True
+            required_materials.append(material)
             prices = self.deduped_refinery_sell_prices(self.uex_price_lists.get(material.lower(), []))
             has_price_rows = has_price_rows or bool(prices)
+            material_locations = {}
             for price in prices:
                 if not price.price_sell:
                     continue
 
                 key = self.refinery_sell_location_key(price)
-                location = grouped_locations.setdefault(key, {
-                    "label": self.format_uex_terminal(price),
-                    "materials": [],
-                    "value": 0.0,
-                })
                 value = self.refinery_material_value_from_price(sell_quantity, price.price_sell)
-                location["value"] += value
-                location["materials"].append(f"{material} ({self.format_auec_amount(value)})")
+                material_locations[key] = {
+                    "label": self.format_uex_terminal(price),
+                    "material": material,
+                    "value": value,
+                }
+            locations_by_material[material] = material_locations
+
+        grouped_locations = []
+        if required_materials:
+            shared_keys = set(locations_by_material.get(required_materials[0], {}))
+            for material in required_materials[1:]:
+                shared_keys &= set(locations_by_material.get(material, {}))
+
+            for key in shared_keys:
+                material_rows = [
+                    locations_by_material[material][key]
+                    for material in required_materials
+                ]
+                grouped_locations.append({
+                    "label": material_rows[0]["label"],
+                    "materials": [
+                        f"{row['material']} ({self.format_auec_amount(row['value'])})"
+                        for row in material_rows
+                    ],
+                    "value": sum(row["value"] for row in material_rows),
+                })
 
         rows = sorted(
-            grouped_locations.values(),
+            grouped_locations,
             key=lambda location: location["value"],
             reverse=True,
         )[:12]
@@ -811,6 +832,8 @@ class MiningRefineryMixin:
                 empty_text = "Enter QTY to calculate sell location values."
             elif not has_price_rows:
                 empty_text = "Refresh UEX For Session to see matching sell locations."
+            elif len(required_materials) > 1:
+                empty_text = "No shared UEX sell locations can buy every selected material."
             else:
                 empty_text = "No matching UEX sell locations found for the selected materials."
             self.refinery_sell_locations_empty_label.setText(empty_text)

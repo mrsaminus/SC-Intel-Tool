@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### Mining / Salvage
+
+- Fixed public Mining / Salvage data loading so packaged builds can use bundled
+  public location data and built-in quality/refinery fallback tables without
+  false missing-data warnings.
+- Improved Mining / Salvage Overview status wording for packaged/public data.
+- Improved Refinery layout balance so the Selling / Profit Summary panel has
+  more usable width.
+- Fixed multi-material Refinery sell-location results to show shared combined
+  sell locations instead of locations that only support one selected material.
+- Clarified Rock Breaker resistance input and normalized `10`, `0.10`, `0.1`,
+  `2` and similar entries as percentages.
+- Fixed Rock Breaker calculations when resistance is entered as `0`.
+
 ## 0.1.0-alpha.8.7 - 2026-06-13
 
 ### Community Branding
