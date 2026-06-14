@@ -1,0 +1,37 @@
+Quantainium - Surface: (Stanton) All Stanton Surfaces. Asteroid: (Stanton) Aaron Halo , Mining Bases.
+Stileron - Surface: (Pyro) Pyro 1, Monox, Bloom, Pyro 4, Terminus. Asteroid: (Pyro) All RAB's and RMB's.
+Savrilium - Asteroid: Nyx Only: Glaciem Ring, Keeger Belt, Rock Breaker. 
+Riccite - Surface: (Pyro) Bloom, Ignis, Vatra, Adir, Terminus. Asteroid: (Pyro) All RAB's and RMB's.
+Ouratite - Surface: (Stanton) Hurston, Aberdeen, Arial. Asteroid: (Stanton) Yela Belt. (Pyro) Terminus Belt.
+Lindinium - Asteroid: Nyx Only: Glaciem Ring, Keeger Belt.
+Taranite - Surface: (Stanton) Cellin, Yela, Clio, Euterpe. Asteroid: (Stanton) Arc-L1, Arc-L2, Arc-L4 , Hur-L2.
+Gold - Surface: Pyro : Ignis, Vatra, Fairo, Terminus. Asteroid: Stanton : Arc-L5, Cru-L4, Mic-L3. 
+Borase - Surface: (Pyro) Bloom, Pyro 4, Adir. Asteroid: (Stanton) Hur-L1, Hur-L4. 
+Beryl - Surface: (Stanton) Wala. (Pyro) Fairo, Fuego, Vuur. Asteroid: (Stanton) Aaron Halo, Arc-L3, Cru-L5, Mic-L4, Mining Bases.
+Bexalite - Surface: NONE right now. Asteroid: (Stanton) Cru-L1, Hur-L3, (Nyx) Glaciem Ring, Keeger Belt.
+Tungsten - Surface: (Pyro) Adir, Fairo. Asteroid: (Stanton) Arc-L1, Arc-L2, Arc-L4, Hur-L2. 
+Torite - Asteroid: (Stanton) Hur-L5, Mic-L1, Mic-L2, Mic-L5. (Pyro) RAB's and RMB's. (Nyx) Glaciem Ring, Keeger Belt.
+Titanium - Surface: (Stanton) Aberdeen, Magda. (Pyro) Terminus. Asteroid: (Stanton) Aaron Halo, Yela Belt, Cru-L1, Hur-L3, Mining Bases. (Pyro) Rings of Terminus, 
+Laranite - Surface: (Stanton) Lyria, Wala. (Pyro) Pyro 4. Asteroid: (Stanton) Hur-L1, Hur-L4
+Aslarite - Surface: (Stanton) Ita, Magda. (Pyro) Fuego, Vuur. Asteroid: (Stanton) Aaron Halo, Arc-L5, Cru-L4, Mic-L3, Mining Bases.
+Agricium - Surface: (Stanton) Daymar, Cellin, Yela. (Pyro) Vuur, Terminus. Asteroid: (Stanton) Arc-L3, Cru-L5, Mic-L4.
+Aluminum - Surface: Hurston, Aberdeen, Arial, Ita, Magda. Asteroid: (Stanton) Aaron Halo, Arc-L1, Arc-L2, Arc-L4, Hur-L1, Hur-L2, Hur-L4, Hur-L5, Mic-L1, Mic-L2, Mic-L5, Mining Bases. (Pyro) RAB's and RMB's. (Nyx) Glaciem Ring, Keeger Belt.
+Copper - Surface: (Stanton) Lyria, Wala, Clio, Euterpe. (Pyro) Pyro 1, Pyro 4, Terminus. Asteroid: (Stanton) Aaron Halo, Yela Belt, Arc-L3, Arc-L5, Cru-L1, Cru-L4, Cru-L5, Hur-L3, Mic-L3, Mic-L4, Mining Bases. (Pyro) Ring of Terminus
+Corundum - Surface: (Stanton) Aberdeen, Arial. Asteroid: (Stanton) Arc-L1, Arc-L2, Arc-L4, Hur-L1, Hur-L2, Hur-L4, Hur-L5, Mic-L1, Mic-L2, Mic-L5. (Pyro) RAB's and RMB's.
+Hephaestanite - Surface: (Stanton) Arial, Microtech, Calliope. (Pyro) Monox, Fuego, Vuur. Asteroid: Arc-L1, Arc-L2, Arc-L4, Hur-L1, Hur-L2, Hur-L4, Hur-L5, Mic-L1, Mic-L2, Mic-L5.
+Pressurized Ice - Surface: (Stanton) Microtech, Calliope, Clio, Euterpe. (Pyro) Terminus. Asteroid: (Stanton) Aaron Halo, Yela Belt, Arc-L3, Arc-L5, Cru-L1, Cru-L4, Cru-L5, Hur-L3, Mic-L3, Mic-L4, Mining Bases. (Pyro) Ring of Terminus. (Nyx) Glaciem Ring, Keeger Belt.
+Iron - Surface: (Stanton) Magda, Lyria, Wala, Microtech, Calliope. (Pyro) Pyro 1, Monox, Bloom, Pyro 4, Vatra, Adir, Fairo, Fuego, Vuur. Asteroid: (Stanton) Aaron Halo, Yela Belt, Arc-L3, Arc-L5, Cru-L1, Cru-L4, Cru-L5, Hur-L3, Mic-L3, Mic-L4, Mining Bases. (Nyx) Glaciem Ring, Keeger Belt. 
+Quartz - Surface: (Stanton) Daymar, Cellin, Yela. Pryo: Bloom Asteroid: (Pyro) RAB's and RMB's. 
+Silicon - Surface: (Stanton) Daymar, Cellin, Yela. (Pyro) Ignis, Vatra, Fairo. Asteroid: (Stanton) Aaron Halo, Mining bases.
+Tin - Surface: (Stanton) Hurston, Arial, Ita. (Pyro) Pyro 1, Monox, Ignis. Asteroid: (Pyro) RAB's and RMB's. 
+Janalite - Surface: (Stanton) Lyria, Wala, Microtech, Calliope, Clio, Euterpe. (Pyro) Bloom, Fuego, Terminus.
+Hadanite - Surface: (Stanton) Hurston, Aberdeen, Arial, Ita, Magda, Daymar, Cellin, Yela. (Pyro) Pyro 1, Monox, Pyro 4, Ignis, Vatra, Adir, Fairo, Vuur.
+Aphorite - Surface: (Stanton) All. (Pyro) All
+Dolivine - Surface:  (Stanton) All. (Pyro) All
+Jaclium - Stanton : OLP (Orbageddon) only 
+Carinite - Stanton : OLP (Orbageddon) only 
+Saldynium - Stanton : OLP (Orbageddon) only 
+Beradom - Stanton : BEST ONLY (Hurston, Cellin, Wala). Pyro : BEST ONLY (Bloom, Fairo, Vatra)
+Feynmaline - Stanton : BEST ONLY (Euterpe, Calliope, Ita, Yela). Pyro : BEST ONLY (Monox, Adir, Vuur, vatra) 
+Glacosite - Stanton : BEST ONLY (Aberdeen, Arial, Magda, Ita, Daymar). Pyro : BEST ONLY (Terminus, Pyro IV, Fuego) 
+Sadaryx - (Nyx) Rock Breaker Stations Only

@@ -202,6 +202,17 @@ QUALITY_BAND_RAW_ALIASES = {
     "Quantainium": "Quantanium",
 }
 
+QUALITY_BAND_LABELS_FALLBACK = [
+    "0-399Q",
+    "400-599Q",
+    "600-699Q",
+    "700-799Q",
+    "800-899Q",
+    "900-949Q",
+    "950-998Q",
+    "999-1000Q",
+]
+
 
 @dataclass(frozen=True)
 class MineralLocation:
@@ -336,8 +347,12 @@ def load_mining_data(root=DEFAULT_MINING_ROOT):
 def load_mineral_locations(root, errors):
     path = root / "assets" / "Mineral Stats" / "Mineral_Where.txt"
     if not path.exists():
-        errors.append(f"Missing mining location file: {path}")
-        return []
+        public_path = PUBLIC_MINING_ROOT / "assets" / "Mineral Stats" / "Mineral_Where.txt"
+        if public_path.exists():
+            path = public_path
+        else:
+            errors.append(f"Missing mining location file: {path}")
+            return []
 
     locations = []
     for raw_line in path.read_text(encoding="utf-8", errors="replace").splitlines():
@@ -442,8 +457,7 @@ def load_mining_equipment(root, errors):
 def load_quality_bands(root, errors):
     path = root / "assets" / "Equipment" / "qualityquantization"
     if not path.exists():
-        errors.append(f"Missing quality quantization folder: {path}")
-        return [], []
+        return fallback_quality_bands()
 
     labels = []
     rows = []
@@ -481,6 +495,15 @@ def load_quality_bands(root, errors):
     return labels, rows
 
 
+def fallback_quality_bands():
+    rows = [
+        QualityBandRow(resource=resource, values=values)
+        for resource, values in QUALITY_BAND_RAW_VALUES.items()
+    ]
+    rows.sort(key=lambda row: row.resource.lower())
+    return QUALITY_BAND_LABELS_FALLBACK, rows
+
+
 def load_scan_signatures():
     return [
         ScanSignatureRow(resource, category, max_multiplier, [
@@ -494,7 +517,6 @@ def load_scan_signatures():
 def load_refinery_reference(root, errors):
     path = root / "assets" / "Refinery" / "Refinery.xlsx"
     if not path.exists():
-        errors.append(f"Missing refinery data file: {path}")
         return [], []
 
     try:

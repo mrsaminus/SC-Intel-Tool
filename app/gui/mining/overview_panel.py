@@ -163,14 +163,16 @@ class MiningOverviewMixin:
 
     def populate_overview_summary(self):
         data = self.mining_data
+        refinery_count = max(len(self.refinery_station_options()) - 2, 0)
+        refinery_method_count = len(self.refinery_method_options())
         self.mining_status_label.setText(
             f"Loaded {len(data.minerals)} minerals, "
             f"{len(data.locations)} location rows, "
             f"{len(data.equipment)} equipment items. "
             f"Also loaded {len(data.quality_bands)} quality-band rows and "
             f"{len(data.scan_signatures)} scan signatures, "
-            f"{len(data.refinery_stations)} refineries and "
-            f"{len(data.refinery_methods)} refinery methods. "
+            f"{refinery_count} refinery choices and "
+            f"{refinery_method_count} refinery methods. "
             "Market prices are fetched live from UEX and are not stored locally."
         )
 
@@ -178,7 +180,7 @@ class MiningOverviewMixin:
             self.mining_source_label.setText("Data warnings: " + " | ".join(data.errors))
         else:
             self.mining_source_label.setText(
-                "Static mining reference data is loaded from the app/reference bundle. "
+                "Static mining reference data is loaded from bundled public data and built-in fallback tables. "
                 "Live market prices use UEX on demand."
             )
 
