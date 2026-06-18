@@ -1,4 +1,16 @@
 from .shared import *
+from .refinery_helpers import (
+    calculate_refinery_yield_value,
+    canonical_refinery_material as canonical_refinery_material_name,
+    format_cscu_and_scu as format_cscu_and_scu_value,
+    format_refinery_duration,
+    format_scu_from_cscu as format_scu_from_cscu_value,
+    is_material_in_choices,
+    parse_refinery_duration_seconds,
+    refinery_material_code as refinery_material_code_value,
+    refinery_material_value_from_price as refinery_material_value_from_price_value,
+    refinery_option_key as refinery_option_key_value,
+)
 
 
 class MiningRefineryMixin:
@@ -1079,43 +1091,15 @@ class MiningRefineryMixin:
 
 
     def parse_duration_seconds(self, value):
-        text = str(value or "").strip()
-        if not text:
-            return 0
-
-        if ":" in text:
-            parts = [part.strip() for part in text.split(":")]
-            if len(parts) not in (2, 3):
-                return 0
-            try:
-                numbers = [int(part) for part in parts]
-            except ValueError:
-                return 0
-
-            if len(numbers) == 2:
-                minutes, seconds = numbers
-                return max(0, minutes * 60 + seconds)
-
-            hours, minutes, seconds = numbers
-            return max(0, hours * 3600 + minutes * 60 + seconds)
-
-        return max(0, int(self.parse_float(text) * 60))
+        return parse_refinery_duration_seconds(value, self.parse_float)
 
 
     def format_duration(self, seconds):
-        seconds = max(0, int(seconds or 0))
-        hours = seconds // 3600
-        minutes = (seconds % 3600) // 60
-        remaining_seconds = seconds % 60
-        return f"{hours:02d}:{minutes:02d}:{remaining_seconds:02d}"
+        return format_refinery_duration(seconds)
 
 
     def refinery_material_code(self, material):
-        for code, candidate in SHIP_REFINERY_MATERIALS:
-            if candidate == material:
-                return code
-
-        return material[:4].upper()
+        return refinery_material_code_value(material, SHIP_REFINERY_MATERIALS)
 
 
     def refinery_material_tooltip(self, material):
@@ -1141,7 +1125,7 @@ class MiningRefineryMixin:
 
 
     def is_gem_selling_material(self, material):
-        return any(candidate == material for _, candidate in GEM_SELLING_MATERIALS)
+        return is_material_in_choices(material, GEM_SELLING_MATERIALS)
 
 
     def is_salvage_refinery_material(self, material):
@@ -1179,7 +1163,7 @@ class MiningRefineryMixin:
 
 
     def refinery_material_value_from_price(self, quantity_cscu, price_sell):
-        return (self.parse_float(quantity_cscu) / 100) * self.parse_float(price_sell)
+        return refinery_material_value_from_price_value(quantity_cscu, price_sell, self.parse_float)
 
 
     def calculate_refinery_yield(self, material, qty_cscu):
@@ -1194,7 +1178,7 @@ class MiningRefineryMixin:
         station = self.selected_refinery_station()
         bonus = station.bonuses.get(self.canonical_refinery_material(material), 0.0) if station else 0.0
         salvage_multiplier = SALVAGE_REFINERY_DETAILS.get(material, {}).get("yield_multiplier", 1.0)
-        return max(0.0, float(round(qty * method_yield * (1 + bonus) * salvage_multiplier)))
+        return calculate_refinery_yield_value(qty, method_yield, bonus, salvage_multiplier)
 
 
     def refinery_method_yield_for_material(self, material):
@@ -1228,22 +1212,19 @@ class MiningRefineryMixin:
 
 
     def canonical_refinery_material(self, material):
-        aliases = {
-            "Quantanium": "Quantainium",
-        }
-        return aliases.get(material, material)
+        return canonical_refinery_material_name(material)
 
 
     def refinery_option_key(self, value):
-        return " ".join(str(value or "").lower().replace(":", " ").replace("-", " ").split())
+        return refinery_option_key_value(value)
 
 
     def format_scu_from_cscu(self, cscu):
-        return self.format_number(self.parse_float(cscu) / 100)
+        return format_scu_from_cscu_value(cscu, self.parse_float, self.format_number)
 
 
     def format_cscu_and_scu(self, cscu):
-        return f"{self.format_number(cscu)} cSCU / {self.format_scu_from_cscu(cscu)} SCU"
+        return format_cscu_and_scu_value(cscu, self.parse_float, self.format_number)
 
 
     def read_only_item(self, value, user_data=None):

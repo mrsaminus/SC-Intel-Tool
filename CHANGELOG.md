@@ -20,6 +20,12 @@
 
 ### Hardening / Maintainability
 
+- Improved Copy Diagnostics readability by replacing PyInstaller `_MEI...`
+  extraction paths with a stable `<packaged_runtime>` alias.
+- Extracted small pure helpers from Refinery and Search History to reduce large
+  GUI module complexity without changing workflows.
+- Added focused regression tests for Refinery helper math/formatting and Search
+  History filtering/sorting helpers.
 - Added local rotating file logging for startup, version/runtime paths, database
   path selection, updater checks, failed web requests and background task
   failures.

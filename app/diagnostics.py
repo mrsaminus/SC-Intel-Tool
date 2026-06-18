@@ -1,7 +1,7 @@
 import platform
 import sys
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 from .logging_config import get_log_file_path
 from .mining_data import PUBLIC_MINING_ROOT
@@ -59,6 +59,10 @@ def redact_path(value):
     if not text:
         return text
 
+    pyinstaller_alias = packaged_runtime_alias(text)
+    if pyinstaller_alias:
+        return pyinstaller_alias
+
     aliases = []
     for env_name, replacement in (
         ("SC_INTEL_DATA_DIR", "%SC_INTEL_DATA_DIR%"),
@@ -89,18 +93,51 @@ def redact_path(value):
     return text
 
 
+def packaged_runtime_alias(value):
+    text = str(value or "")
+    if not text:
+        return ""
+
+    try:
+        parts = Path(text).parts
+    except (OSError, ValueError):
+        return ""
+
+    for index, part in enumerate(parts):
+        if part.lower().startswith("_mei"):
+            suffix = parts[index + 1:]
+            if suffix:
+                return str(PureWindowsPath("<packaged_runtime>", *suffix))
+            return "<packaged_runtime>"
+
+    runtime_root = getattr(sys, "_MEIPASS", "")
+    if runtime_root:
+        runtime_root = str(Path(runtime_root))
+        if text.lower().startswith(runtime_root.lower()):
+            suffix = text[len(runtime_root):].lstrip("\\/")
+            if suffix:
+                return str(PureWindowsPath("<packaged_runtime>", *Path(suffix).parts))
+            return "<packaged_runtime>"
+
+    return ""
+
+
+def diagnostic_line(label, value):
+    return f"{label:<20}: {value}"
+
+
 def format_diagnostics(diagnostics):
     lines = [
         "SC Intel Tool Diagnostics",
-        f"App version: {diagnostics.get('app_version', 'Unknown')}",
-        f"Runtime: {diagnostics.get('runtime', 'Unknown')}",
-        f"Python: {diagnostics.get('python', 'Unknown')}",
-        f"Platform: {diagnostics.get('platform', 'Unknown')}",
-        f"Executable: {redact_path(diagnostics.get('executable', 'Unknown'))}",
-        f"Data directory: {redact_path(diagnostics.get('data_dir', 'Unknown'))}",
-        f"Database path: {redact_path(diagnostics.get('database_path', 'Unknown'))}",
-        f"Log file: {redact_path(diagnostics.get('log_file', 'Unknown'))}",
-        f"Public mining root: {redact_path(diagnostics.get('public_mining_root', 'Unknown'))}",
+        diagnostic_line("App version", diagnostics.get("app_version", "Unknown")),
+        diagnostic_line("Runtime", diagnostics.get("runtime", "Unknown")),
+        diagnostic_line("Python", diagnostics.get("python", "Unknown")),
+        diagnostic_line("Platform", diagnostics.get("platform", "Unknown")),
+        diagnostic_line("Executable", redact_path(diagnostics.get("executable", "Unknown"))),
+        diagnostic_line("Data directory", redact_path(diagnostics.get("data_dir", "Unknown"))),
+        diagnostic_line("Database path", redact_path(diagnostics.get("database_path", "Unknown"))),
+        diagnostic_line("Log file", redact_path(diagnostics.get("log_file", "Unknown"))),
+        diagnostic_line("Public mining root", redact_path(diagnostics.get("public_mining_root", "Unknown"))),
         "Runtime assets:",
     ]
 

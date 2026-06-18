@@ -40,6 +40,12 @@ from app.rsi_lookup import RSILookupError, lookup_player
 from app.watchlists.service import add_org_watch, add_player_snapshot_watch, add_player_watch
 
 from .constants import IMAGE_HEADERS
+from .search_history_helpers import (
+    history_flags_text as history_flags_text_value,
+    history_row_has_piracy as history_row_has_piracy_value,
+    history_row_matches_filter as history_row_matches_filter_value,
+    history_sort_key as history_sort_key_value,
+)
 from .table_utils import configure_readable_table_columns
 from .workers import BackgroundTaskMixin
 
@@ -481,32 +487,10 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
             self.select_history_handle(selected_handle)
 
     def history_row_matches_filter(self, row, query, piracy_filter):
-        has_piracy = self.history_row_has_piracy(row)
-        if piracy_filter == "Piracy YES" and not has_piracy:
-            return False
-        if piracy_filter == "Piracy NO" and has_piracy:
-            return False
-
-        if not query:
-            return True
-
-        searchable = " ".join(
-            str(row.get(field) or "")
-            for field in ("handle", "display_name", "main_org", "org_sid")
-        ).lower()
-        return query in searchable
+        return history_row_matches_filter_value(row, query, piracy_filter)
 
     def history_sort_key(self, row, column):
-        if column == 0:
-            return (row.get("display_name") or row["handle"]).lower()
-        if column == 1:
-            return (row.get("main_org") or "").lower()
-        if column == 2:
-            return 1 if self.history_row_has_piracy(row) else 0
-        if column == 3:
-            return self.history_flags_text(row)
-
-        return ""
+        return history_sort_key_value(row, column)
 
     def sort_history_by_column(self, column):
         if self.history_sort_column == column:
@@ -542,10 +526,7 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
                 return
 
     def history_row_has_piracy(self, row):
-        if row.get("any_org_piracy") is not None:
-            return bool(row.get("any_org_piracy"))
-
-        return bool(row.get("org_piracy"))
+        return history_row_has_piracy_value(row)
 
     def history_row_from_table_row(self, table_row):
         if table_row < 0 or table_row >= self.history_table.rowCount():
@@ -932,12 +913,7 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         self.detail_open_main_org_button.setEnabled(enabled and bool(self.current_main_org_url))
 
     def history_flags_text(self, row):
-        flags = []
-        if row.get("is_pinned"):
-            flags.append("Pinned")
-        if row.get("is_favorite"):
-            flags.append("Favorite")
-        return ", ".join(flags) if flags else ""
+        return history_flags_text_value(row)
 
     def rerun_selected_lookup(self):
         row = self.selected_history_row()

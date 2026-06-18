@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from app.diagnostics import format_diagnostics, redact_path, runtime_asset_status
+from app.diagnostics import format_diagnostics, packaged_runtime_alias, redact_path, runtime_asset_status
 
 
 def test_diagnostics_redacts_user_paths(monkeypatch, tmp_path):
@@ -27,6 +27,8 @@ def test_diagnostics_redacts_user_paths(monkeypatch, tmp_path):
     assert "Alpha Tester" not in text
     assert "%LOCALAPPDATA%\\SC-Intel-Tool" in text
     assert "%USERPROFILE%\\Project" in text
+    assert "App version         : 0.1.0-test" in text
+    assert "Runtime assets:" in text
     assert "tokens" in text.lower()
     assert "lookup history" in text.lower()
 
@@ -46,3 +48,10 @@ def test_runtime_asset_status_reports_missing_assets_without_crashing(monkeypatc
 
     assert status
     assert all(available is False for available in status.values())
+
+
+def test_packaged_runtime_paths_use_readable_alias():
+    value = r"C:\Users\tester\AppData\Local\Temp\_MEI635162\app\assets\mining_public"
+
+    assert packaged_runtime_alias(value) == r"<packaged_runtime>\app\assets\mining_public"
+    assert redact_path(value) == r"<packaged_runtime>\app\assets\mining_public"
