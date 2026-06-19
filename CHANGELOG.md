@@ -4,6 +4,20 @@
 
 - No unreleased changes.
 
+## 0.1.0-alpha.8.8.1 - 2026-06-19
+
+### Mining / Salvage
+
+- Fixed Construction Pieces refinery coefficient coverage for the reported
+  `Dynix Solventation` spelling while preserving the existing `Dinyx
+  Solventation` method name used by the app.
+- Added regression tests for Construction Pieces refinery yields across
+  Cormack Method, XCR Reaction, Kazen Winnowing, Thermonatic Deposition,
+  Gaskin Process, Electrostarolysis, Dinyx/Dynix Solventation, Pyrometric
+  Chromalysis and Ferron Exchange.
+- Added an ore-yield control check so salvage coefficient fixes do not change
+  ore refinery calculations.
+
 ## 0.1.0-alpha.8.8 - 2026-06-19
 
 ### Mining / Salvage

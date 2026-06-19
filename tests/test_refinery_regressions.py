@@ -77,6 +77,35 @@ def edit_refinery_cell(tab, row, column, value):
     tab.on_refinery_item_changed(item)
 
 
+@pytest.mark.parametrize(
+    ("method", "coefficient"),
+    [
+        ("Cormack Method", 0.14),
+        ("XCR Reaction", 0.14),
+        ("Kazen Winnowing", 0.14),
+        ("Thermonatic Deposition", 0.17),
+        ("Gaskin Process", 0.17),
+        ("Electrostarolysis", 0.17),
+        ("Dinyx Solventation", 0.20),
+        ("Dynix Solventation", 0.20),
+        ("Pyrometric Chromalysis", 0.20),
+        ("Ferron Exchange", 0.20),
+    ],
+)
+def test_construction_pieces_refinery_coefficients(refinery, method, coefficient):
+    if refinery.refinery_method_filter.findText(method) < 0:
+        refinery.refinery_method_filter.addItem(method)
+    refinery.refinery_method_filter.setCurrentText(method)
+
+    assert refinery.calculate_refinery_yield("Construction Pieces", 10000) == round(10000 * coefficient)
+
+
+def test_construction_pieces_fix_does_not_change_ore_yield(refinery):
+    refinery.refinery_method_filter.setCurrentText("Cormack Method")
+
+    assert refinery.calculate_refinery_yield("Gold", 10000) == round(10000 * 0.315)
+
+
 def test_refinery_session_save_to_history_preserves_totals(refinery):
     session = refinery.refinery_session()
     session["name"] = "Alpha Run"

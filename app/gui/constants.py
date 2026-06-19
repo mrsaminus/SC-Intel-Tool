@@ -139,6 +139,7 @@ SALVAGE_REFINERY_METHOD_YIELD_FALLBACKS = {
     "Electrostarlosis": 0.17,
     "Gaskin Process": 0.17,
     "Dinyx Solventation": 0.20,
+    "Dynix Solventation": 0.20,
     "Pyrometric Chromalysis": 0.20,
     "Ferron Exchange": 0.20,
 }
