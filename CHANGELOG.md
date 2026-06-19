@@ -2,8 +2,14 @@
 
 ## Unreleased
 
+- No unreleased changes.
+
+## 0.1.0-alpha.8.8 - 2026-06-19
+
 ### Mining / Salvage
 
+- Added Scan ID search by mineral/resource name while preserving exact, range,
+  approximate and comma-separated signature searches.
 - Fixed public Mining / Salvage data loading so packaged builds can use bundled
   public location data and built-in quality/refinery fallback tables without
   false missing-data warnings.
@@ -17,6 +23,18 @@
 - Clarified Rock Breaker resistance input and normalized `10`, `0.10`, `0.1`,
   `2` and similar entries as percentages.
 - Fixed Rock Breaker calculations when resistance is entered as `0`.
+
+### Accessibility / UI
+
+- Added a local Appearance text-size setting with Normal, Large and Extra Large
+  options to improve readability without changing workflows.
+
+### BP Overview / Crafting
+
+- Enriched mission/drop context display when the blueprint source provides real
+  contractor, reputation, location or system fields.
+- Kept BP mission context conservative so unavailable mission metadata is not
+  inferred or fabricated.
 
 ### Hardening / Maintainability
 
