@@ -126,6 +126,14 @@ class MiningRockBreakerMixin:
         return f"{text}%"
 
 
+    def rock_resistance_multiplier(self, resistance):
+        return 1 + max(float(resistance or 0), 0.0)
+
+
+    def calculate_rock_required_power(self, mass, resistance, resistance_factor):
+        return mass * self.rock_resistance_multiplier(resistance) * resistance_factor
+
+
     def rock_module_candidates(self):
         return [
             module
@@ -176,7 +184,7 @@ class MiningRockBreakerMixin:
 
         min_power = laser.min_power * power_factor
         max_power = laser.max_power * power_factor
-        required_power = mass * resistance * resistance_factor
+        required_power = self.calculate_rock_required_power(mass, resistance, resistance_factor)
         rock_instability = instability if instability > 0 else 1
         effective_instability = rock_instability * instability_factor
         risk_score = effective_instability / max(charge_window, 0.1)

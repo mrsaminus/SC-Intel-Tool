@@ -8,6 +8,10 @@
 
 ### Mining / Salvage
 
+- Fixed Rock Breaker resistance handling so `0` resistance means no added
+  resistance instead of multiplying required power by zero.
+- Added Rock Breaker regression tests for `0`, near-zero, decimal and percent
+  resistance inputs so accepted formats continue to calculate sensible power.
 - Fixed Construction Pieces refinery coefficient coverage for the reported
   `Dynix Solventation` spelling while preserving the existing `Dinyx
   Solventation` method name used by the app.
