@@ -168,14 +168,41 @@ def blueprint_summary(blueprint, owned=False):
     if blueprint.missions:
         lines.append("Mission / drop context:")
         for mission in blueprint.missions[:8]:
-            chance = f" ({mission.drop_chance})" if mission.drop_chance else ""
-            lines.append(f"- {mission.name}{chance}")
+            lines.append(format_mission_context_line(mission, style="summary"))
         if len(blueprint.missions) > 8:
             lines.append(f"- ...and {len(blueprint.missions) - 8} more")
     else:
         lines.append("Mission / drop context: Not available.")
 
     return "\n".join(lines)
+
+
+def mission_context_parts(mission, include_drop_chance=True):
+    parts = []
+    if getattr(mission, "contractor", ""):
+        parts.append(f"Contractor: {mission.contractor}")
+    if getattr(mission, "reputation_giver", ""):
+        reputation = f"Reputation: {mission.reputation_giver}"
+        if getattr(mission, "reputation_rank", ""):
+            reputation += f" ({mission.reputation_rank})"
+        parts.append(reputation)
+    elif getattr(mission, "reputation_rank", ""):
+        parts.append(f"Reputation rank: {mission.reputation_rank}")
+    if getattr(mission, "location", ""):
+        parts.append(f"Location: {mission.location}")
+    if getattr(mission, "system", ""):
+        parts.append(f"System: {mission.system}")
+    if include_drop_chance and getattr(mission, "drop_chance", ""):
+        parts.append(f"Drop chance: {mission.drop_chance}")
+    return parts
+
+
+def format_mission_context_line(mission, style="details"):
+    parts = mission_context_parts(mission)
+    if not parts:
+        return f"- {mission.name}"
+    separator = " | " if style == "details" else "; "
+    return f"- {mission.name} | {separator.join(parts)}"
 
 
 def grouped_quality_effect_lines(blueprint, limit=None):

@@ -17,6 +17,7 @@ from .shared import (
     blueprint_summary,
     craftability_status,
     create_card,
+    format_mission_context_line,
     format_duration,
     format_number,
     grouped_quality_effect_lines,
@@ -148,8 +149,7 @@ class BlueprintDetailsPanel(QWidget):
         lines.extend(["", "Mission / Drop Context:"])
         if self.blueprint.missions:
             for mission in self.blueprint.missions[:24]:
-                chance = f" | drop chance: {mission.drop_chance}" if mission.drop_chance else ""
-                lines.append(f"- {mission.name}{chance}")
+                lines.append(format_mission_context_line(mission))
             if len(self.blueprint.missions) > 24:
                 lines.append(f"- ...and {len(self.blueprint.missions) - 24} more")
         else:

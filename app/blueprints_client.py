@@ -28,6 +28,12 @@ class BlueprintIngredient:
 class BlueprintMission:
     name: str
     drop_chance: str
+    mission_id: str = ""
+    contractor: str = ""
+    reputation_giver: str = ""
+    reputation_rank: str = ""
+    location: str = ""
+    system: str = ""
 
 
 @dataclass(frozen=True)
@@ -143,10 +149,73 @@ def parse_quality_effect(record):
 
 
 def parse_mission(record):
+    record = record if isinstance(record, dict) else {}
     return BlueprintMission(
-        name=str(record.get("name") or "Unknown mission"),
-        drop_chance=str(record.get("drop_chance") or ""),
+        name=str(first_text(record, "name", "title", "mission_name", "missionName") or "Unknown mission"),
+        drop_chance=str(first_text(record, "drop_chance", "dropChance") or ""),
+        mission_id=str(first_text(record, "mission_id", "missionId", "id") or ""),
+        contractor=str(first_text(
+            record,
+            "contractor",
+            "contractor_name",
+            "contractorName",
+            "mission_giver",
+            "missionGiver",
+            "giver",
+        ) or ""),
+        reputation_giver=str(first_text(
+            record,
+            "reputation_giver",
+            "reputationGiver",
+            "reputation",
+            "reputation_name",
+            "reputationName",
+            "faction",
+        ) or ""),
+        reputation_rank=str(first_text(
+            record,
+            "required_reputation_rank",
+            "requiredReputationRank",
+            "reputation_rank",
+            "reputationRank",
+            "rank",
+            "rank_name",
+            "rankName",
+        ) or ""),
+        location=str(first_text(
+            record,
+            "location",
+            "location_name",
+            "locationName",
+            "mission_location",
+            "missionLocation",
+        ) or ""),
+        system=str(first_text(record, "system", "star_system", "starSystem", "system_name", "systemName") or ""),
     )
+
+
+def first_text(record, *keys):
+    for key in keys:
+        value = text_from_record_value(record.get(key))
+        if value:
+            return value
+    return ""
+
+
+def text_from_record_value(value):
+    if value is None:
+        return ""
+    if isinstance(value, dict):
+        for key in ("name", "display_name", "displayName", "label", "title"):
+            nested = text_from_record_value(value.get(key))
+            if nested:
+                return nested
+        return ""
+    if isinstance(value, (list, tuple)):
+        parts = [text_from_record_value(item) for item in value]
+        return ", ".join(part for part in parts if part)
+    text = str(value).strip()
+    return text
 
 
 def parse_float(value):
