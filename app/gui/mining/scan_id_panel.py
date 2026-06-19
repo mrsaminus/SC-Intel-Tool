@@ -1,4 +1,11 @@
 from .shared import *
+from .scan_id_helpers import (
+    format_scan_match_summary,
+    match_scan_values as match_scan_values_for_query,
+    parse_scan_query,
+    query_has_filters,
+    scan_signature_matches,
+)
 
 
 class MiningScanIdMixin:
@@ -12,7 +19,7 @@ class MiningScanIdMixin:
         filter_layout = filter_card.layout()
         row = QHBoxLayout()
         self.scan_value_input = QLineEdit()
-        self.scan_value_input.setPlaceholderText("Exact value, ~value for +/-10%, or min-max...")
+        self.scan_value_input.setPlaceholderText("Resource name, exact value, ~value, min-max, or comma-separated...")
         self.scan_category_filter = self.create_combo([
             "All categories",
             "Legendary",
@@ -28,7 +35,7 @@ class MiningScanIdMixin:
         row.addWidget(self.scan_category_filter)
         filter_layout.addLayout(row)
 
-        hint = QLabel("Examples: 8600 | ~5000 | 8000-9000 | comma-separated values")
+        hint = QLabel("Examples: Gold | Bexalite | Gold, Taranite, Quantanium | 8600 | Gold, 5200")
         hint.setObjectName("moduleSubtitle")
         filter_layout.addWidget(hint)
         layout.addWidget(filter_card)
@@ -49,7 +56,7 @@ class MiningScanIdMixin:
 
 
     def populate_scan_identifier(self):
-        tokens = self.parse_scan_tokens(self.scan_value_input.text())
+        query = self.parse_scan_tokens(self.scan_value_input.text())
         category_filter = self.scan_category_filter.currentText()
         rows = []
 
@@ -57,15 +64,15 @@ class MiningScanIdMixin:
             if category_filter != "All categories" and signature.category != category_filter:
                 continue
 
-            matches = self.match_scan_values(signature.values, tokens)
-            if tokens and not matches:
+            name_match, matches = scan_signature_matches(signature, query)
+            if query_has_filters(query) and not name_match and not matches:
                 continue
 
             rows.append([
                 signature.resource,
                 signature.category,
                 f"{signature.max_multiplier}x",
-                self.format_signature_values(matches) if matches else "",
+                format_scan_match_summary(name_match, matches, self.format_signature_values),
                 self.format_signature_values(signature.values),
             ])
 
@@ -75,47 +82,13 @@ class MiningScanIdMixin:
 
 
     def parse_scan_tokens(self, text):
-        tokens = []
-        for raw_token in text.split(","):
-            token = raw_token.strip().replace(" ", "")
-            if not token:
-                continue
-
-            if token.startswith("~"):
-                center = self.parse_int(token[1:])
-                if center is None:
-                    continue
-                tokens.append((int(center * 0.9), int(center * 1.1)))
-                continue
-
-            if "-" in token:
-                left, right = token.split("-", 1)
-                low = self.parse_int(left)
-                high = self.parse_int(right)
-                if low is None or high is None:
-                    continue
-                tokens.append((min(low, high), max(low, high)))
-                continue
-
-            value = self.parse_int(token)
-            if value is not None:
-                tokens.append((value, value))
-
-        return tokens
+        return parse_scan_query(text, self.parse_int)
 
 
     def match_scan_values(self, values, tokens):
-        if not tokens:
-            return []
-
-        matches = []
-        for value in values:
-            for low, high in tokens:
-                if low <= value <= high:
-                    matches.append(value)
-                    break
-
-        return matches
+        if isinstance(tokens, dict):
+            tokens = tokens.get("numeric_ranges", ())
+        return match_scan_values_for_query(values, tokens)
 
 
     def scan_category_rank(self, category):
