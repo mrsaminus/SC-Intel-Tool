@@ -20,6 +20,9 @@
 
 ### Hardening / Maintainability
 
+- Added pre-8.8 Refinery regression coverage for session history snapshots,
+  shared sell-location intersections, quantity/yield editing, value totals,
+  fee handling and session recalculation.
 - Improved Copy Diagnostics readability by replacing PyInstaller `_MEI...`
   extraction paths with a stable `<packaged_runtime>` alias.
 - Extracted small pure helpers from Refinery and Search History to reduce large

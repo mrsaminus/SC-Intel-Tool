@@ -18,11 +18,15 @@ def parse_float(value):
 
 
 def test_refinery_duration_parser_accepts_minutes_and_hms():
+    assert parse_refinery_duration_seconds("", parse_float) == 0
     assert parse_refinery_duration_seconds("90", parse_float) == 5400
+    assert parse_refinery_duration_seconds("1.5", parse_float) == 90
     assert parse_refinery_duration_seconds("05:30", parse_float) == 330
     assert parse_refinery_duration_seconds("01:02:03", parse_float) == 3723
+    assert parse_refinery_duration_seconds("bad", parse_float) == 0
     assert parse_refinery_duration_seconds("bad:input:value:extra", parse_float) == 0
     assert format_refinery_duration(3723) == "01:02:03"
+    assert format_refinery_duration("") == "00:00:00"
 
 
 def test_refinery_material_helpers_preserve_existing_aliases_and_keys():
