@@ -22,6 +22,11 @@
 - Added an ore-yield control check so salvage coefficient fixes do not change
   ore refinery calculations.
 
+### Settings
+
+- Fixed Settings layout wrapping at reduced window widths and larger text sizes
+  so About, runtime and local data path information remains readable.
+
 ## 0.1.0-alpha.8.8 - 2026-06-19
 
 ### Mining / Salvage

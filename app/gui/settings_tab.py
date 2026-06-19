@@ -10,6 +10,8 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QScrollArea,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -58,6 +60,17 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         self.loading_theme_combo = False
         self.loading_text_size_combo = False
 
+        outer_layout = QVBoxLayout()
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+        outer_layout.setSpacing(0)
+
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setFrameShape(QFrame.NoFrame)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        content = QWidget()
+        content.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         layout = QVBoxLayout()
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(12)
@@ -72,7 +85,12 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         layout.addWidget(self.build_data_card())
         layout.addStretch(1)
 
-        self.setLayout(layout)
+        content.setLayout(layout)
+        scroll_area.setWidget(content)
+        outer_layout.addWidget(scroll_area)
+        self.settings_scroll_area = scroll_area
+        self.settings_content = content
+        self.setLayout(outer_layout)
 
     def build_about_card(self):
         card = self.create_card("ABOUT SC INTEL TOOL")
@@ -102,6 +120,9 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         legal.setObjectName("moduleSubtitle")
         legal.setWordWrap(True)
 
+        for label in (title, version, description, privacy, legal):
+            self.configure_wrapping_label(label)
+
         text_layout.addWidget(title)
         text_layout.addWidget(version)
         text_layout.addWidget(description)
@@ -116,6 +137,8 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         grid = QGridLayout()
         grid.setHorizontalSpacing(18)
         grid.setVerticalSpacing(8)
+        grid.setColumnStretch(1, 1)
+        grid.setColumnMinimumWidth(1, 0)
         self.add_fact(grid, 0, "Repository", GITHUB_REPOSITORY)
         self.add_fact(grid, 1, "Runtime", "Packaged build" if is_packaged_app() else "Source / development")
         layout.addLayout(grid)
@@ -126,9 +149,11 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         diagnostics_hint = QLabel("Copies safe local version/path/runtime info for bug reports.")
         diagnostics_hint.setObjectName("moduleSubtitle")
         diagnostics_hint.setWordWrap(True)
+        self.configure_wrapping_label(diagnostics_hint)
         diagnostics_row.addWidget(self.copy_diagnostics_button)
-        diagnostics_row.addWidget(diagnostics_hint, 1)
+        diagnostics_row.addStretch(1)
         layout.addLayout(diagnostics_row)
+        layout.addWidget(diagnostics_hint)
         return card
 
     def build_appearance_card(self):
@@ -140,6 +165,7 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         )
         hint.setObjectName("moduleSubtitle")
         hint.setWordWrap(True)
+        self.configure_wrapping_label(hint)
         layout.addWidget(hint)
 
         grid = QGridLayout()
@@ -149,7 +175,10 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         theme_label = QLabel("Theme")
         theme_label.setObjectName("labelText")
         self.theme_combo = QComboBox()
-        self.theme_combo.setMinimumWidth(240)
+        self.theme_combo.setMinimumWidth(160)
+        self.theme_combo.setMinimumContentsLength(14)
+        self.theme_combo.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
+        self.theme_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         self.loading_theme_combo = True
         current_key = get_current_theme_key()
@@ -167,7 +196,10 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         text_size_label = QLabel("Text Size")
         text_size_label.setObjectName("labelText")
         self.text_size_combo = QComboBox()
-        self.text_size_combo.setMinimumWidth(180)
+        self.text_size_combo.setMinimumWidth(140)
+        self.text_size_combo.setMinimumContentsLength(10)
+        self.text_size_combo.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
+        self.text_size_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         self.loading_text_size_combo = True
         current_text_size = get_current_text_size_key()
@@ -183,6 +215,7 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         self.theme_status_label = QLabel("Theme stored locally.")
         self.theme_status_label.setObjectName("moduleSubtitle")
         self.theme_status_label.setWordWrap(True)
+        self.configure_wrapping_label(self.theme_status_label)
 
         grid.addWidget(theme_label, 0, 0)
         grid.addWidget(self.theme_combo, 0, 1)
@@ -202,12 +235,17 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         )
         self.update_status_label.setObjectName("moduleSubtitle")
         self.update_status_label.setWordWrap(True)
+        self.configure_wrapping_label(self.update_status_label)
         layout.addWidget(self.update_status_label)
 
-        row = QHBoxLayout()
+        row = QVBoxLayout()
+        row.setSpacing(8)
         self.check_updates_button = QPushButton("Check For Updates")
         self.install_update_button = QPushButton("Install Update")
         self.open_releases_button = QPushButton("Open Releases")
+        for button in (self.check_updates_button, self.install_update_button, self.open_releases_button):
+            button.setMinimumWidth(0)
+            button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.check_updates_button.clicked.connect(self.check_for_updates)
         self.install_update_button.clicked.connect(self.install_update)
         self.open_releases_button.clicked.connect(self.open_releases_page)
@@ -215,7 +253,6 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         row.addWidget(self.check_updates_button)
         row.addWidget(self.install_update_button)
         row.addWidget(self.open_releases_button)
-        row.addStretch(1)
         layout.addLayout(row)
         return card
 
@@ -258,6 +295,8 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         grid = QGridLayout()
         grid.setHorizontalSpacing(18)
         grid.setVerticalSpacing(8)
+        grid.setColumnStretch(1, 1)
+        grid.setColumnMinimumWidth(1, 0)
         self.add_fact(grid, 0, "Active Data Folder", str(get_active_data_dir()))
         self.add_fact(grid, 1, "Active Database", str(DB_PATH))
         layout.addLayout(grid)
@@ -267,6 +306,7 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         )
         hint.setObjectName("moduleSubtitle")
         hint.setWordWrap(True)
+        self.configure_wrapping_label(hint)
         layout.addWidget(hint)
 
         row = QHBoxLayout()
@@ -502,6 +542,8 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         subtitle_label = QLabel(subtitle)
         subtitle_label.setObjectName("moduleSubtitle")
         subtitle_label.setWordWrap(True)
+        self.configure_wrapping_label(title_label)
+        self.configure_wrapping_label(subtitle_label)
 
         layout.addWidget(title_label)
         layout.addWidget(subtitle_label)
@@ -511,23 +553,53 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
     def create_card(self, title):
         card = QFrame()
         card.setObjectName("sectionCard")
+        card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
         layout = QVBoxLayout()
         layout.setContentsMargins(16, 14, 16, 16)
         layout.setSpacing(10)
 
         title_label = QLabel(title)
         title_label.setObjectName("sectionTitle")
+        self.configure_wrapping_label(title_label)
         layout.addWidget(title_label)
         card.setLayout(layout)
         return card
 
     def add_fact(self, layout, row, label, value):
+        container = QWidget()
+        container.setMinimumWidth(0)
+        container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        container_layout = QVBoxLayout()
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.setSpacing(2)
+
         label_widget = QLabel(label.upper())
         label_widget.setObjectName("labelText")
-        value_widget = QLabel(str(value))
+        label_widget.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        label_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        value_widget = QLabel(self.wrap_fact_value(value))
         value_widget.setObjectName("valueText")
         value_widget.setWordWrap(True)
+        value_widget.setToolTip(str(value))
+        value_widget.setMinimumWidth(0)
+        value_widget.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        self.configure_wrapping_label(value_widget)
         value_widget.setTextInteractionFlags(value_widget.textInteractionFlags() | Qt.TextSelectableByMouse)
 
-        layout.addWidget(label_widget, row, 0)
-        layout.addWidget(value_widget, row, 1)
+        container_layout.addWidget(label_widget)
+        container_layout.addWidget(value_widget)
+        container.setLayout(container_layout)
+        layout.addWidget(container, row, 0, 1, 2)
+
+    def configure_wrapping_label(self, label):
+        label.setMinimumWidth(0)
+        label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+
+    def wrap_fact_value(self, value):
+        text = str(value)
+        return (
+            text.replace("\\", "\\\u200b")
+            .replace("/", "/\u200b")
+            .replace(":", ":\u200b")
+            .replace("-", "-\u200b")
+        )
