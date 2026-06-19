@@ -31,7 +31,16 @@ from app.updater import UpdateInstallError, download_update, start_update_instal
 from app.version import APP_NAME, APP_VERSION, GITHUB_RELEASES_URL, GITHUB_REPOSITORY
 
 from .community_branding import AppLogoLabel, CommunityLogoLabel
-from .themes import available_themes, get_current_theme_key, set_current_theme
+from .themes import (
+    available_text_sizes,
+    available_themes,
+    get_current_text_size_key,
+    get_current_text_size_label,
+    get_current_theme,
+    get_current_theme_key,
+    set_current_text_size,
+    set_current_theme,
+)
 from .workers import BackgroundTaskMixin
 
 
@@ -47,6 +56,7 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         self.latest_release_url = GITHUB_RELEASES_URL
         self.latest_update_info = None
         self.loading_theme_combo = False
+        self.loading_text_size_combo = False
 
         layout = QVBoxLayout()
         layout.setContentsMargins(12, 12, 12, 12)
@@ -126,16 +136,18 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         layout = card.layout()
 
         hint = QLabel(
-            "Choose the app theme. Themes apply immediately, are stored locally and do not affect logos or external images."
+            "Choose the app theme and text size. Appearance settings apply immediately and are stored locally."
         )
         hint.setObjectName("moduleSubtitle")
         hint.setWordWrap(True)
         layout.addWidget(hint)
 
-        row = QHBoxLayout()
-        row.setSpacing(8)
-        label = QLabel("Theme")
-        label.setObjectName("labelText")
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(10)
+        grid.setVerticalSpacing(8)
+
+        theme_label = QLabel("Theme")
+        theme_label.setObjectName("labelText")
         self.theme_combo = QComboBox()
         self.theme_combo.setMinimumWidth(240)
 
@@ -151,13 +163,33 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         self.loading_theme_combo = False
 
         self.theme_combo.currentIndexChanged.connect(self.on_theme_selected)
+
+        text_size_label = QLabel("Text Size")
+        text_size_label.setObjectName("labelText")
+        self.text_size_combo = QComboBox()
+        self.text_size_combo.setMinimumWidth(180)
+
+        self.loading_text_size_combo = True
+        current_text_size = get_current_text_size_key()
+        current_text_size_index = 0
+        for index, (key, label) in enumerate(available_text_sizes()):
+            self.text_size_combo.addItem(label, key)
+            if key == current_text_size:
+                current_text_size_index = index
+        self.text_size_combo.setCurrentIndex(current_text_size_index)
+        self.loading_text_size_combo = False
+
+        self.text_size_combo.currentIndexChanged.connect(self.on_text_size_selected)
         self.theme_status_label = QLabel("Theme stored locally.")
         self.theme_status_label.setObjectName("moduleSubtitle")
         self.theme_status_label.setWordWrap(True)
 
-        row.addWidget(label)
-        row.addWidget(self.theme_combo, 1)
-        layout.addLayout(row)
+        grid.addWidget(theme_label, 0, 0)
+        grid.addWidget(self.theme_combo, 0, 1)
+        grid.addWidget(text_size_label, 1, 0)
+        grid.addWidget(self.text_size_combo, 1, 1)
+        grid.setColumnStretch(1, 1)
+        layout.addLayout(grid)
         layout.addWidget(self.theme_status_label)
         return card
 
@@ -253,6 +285,14 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         if self.theme_changed_callback:
             self.theme_changed_callback(theme)
         self.theme_status_label.setText(f"Active theme: {theme.name}. Stored locally.")
+
+    def on_text_size_selected(self):
+        if self.loading_text_size_combo:
+            return
+        set_current_text_size(self.text_size_combo.currentData())
+        if self.theme_changed_callback:
+            self.theme_changed_callback(get_current_theme())
+        self.theme_status_label.setText(f"Text size: {get_current_text_size_label()}. Stored locally.")
 
     def check_for_updates(self):
         if self.update_check_running:

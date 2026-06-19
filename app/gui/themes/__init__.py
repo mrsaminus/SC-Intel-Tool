@@ -1,21 +1,33 @@
 from .theme_manager import (
     DEFAULT_THEME_KEY,
+    DEFAULT_TEXT_SIZE_KEY,
     THEME_SETTING_KEY,
+    TEXT_SIZE_SETTING_KEY,
+    available_text_sizes,
     available_themes,
     get_current_theme,
     get_current_theme_key,
+    get_current_text_size_key,
+    get_current_text_size_label,
     get_theme,
+    set_current_text_size,
     set_current_theme,
     stylesheet_for_theme,
 )
 
 __all__ = [
     "DEFAULT_THEME_KEY",
+    "DEFAULT_TEXT_SIZE_KEY",
     "THEME_SETTING_KEY",
+    "TEXT_SIZE_SETTING_KEY",
+    "available_text_sizes",
     "available_themes",
     "get_current_theme",
     "get_current_theme_key",
+    "get_current_text_size_key",
+    "get_current_text_size_label",
     "get_theme",
+    "set_current_text_size",
     "set_current_theme",
     "stylesheet_for_theme",
 ]

@@ -5,12 +5,19 @@ from .theme_models import Theme
 
 THEME_SETTING_KEY = "appearance.theme"
 DEFAULT_THEME_KEY = "sc_intel_dark"
+TEXT_SIZE_SETTING_KEY = "appearance.text_size"
+DEFAULT_TEXT_SIZE_KEY = "normal"
 RELEASE_THEME_KEYS = (
     "sc_intel_dark",
     "white_mode",
     "windows_xp",
     "windows_95",
 )
+TEXT_SIZE_OPTIONS = {
+    "normal": {"label": "Normal", "scale": 1.0},
+    "large": {"label": "Large", "scale": 1.1},
+    "extra_large": {"label": "Extra Large", "scale": 1.25},
+}
 
 
 BASE_COLORS = {
@@ -770,6 +777,10 @@ def available_themes():
     return [THEMES_BY_KEY[key] for key in RELEASE_THEME_KEYS if key in THEMES_BY_KEY]
 
 
+def available_text_sizes():
+    return [(key, value["label"]) for key, value in TEXT_SIZE_OPTIONS.items()]
+
+
 def get_theme(key):
     return THEMES_BY_KEY.get(key) or THEMES_BY_KEY[DEFAULT_THEME_KEY]
 
@@ -793,13 +804,67 @@ def set_current_theme(key):
     return theme
 
 
+def get_current_text_size_key():
+    key = get_app_setting(TEXT_SIZE_SETTING_KEY, DEFAULT_TEXT_SIZE_KEY)
+    if key not in TEXT_SIZE_OPTIONS:
+        return DEFAULT_TEXT_SIZE_KEY
+    return key
+
+
+def get_current_text_size_label():
+    return TEXT_SIZE_OPTIONS[get_current_text_size_key()]["label"]
+
+
+def set_current_text_size(key):
+    if key not in TEXT_SIZE_OPTIONS:
+        key = DEFAULT_TEXT_SIZE_KEY
+    set_app_setting(TEXT_SIZE_SETTING_KEY, key)
+    return key
+
+
+def _format_scaled_point_size(size):
+    if float(size).is_integer():
+        return f"{int(size)}pt"
+    return f"{size:.2f}".rstrip("0").rstrip(".") + "pt"
+
+
+def _scale_point_size(value, scale):
+    text = str(value or "").strip()
+    if not text.lower().endswith("pt"):
+        return text
+    try:
+        size = float(text[:-2].strip())
+    except ValueError:
+        return text
+    return _format_scaled_point_size(size * scale)
+
+
 def stylesheet_for_theme(theme):
     colors = theme.colors
     metrics = theme.metrics
+    text_size = TEXT_SIZE_OPTIONS[get_current_text_size_key()]
+    font_scale = float(text_size["scale"])
     tokens = {}
     tokens.update({key.upper(): value for key, value in colors.items()})
     tokens.update({key.upper(): value for key, value in metrics.items()})
     tokens["FONT_FAMILY"] = metrics.get("font_family", "Segoe UI")
+    tokens["FONT_SIZE"] = _scale_point_size(metrics.get("font_size", "10pt"), font_scale)
+    fixed_font_sizes = {
+        "SECTION_TITLE_FONT_SIZE": "9pt",
+        "HOME_CARD_TITLE_FONT_SIZE": "13pt",
+        "APP_TITLE_FONT_SIZE": "13pt",
+        "STATUS_CHIP_FONT_SIZE": "8pt",
+        "HERO_HANDLE_FONT_SIZE": "22pt",
+        "HERO_SUBTITLE_FONT_SIZE": "11pt",
+        "LABEL_TEXT_FONT_SIZE": "8pt",
+        "VALUE_TEXT_FONT_SIZE": "10pt",
+        "ORG_NAME_FONT_SIZE": "15pt",
+        "ORG_SID_FONT_SIZE": "10pt",
+        "MODULE_HEADING_FONT_SIZE": "18pt",
+        "MODULE_SUBTITLE_FONT_SIZE": "10pt",
+    }
+    for token, value in fixed_font_sizes.items():
+        tokens[token] = _scale_point_size(value, font_scale)
     tokens["BUTTON_BORDER"] = colors.get("button_border", colors["panel_border"])
     tokens["BUTTON_BORDER_HOVER"] = colors.get("button_border_hover", colors["accent_bright"])
     tokens["BUTTON_BORDER_TOP"] = colors.get("button_border_top", tokens["BUTTON_BORDER"])
@@ -1162,20 +1227,20 @@ QLabel#avatarBox {
 
 QLabel#sectionTitle {
     color: %(ACCENT)s;
-    font-size: 9pt;
+    font-size: %(SECTION_TITLE_FONT_SIZE)s;
     font-weight: 700;
     letter-spacing: 1px;
 }
 
 QLabel#homeCardTitle {
     color: %(TEXT_HEADING)s;
-    font-size: 13pt;
+    font-size: %(HOME_CARD_TITLE_FONT_SIZE)s;
     font-weight: 700;
 }
 
 QLabel#appTitle {
     color: %(TEXT_HEADING)s;
-    font-size: 13pt;
+    font-size: %(APP_TITLE_FONT_SIZE)s;
     font-weight: 700;
 }
 
@@ -1184,42 +1249,42 @@ QLabel#statusChip {
     border: 1px solid %(PANEL_BORDER_ACTIVE)s;
     border-radius: 10px;
     color: %(ACCENT_BRIGHT)s;
-    font-size: 8pt;
+    font-size: %(STATUS_CHIP_FONT_SIZE)s;
     font-weight: 700;
     padding: 3px 8px;
 }
 
 QLabel#heroHandle {
     color: %(TEXT_HEADING)s;
-    font-size: 22pt;
+    font-size: %(HERO_HANDLE_FONT_SIZE)s;
     font-weight: 700;
 }
 
 QLabel#heroSubtitle {
     color: %(ACCENT_BRIGHT)s;
-    font-size: 11pt;
+    font-size: %(HERO_SUBTITLE_FONT_SIZE)s;
 }
 
 QLabel#labelText {
     color: %(TEXT_MUTED)s;
-    font-size: 8pt;
+    font-size: %(LABEL_TEXT_FONT_SIZE)s;
     text-transform: uppercase;
 }
 
 QLabel#valueText {
     color: %(TEXT_PRIMARY)s;
-    font-size: 10pt;
+    font-size: %(VALUE_TEXT_FONT_SIZE)s;
 }
 
 QLabel#orgName {
     color: %(ACCENT_BRIGHT)s;
-    font-size: 15pt;
+    font-size: %(ORG_NAME_FONT_SIZE)s;
     font-weight: 700;
 }
 
 QLabel#orgSid {
     color: %(ACCENT_BRIGHT)s;
-    font-size: 10pt;
+    font-size: %(ORG_SID_FONT_SIZE)s;
 }
 
 QLabel#emptyState {
@@ -1229,12 +1294,12 @@ QLabel#emptyState {
 
 QLabel#moduleHeading {
     color: %(TEXT_HEADING)s;
-    font-size: 18pt;
+    font-size: %(MODULE_HEADING_FONT_SIZE)s;
     font-weight: 700;
 }
 
 QLabel#moduleSubtitle {
     color: %(TEXT_SECONDARY)s;
-    font-size: 10pt;
+    font-size: %(MODULE_SUBTITLE_FONT_SIZE)s;
 }
 """
