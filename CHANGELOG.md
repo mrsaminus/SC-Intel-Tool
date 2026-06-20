@@ -2,12 +2,29 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.8.8.2 - 2026-06-20
+
+### Mining / Salvage
+
+- Includes the Construction Pieces refinery coefficient fixes from
+  `0.1.0-alpha.8.8.1`.
+- Includes Dinyx/Dynix refinery method alias handling for Construction Pieces
+  salvage refinement.
+- Includes the Rock Breaker resistance fix so `0` resistance no longer collapses
+  required power to zero.
+
+### Settings
+
+- Includes the Settings layout wrapping fix for reduced window widths and larger
+  accessibility text sizes.
+
+### Trading
+
 - En Route now works in public builds using UEX prices from the latest refresh.
 - Trade Routes and Best Buyer now use UEX-backed public market rows where enough
   buy/sell context is available.
 - Commodities and Shops reference tabs now use UEX-derived public reference rows.
-- Removed confusing unavailable public-build Trading messages and old token
-  prompts from public Trading/Settings UI.
+- Removed stale legacy Trading copy from public Trading/Settings UI.
 - Added Railen Trading cargo metadata so it appears in ship selectors with
   `640 SCU`.
 
