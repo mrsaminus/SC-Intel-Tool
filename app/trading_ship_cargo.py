@@ -79,6 +79,7 @@ SPREADSHEET_SHIP_CARGO = {
 # Supplemental public RSI Ship Matrix rows for ships named in Trading matching
 # examples but not present in the provided workbook.
 PUBLIC_RSI_SHIP_CARGO = {
+    "Railen": TradingShipCargo("Gatac", 640, "Alien cargo hauler", RSI_SHIP_MATRIX_SOURCE),
     "Starlancer MAX": TradingShipCargo("MISC", 224, "Medium Freight", RSI_SHIP_MATRIX_SOURCE),
     "Starlancer TAC": TradingShipCargo("MISC", 96, "Patrol", RSI_SHIP_MATRIX_SOURCE),
 }

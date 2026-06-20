@@ -8,6 +8,8 @@
 - Commodities and Shops reference tabs now use UEX-derived public reference rows.
 - Removed confusing unavailable public-build Trading messages and old token
   prompts from public Trading/Settings UI.
+- Added Railen Trading cargo metadata so it appears in ship selectors with
+  `640 SCU`.
 
 ## 0.1.0-alpha.8.8.1 - 2026-06-19
 
