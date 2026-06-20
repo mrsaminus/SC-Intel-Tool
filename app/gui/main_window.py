@@ -54,6 +54,7 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
         self.setStyleSheet(current_app_style())
 
         self.tabs = QTabWidget()
+        self.tabs.setObjectName("mainNavigationTabs")
         self.tabs.setTabBar(ThemeAwareTabBar())
 
         self.home_tab = HomeTab(self.open_tab)
@@ -74,27 +75,59 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
         )
         self.startup_update_check_running = False
 
+        self.intel_tabs = self.create_group_tabs("intelNavigationTabs")
+        self.intel_tabs.addTab(self.player_tab, "Player Lookup")
+        self.intel_tabs.addTab(self.history_tab, "Search History")
+        self.intel_tabs.addTab(self.watchlists_tab, "Watchlists")
+
+        self.industrial_tabs = self.create_group_tabs("industrialNavigationTabs")
+        self.industrial_tabs.addTab(self.mining_tab, "Mining / Salvage")
+        self.industrial_tabs.addTab(self.trading_tab, "Trading")
+        self.industrial_tabs.addTab(self.bp_overview_tab, "BP Overview")
+
+        self.reference_tabs = self.create_group_tabs("referenceNavigationTabs")
+        self.reference_tabs.addTab(self.item_finder_tab, "Item Finder")
+        self.reference_tabs.addTab(self.wikelo_tab, "Wikelo Items")
+
+        self.system_tabs = self.create_group_tabs("systemNavigationTabs")
+        self.system_tabs.addTab(self.event_center_tab, "Activity Log")
+        self.system_tabs.addTab(self.notes_tab, "Notes")
+        self.system_tabs.addTab(self.settings_tab, "Settings")
+
         self.tabs.addTab(self.home_tab, "Home")
-        self.tabs.addTab(self.player_tab, "Player Lookup")
-        self.tabs.addTab(self.history_tab, "Search History")
-        self.tabs.addTab(self.mining_tab, "Mining / Salvage")
-        self.tabs.addTab(self.trading_tab, "Trading")
-        self.tabs.addTab(self.item_finder_tab, "Item Finder")
-        self.tabs.addTab(self.watchlists_tab, "Watchlists")
-        self.tabs.addTab(self.wikelo_tab, "Wikelo Items")
-        self.tabs.addTab(self.bp_overview_tab, "BP Overview")
-        self.tabs.addTab(self.event_center_tab, "Event Center")
-        self.tabs.addTab(self.notes_tab, "Notes")
-        self.tabs.addTab(self.settings_tab, "Settings")
+        self.tabs.addTab(self.intel_tabs, "Intel")
+        self.tabs.addTab(self.industrial_tabs, "Industrial")
+        self.tabs.addTab(self.reference_tabs, "Reference")
+        self.tabs.addTab(self.system_tabs, "System")
 
         self.setCentralWidget(self.tabs)
         QTimer.singleShot(700, self.start_startup_update_check)
 
+    def create_group_tabs(self, object_name):
+        tabs = QTabWidget()
+        tabs.setObjectName(object_name)
+        return tabs
+
     def open_tab(self, tab_name):
+        aliases = {
+            "Event Center": "Activity Log",
+        }
+        target = aliases.get(tab_name, tab_name)
+
         for index in range(self.tabs.count()):
-            if self.tabs.tabText(index) == tab_name:
+            if self.tabs.tabText(index) == target:
                 self.tabs.setCurrentIndex(index)
                 return
+
+        for index in range(self.tabs.count()):
+            group_tabs = self.tabs.widget(index)
+            if not isinstance(group_tabs, QTabWidget):
+                continue
+            for child_index in range(group_tabs.count()):
+                if group_tabs.tabText(child_index) == target:
+                    self.tabs.setCurrentIndex(index)
+                    group_tabs.setCurrentIndex(child_index)
+                    return
 
     def apply_theme(self, theme):
         self.setStyleSheet(stylesheet_for_theme(theme))

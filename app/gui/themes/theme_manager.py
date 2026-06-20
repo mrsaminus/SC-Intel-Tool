@@ -54,7 +54,8 @@ BASE_COLORS = {
 
 BASE_METRICS = {
     "font_size": "10pt",
-    "tab_padding": "7px 12px",
+    "tab_padding": "8px 14px",
+    "tab_min_height": "18px",
     "button_padding": "7px 12px",
     "input_padding": "6px",
     "table_header_padding": "7px",
@@ -103,6 +104,7 @@ THEMES = [
         metrics={
             "font_size": "9pt",
             "tab_padding": "5px 9px",
+            "tab_min_height": "16px",
             "button_padding": "5px 9px",
             "input_padding": "4px",
             "table_header_padding": "5px",
@@ -326,7 +328,8 @@ THEMES = [
             "radius": "9px",
             "card_radius": "10px",
             "tab_radius": "9px",
-            "tab_padding": "7px 14px",
+            "tab_padding": "8px 15px",
+            "tab_min_height": "20px",
             "top_bar_padding": "4px 5px 0 5px",
             "tab_margin_right": "2px",
             "tab_margin_top": "4px",
@@ -916,6 +919,7 @@ def stylesheet_for_theme(theme):
     tokens["HOME_TAB_TEXT"] = colors.get("home_tab_text", colors["text_base"])
     tokens["HOME_TAB_FONT_WEIGHT"] = colors.get("home_tab_font_weight", "400")
     tokens["TAB_RADIUS"] = metrics.get("tab_radius", metrics["radius"])
+    tokens["TAB_MIN_HEIGHT"] = metrics.get("tab_min_height", "18px")
     tokens["TAB_MARGIN_RIGHT"] = metrics.get("tab_margin_right", "0px")
     tokens["TAB_MARGIN_TOP"] = metrics.get("tab_margin_top", "0px")
     tokens["TAB_SELECTED_MARGIN_TOP"] = metrics.get("tab_selected_margin_top", "0px")
@@ -960,6 +964,7 @@ QTabBar::tab {
     margin-right: %(TAB_MARGIN_RIGHT)s;
     margin-top: %(TAB_MARGIN_TOP)s;
     padding: %(TAB_PADDING)s;
+    min-height: %(TAB_MIN_HEIGHT)s;
 }
 
 QTabBar::tab:first {

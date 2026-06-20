@@ -63,10 +63,10 @@ class EventCenterTab(QWidget):
         layout.setContentsMargins(16, 14, 16, 14)
         layout.setSpacing(4)
 
-        title = QLabel("Event Center")
+        title = QLabel("Activity Log")
         title.setObjectName("moduleHeading")
         subtitle = QLabel(
-            "Persistent local event history for Watchlists, Player Intel, Trading and system changes. "
+            "Persistent local activity history for Watchlists, Player Intel, Trading and system changes. "
             "No OS notifications, no telemetry and no cloud sync."
         )
         subtitle.setObjectName("moduleSubtitle")
@@ -83,7 +83,7 @@ class EventCenterTab(QWidget):
         layout.setContentsMargins(16, 14, 16, 16)
         layout.setSpacing(8)
 
-        title = QLabel("EVENT FILTERS")
+        title = QLabel("ACTIVITY FILTERS")
         title.setObjectName("sectionTitle")
         layout.addWidget(title)
 
@@ -180,7 +180,7 @@ class EventCenterTab(QWidget):
         layout.setContentsMargins(16, 14, 16, 16)
         layout.setSpacing(8)
 
-        title = QLabel("EVENT DETAILS")
+        title = QLabel("ACTIVITY DETAILS")
         title.setObjectName("sectionTitle")
         self.details_label = QLabel("Select an event to see details.")
         self.details_label.setObjectName("valueText")
@@ -317,7 +317,7 @@ class EventCenterTab(QWidget):
         answer = QMessageBox.question(
             self,
             "Clear Read Events",
-            "Delete all read Event Center entries?\n\nUnread events are kept.",
+            "Delete all read Activity Log entries?\n\nUnread events are kept.",
             QMessageBox.Cancel | QMessageBox.Yes,
             QMessageBox.Cancel,
         )

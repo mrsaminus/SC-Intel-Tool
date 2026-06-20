@@ -4,7 +4,7 @@ Last updated: 2026-06-12
 
 SC Intel Tool is a Star Citizen desktop companion for player lookup, local
 intel notes, mining and salvage planning, trading, item lookup, Wikelo tracking,
-blueprint/crafting reference, watchlists and local app events.
+blueprint/crafting reference, watchlists and local app activity events.
 
 The app is in public alpha. The priority before beta is stability, truthful UI,
 local data safety, release reliability and tester-driven polish.
@@ -86,9 +86,9 @@ local data safety, release reliability and tester-driven polish.
   organizations.
 - Manual refresh actions.
 - Local snapshots and unread events.
-- Event Center integration.
+- Activity Log integration.
 
-### Event Center
+### Activity Log
 
 - Persistent local app events.
 - Search, category filter, severity filter and unread-only toggle.
@@ -169,7 +169,7 @@ local data safety, release reliability and tester-driven polish.
 - Package or document OCR support only when it is reliable enough for normal
   users.
 
-### 6. Watchlists / Event Center Polish
+### 6. Watchlists / Activity Log Polish
 
 - Improve manual refresh summaries.
 - Add optional export/import later.

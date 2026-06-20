@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QFrame, QLabel, QTabWidget, QVBoxLayout, QWidget
 
 from .best_buyer_tab import BestBuyerTab
 from .commodities_tab import CommoditiesTab
@@ -16,10 +16,12 @@ class TradingTab(QWidget):
         super().__init__()
 
         layout = QVBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(12)
 
         self.reference_service = get_trading_reference_service()
+
+        layout.addWidget(self.create_module_header())
 
         self.tabs = QTabWidget()
         self.uex_trading_tab = UEXTradingTab(self.reference_service)
@@ -48,3 +50,21 @@ class TradingTab(QWidget):
         widget = self.tabs.widget(index)
         if widget is self.saved_routes_tab:
             self.saved_routes_tab.refresh_routes()
+
+    def create_module_header(self):
+        header = QFrame()
+        header.setObjectName("playerCard")
+        layout = QVBoxLayout()
+        layout.setContentsMargins(16, 14, 16, 14)
+        layout.setSpacing(4)
+
+        title = QLabel("Trading Intelligence")
+        title.setObjectName("moduleHeading")
+        subtitle = QLabel("UEX-powered trade planning, route discovery, market analysis and logistics.")
+        subtitle.setObjectName("moduleSubtitle")
+        subtitle.setWordWrap(True)
+
+        layout.addWidget(title)
+        layout.addWidget(subtitle)
+        header.setLayout(layout)
+        return header

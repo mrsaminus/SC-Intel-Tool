@@ -39,25 +39,25 @@ class HomeTab(QWidget):
             "Item Finder",
             "Gear, ships, buy/rental locations and live source lookup.",
             "Item Finder",
-            "Lookup",
+            "Reference",
         ),
         (
             "Wikelo Tracking",
             "Missions, required materials and reward checklist progress.",
             "Wikelo Items",
-            "Progress",
+            "Reference",
         ),
         (
             "Trading",
             "Market planning and future commodity workflow.",
             "Trading",
-            "Market",
+            "Industrial",
         ),
         (
             "Local Tools",
             "Notes, history, settings and AppData persistence.",
             "Notes",
-            "Local",
+            "System",
         ),
     ]
 
