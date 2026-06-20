@@ -6,8 +6,6 @@ from .create_routes_tab import CreateRoutesTab
 from .en_route_tab import EnRouteTab
 from .reference_data import get_trading_reference_service
 from .saved_routes_tab import SavedRoutesTab
-from .sc_trade_placeholder_tab import SCTradePlaceholderTab
-from .shared import SC_TRADE_WORKFLOWS
 from .shops_tab import ShopsTab
 from .trade_routes_tab import TradeRoutesTab
 from .uex_trading_tab import UEXTradingTab
@@ -30,27 +28,16 @@ class TradingTab(QWidget):
         self.tabs.addTab(self.saved_routes_tab, "Saved Routes")
         self.create_routes_tab = CreateRoutesTab(self.reference_service)
         self.tabs.addTab(self.create_routes_tab, "Create Routes")
-
-        self.sc_trade_tabs = {}
-        for workflow in SC_TRADE_WORKFLOWS:
-            if workflow["title"] == "Trade Routes":
-                tab = TradeRoutesTab(self.reference_service)
-            elif workflow["title"] == "Commodities":
-                tab = CommoditiesTab(self.reference_service)
-            elif workflow["title"] == "Shops":
-                tab = ShopsTab(self.reference_service)
-            elif workflow["title"] == "Best Buyer":
-                tab = BestBuyerTab(self.reference_service)
-            elif workflow["title"] == "En Route":
-                tab = EnRouteTab(self.reference_service)
-            else:
-                tab = SCTradePlaceholderTab(
-                    workflow["title"],
-                    workflow["purpose"],
-                    workflow["url"],
-                )
-            self.sc_trade_tabs[workflow["title"]] = tab
-            self.tabs.addTab(tab, workflow["title"])
+        self.trade_routes_tab = TradeRoutesTab(self.reference_service)
+        self.tabs.addTab(self.trade_routes_tab, "Trade Routes")
+        self.best_buyer_tab = BestBuyerTab(self.reference_service)
+        self.tabs.addTab(self.best_buyer_tab, "Best Buyer")
+        self.en_route_tab = EnRouteTab(self.reference_service)
+        self.tabs.addTab(self.en_route_tab, "En Route")
+        self.commodities_tab = CommoditiesTab(self.reference_service)
+        self.tabs.addTab(self.commodities_tab, "Commodities")
+        self.shops_tab = ShopsTab(self.reference_service)
+        self.tabs.addTab(self.shops_tab, "Shops")
 
         layout.addWidget(self.tabs)
         self.setLayout(layout)

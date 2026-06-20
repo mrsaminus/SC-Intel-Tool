@@ -1,5 +1,4 @@
-from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QFrame,
@@ -21,7 +20,6 @@ from .route_quality import copy_to_clipboard
 
 SORT_ROLE = Qt.UserRole + 1
 ROW_ROLE = Qt.UserRole + 2
-SC_TRADE_SHOPS_URL = "https://sc-trade.tools/shops"
 
 
 class SortableTableWidgetItem(QTableWidgetItem):
@@ -85,7 +83,7 @@ class ShopsTab(BackgroundTaskMixin, QWidget):
         title = QLabel("Shops")
         title.setObjectName("moduleHeading")
         subtitle = QLabel(
-            "SC Trade Tools commodity shop and location reference."
+            "UEX trade terminal and location reference from public market price rows."
         )
         subtitle.setObjectName("moduleSubtitle")
         subtitle.setWordWrap(True)
@@ -102,7 +100,7 @@ class ShopsTab(BackgroundTaskMixin, QWidget):
         layout.setContentsMargins(16, 14, 16, 16)
         layout.setSpacing(10)
 
-        title = QLabel("SC TRADE TOOLS SHOPS")
+        title = QLabel("UEX TRADE LOCATIONS")
         title.setObjectName("sectionTitle")
         layout.addWidget(title)
 
@@ -111,13 +109,11 @@ class ShopsTab(BackgroundTaskMixin, QWidget):
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Search shop, system, location or type...")
         self.refresh_button = QPushButton("Refresh Reference Data")
-        self.open_source_button = QPushButton("Open Source")
         controls.addWidget(self.search_input, 1)
         controls.addWidget(self.refresh_button)
-        controls.addWidget(self.open_source_button)
         layout.addLayout(controls)
 
-        self.status_label = QLabel("Loading SC Trade Tools shop data...")
+        self.status_label = QLabel("Loading UEX trade location data...")
         self.status_label.setObjectName("moduleSubtitle")
         self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
@@ -177,7 +173,6 @@ class ShopsTab(BackgroundTaskMixin, QWidget):
 
     def connect_signals(self):
         self.refresh_button.clicked.connect(self.refresh_shops)
-        self.open_source_button.clicked.connect(self.open_source)
         self.copy_details_button.clicked.connect(self.copy_details)
         self.search_input.textChanged.connect(self.populate_table)
         self.shops_table.itemSelectionChanged.connect(self.update_details)
@@ -188,9 +183,12 @@ class ShopsTab(BackgroundTaskMixin, QWidget):
     def on_shops_loaded(self, data):
         self.shops = list(data.shops)
         self.locations = list(data.locations)
+        source_note = ""
+        if getattr(data, "source_error", ""):
+            source_note = f" UEX refresh failed: {data.source_error}"
         self.status_label.setText(
             f"Loaded {len(self.shops)} commodity shops and {len(self.locations)} "
-            "known trade locations from SC Trade Tools."
+            f"known trade locations from UEX reference rows.{source_note}"
         )
         self.populate_table()
 
@@ -200,14 +198,14 @@ class ShopsTab(BackgroundTaskMixin, QWidget):
         self.visible_shops = []
         self.shops_table.setRowCount(0)
         self.empty_label.setVisible(True)
-        self.status_label.setText(f"Failed to load SC Trade Tools shops: {exc}")
+        self.status_label.setText(f"Failed to load UEX trade locations: {exc}")
         self.update_details()
 
     def on_reference_state_changed(self, state):
         if state == "loading":
             self.refresh_button.setEnabled(False)
             self.refresh_button.setText("Loading...")
-            self.status_label.setText("Loading SC Trade Tools shop data...")
+            self.status_label.setText("Loading UEX trade location data...")
         else:
             self.refresh_button.setEnabled(True)
             self.refresh_button.setText("Refresh Reference Data")
@@ -250,7 +248,7 @@ class ShopsTab(BackgroundTaskMixin, QWidget):
             if self.shops:
                 self.detail_body_label.setText("No shops match the current search.")
             else:
-                self.detail_body_label.setText("Loading commodity shop names from SC Trade Tools.")
+                self.detail_body_label.setText("Loading trade locations from UEX reference rows.")
             self.copy_details_button.setEnabled(False)
             return
 
@@ -266,8 +264,8 @@ class ShopsTab(BackgroundTaskMixin, QWidget):
             f"Location: {shop.location}\n"
             f"Type: {shop.category}\n"
             f"Hierarchy: {shop.hierarchy}\n"
-            "Source: SC Trade Tools\n"
-            "Note: advanced shop transaction details are not available in the public build."
+            "Source: UEX\n"
+            "Note: use UEX Trading, Trade Routes or Best Buyer for current market results."
         )
 
     def copy_details(self):
@@ -301,6 +299,3 @@ class ShopsTab(BackgroundTaskMixin, QWidget):
             shop.category,
             shop.hierarchy,
         )).lower()
-
-    def open_source(self):
-        QDesktopServices.openUrl(QUrl(SC_TRADE_SHOPS_URL))

@@ -148,8 +148,8 @@ starts cleanly, keeps user data safe, and fails gracefully.
 - UEX Trading opens.
 - Create Routes opens.
 - Saved Routes opens.
-- SC Trade Tools public reference tabs open.
-- Token-gated public-build workflows degrade gracefully.
+- Trading public reference tabs open.
+- Public UEX-backed route workflows fail gracefully when market data is unavailable.
 - Route copy/save/watch actions do not crash.
 
 ### BP Overview / Reward Scanner
@@ -214,7 +214,6 @@ starts cleanly, keeps user data safe, and fails gracefully.
 - Builds are unsigned, so SmartScreen warnings are expected.
 - Live data sources can fail or change format.
 - Full OCR engine packaging is not yet guaranteed.
-- SC Trade Tools token-backed workflows are intentionally not exposed in public
-  Settings.
+- Private-token Trading workflows are intentionally not exposed in public Settings.
 - Large GUI modules still need incremental refactor, especially Refinery,
   Search History, Trading tabs, Wikelo and Player Lookup.

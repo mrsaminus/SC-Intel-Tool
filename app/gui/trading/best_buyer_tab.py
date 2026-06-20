@@ -1,5 +1,4 @@
-from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -13,11 +12,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.database import get_app_setting
-from app.sc_trade_tools_client import (
-    SC_TRADE_TOOLS_TOKEN_SETTING,
-    fetch_best_buyers,
-)
+from app.trading_best_buyer import fetch_uex_best_buyers, format_best_buyer_age
 
 from ..sortable_table_item import ROW_ROLE, SORT_ROLE, SortableTableWidgetItem
 from ..table_utils import configure_readable_table_columns
@@ -25,11 +20,7 @@ from ..workers import BackgroundTaskMixin
 from .reference_data import get_trading_reference_service
 from .route_quality import copy_to_clipboard
 from .searchable_combo import configure_searchable_combo, selected_combo_text, set_combo_items
-from .shared import PUBLIC_TOKEN_WORKFLOW_UNAVAILABLE
 from .ship_selection import configure_ship_combo, fill_cargo_from_ship, update_ship_combo
-
-
-SC_TRADE_BEST_BUYER_URL = "https://sc-trade.tools/best-buyer"
 
 
 class BestBuyerTab(BackgroundTaskMixin, QWidget):
@@ -93,7 +84,7 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
         title = QLabel("Best Buyer")
         title.setObjectName("moduleHeading")
         subtitle = QLabel(
-            "Find best commodity buyers through SC Trade Tools when advanced public integration is enabled."
+            "Find the strongest public UEX buyer locations for a selected commodity."
         )
         subtitle.setObjectName("moduleSubtitle")
         subtitle.setWordWrap(True)
@@ -126,17 +117,15 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
         self.quantity_input.setMaximumWidth(120)
         self.load_commodities_button = QPushButton("Refresh Reference Data")
         self.find_buyers_button = QPushButton("Find Buyers")
-        self.open_source_button = QPushButton("Open Source")
 
         controls.addWidget(self.commodity_combo, 1)
         controls.addWidget(self.ship_combo)
         controls.addWidget(self.quantity_input)
         controls.addWidget(self.load_commodities_button)
         controls.addWidget(self.find_buyers_button)
-        controls.addWidget(self.open_source_button)
         layout.addLayout(controls)
 
-        self.status_label = QLabel("Loading SC Trade Tools reference data...")
+        self.status_label = QLabel("Loading UEX reference data...")
         self.status_label.setObjectName("moduleSubtitle")
         self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
@@ -145,16 +134,13 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
         return card
 
     def create_results_table(self):
-        self.buyers_table = QTableWidget(0, 8)
+        self.buyers_table = QTableWidget(0, 5)
         self.buyers_table.setHorizontalHeaderLabels([
             "Buyer Location",
-            "Shop",
-            "Sell Price",
+            "Terminal",
+            "Sell / SCU",
             "Quantity SCU",
-            "Max SCU",
-            "Security",
-            "Faction",
-            "Hidden",
+            "Source / Updated",
         ])
         self.buyers_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.buyers_table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -167,7 +153,6 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
     def connect_signals(self):
         self.load_commodities_button.clicked.connect(self.load_commodities)
         self.find_buyers_button.clicked.connect(self.find_buyers)
-        self.open_source_button.clicked.connect(self.open_source)
         self.ship_combo.currentTextChanged.connect(self.on_ship_changed)
         self.buyers_table.itemSelectionChanged.connect(self.update_details)
         self.copy_summary_button.clicked.connect(self.copy_route_summary)
@@ -182,15 +167,18 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
         self.commodities = list(data.commodities)
         set_combo_items(self.commodity_combo, (commodity.name for commodity in self.commodities))
         update_ship_combo(self.ship_combo, data.ships)
+        source_note = ""
+        if getattr(data, "source_error", ""):
+            source_note = f" UEX reference refresh failed: {data.source_error}"
         self.status_label.setText(
-            f"Loaded {len(self.commodities)} commodities. Advanced buyer lookup is disabled in this public build."
+            f"Loaded {len(self.commodities)} UEX commodities from latest refresh.{source_note}"
         )
 
     def on_reference_state_changed(self, state):
         if state == "loading":
             self.load_commodities_button.setEnabled(False)
             self.load_commodities_button.setText("Loading...")
-            self.status_label.setText("Loading SC Trade Tools reference data...")
+            self.status_label.setText("Loading UEX reference data...")
         else:
             self.load_commodities_button.setEnabled(True)
             self.load_commodities_button.setText("Refresh Reference Data")
@@ -202,14 +190,6 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
         if self.buyer_refresh_running:
             return
 
-        token = get_app_setting(SC_TRADE_TOOLS_TOKEN_SETTING, "")
-        if not token.strip():
-            self.status_label.setText(PUBLIC_TOKEN_WORKFLOW_UNAVAILABLE)
-            self.empty_label.setText(PUBLIC_TOKEN_WORKFLOW_UNAVAILABLE)
-            self.buyers = []
-            self.populate_buyers_table()
-            return
-
         commodity = selected_combo_text(self.commodity_combo, allow_free_text=not self.commodities)
         if not commodity:
             self.status_label.setText("Choose a commodity from the searchable dropdown before finding buyers.")
@@ -219,24 +199,25 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
         self.buyer_refresh_running = True
         self.find_buyers_button.setEnabled(False)
         self.find_buyers_button.setText("Searching...")
-        self.status_label.setText("Searching SC Trade Tools buyers...")
+        self.status_label.setText("Searching UEX buyer locations...")
 
         self.start_background_task(
-            lambda: fetch_best_buyers(token, commodity, quantity_scu),
+            lambda: fetch_uex_best_buyers(commodity, quantity_scu),
             self.on_buyers_loaded,
             self.on_error,
             self.finish_buyer_refresh,
         )
 
-    def on_buyers_loaded(self, buyers):
-        self.buyers = sorted(
-            buyers,
-            key=lambda buyer: buyer.price if buyer.price is not None else -1,
-            reverse=True,
+    def on_buyers_loaded(self, result):
+        buyers, price_row_count = result
+        self.buyers = buyers
+        self.status_label.setText(
+            f"Loaded {len(self.buyers)} UEX buyer results from {price_row_count} price rows."
         )
-        self.status_label.setText(f"Loaded {len(self.buyers)} buyer results from SC Trade Tools.")
         if not self.buyers:
-            self.empty_label.setText("No buyers were returned for the selected commodity and quantity.")
+            self.empty_label.setText(
+                "No UEX sell prices were found for the selected commodity. Try another commodity or refresh later."
+            )
         self.populate_buyers_table()
 
     def finish_buyer_refresh(self):
@@ -245,9 +226,9 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
         self.find_buyers_button.setText("Find Buyers")
 
     def on_error(self, exc):
-        self.status_label.setText(f"SC Trade Tools request failed: {exc}")
+        self.status_label.setText(f"UEX buyer lookup failed: {exc}")
         self.empty_label.setText(
-            "SC Trade Tools buyer lookup failed. This advanced workflow is currently unavailable in the public build."
+            "UEX buyer data failed to load. Try refreshing again later."
         )
         self.buyers = []
         self.populate_buyers_table()
@@ -260,29 +241,23 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
         for row_index, buyer in enumerate(self.buyers):
             values = [
                 buyer.location,
-                buyer.shop,
-                self.format_auec(buyer.price),
+                buyer.terminal,
+                self.format_auec(buyer.sell_price),
                 self.format_number(buyer.quantity_scu),
-                self.format_number(buyer.max_quantity_scu),
-                buyer.security_level,
-                buyer.faction,
-                "Yes" if buyer.hidden else "No",
+                f"{buyer.source} | {format_best_buyer_age(buyer)}",
             ]
             sort_values = [
                 buyer.location,
-                buyer.shop,
-                buyer.price,
+                buyer.terminal,
+                buyer.sell_price,
                 buyer.quantity_scu,
-                buyer.max_quantity_scu,
-                buyer.security_level,
-                buyer.faction,
-                buyer.hidden,
+                buyer.date_modified or 0,
             ]
             for col_index, value in enumerate(values):
                 item = SortableTableWidgetItem(str(value))
                 item.setData(SORT_ROLE, sort_values[col_index])
                 item.setData(ROW_ROLE, row_index)
-                if col_index in (2, 3, 4):
+                if col_index in (2, 3):
                     item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 self.buyers_table.setItem(row_index, col_index, item)
 
@@ -294,7 +269,9 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
     def update_details(self):
         buyer = self.selected_buyer()
         if not buyer:
-            self.detail_label.setText(PUBLIC_TOKEN_WORKFLOW_UNAVAILABLE)
+            self.detail_label.setText(
+                "Choose a commodity and click Find Buyers to load UEX buyer locations."
+            )
             self.copy_summary_button.setEnabled(False)
             return
 
@@ -303,18 +280,15 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
 
     def build_route_summary(self, buyer):
         return (
-            f"Commodity: {buyer.item_name}\n"
+            f"Commodity: {buyer.commodity}\n"
             f"Sell to: {buyer.location}\n"
-            f"Shop: {buyer.shop}\n"
-            f"Sell price: {self.format_auec(buyer.price)} / SCU\n"
-            f"Quantity: {self.format_number(buyer.quantity_scu)} SCU"
-            f" / max {self.format_number(buyer.max_quantity_scu)} SCU\n"
-            f"Security: {buyer.security_level}\n"
-            f"Faction: {buyer.faction}\n"
-            f"Hidden location: {'Yes' if buyer.hidden else 'No'}\n"
+            f"Terminal: {buyer.terminal}\n"
+            f"Sell price: {self.format_auec(buyer.sell_price)} / SCU\n"
+            f"Quantity context: {self.format_number(buyer.quantity_scu)} SCU\n"
             "Quality: N/A\n"
-            "Source: SC Trade Tools\n"
-            "Notes: Best Buyer does not include buy-side cost or profit data."
+            f"Source: {buyer.source}\n"
+            f"Updated: {format_best_buyer_age(buyer)}\n"
+            "Notes: Best Buyer ranks public sell prices only. It does not invent buy-side cost or profit data."
         )
 
     def copy_route_summary(self):
@@ -364,6 +338,3 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
         if number.is_integer():
             return f"{int(number):,}"
         return f"{number:,.2f}".rstrip("0").rstrip(".")
-
-    def open_source(self):
-        QDesktopServices.openUrl(QUrl(SC_TRADE_BEST_BUYER_URL))

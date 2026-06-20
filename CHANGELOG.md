@@ -3,7 +3,11 @@
 ## Unreleased
 
 - En Route now works in public builds using UEX prices from the latest refresh.
-- Removed the SC Trade Tools token dependency from the public En Route workflow.
+- Trade Routes and Best Buyer now use UEX-backed public market rows where enough
+  buy/sell context is available.
+- Commodities and Shops reference tabs now use UEX-derived public reference rows.
+- Removed confusing unavailable public-build Trading messages and old token
+  prompts from public Trading/Settings UI.
 
 ## 0.1.0-alpha.8.8.1 - 2026-06-19
 
@@ -243,18 +247,18 @@
 
 - Reorganized Trading into workflow subtabs.
 - Moved the existing UEX commodity workflow into the `UEX Trading` subtab.
-- Added planned SC Trade Tools workflow tabs for Trade Routes, Best Buyer,
+- Added planned external trading workflow tabs for Trade Routes, Best Buyer,
   En Route, Commodities and Shops.
-- Added SC Trade Tools Commodities browser.
-- Added SC Trade Tools Shops browser.
-- Added advanced SC Trade Tools Best Buyer and En Route workflow scaffolding.
-- Added graceful unavailable states for advanced SC Trade Tools workflows.
+- Added an external trading reference Commodities browser.
+- Added an external trading reference Shops browser.
+- Added external trading Best Buyer and En Route workflow scaffolding.
+- Added graceful unavailable states for external trading workflows.
 - Added searchable dropdown behavior across Trading selection fields.
 - Added ship selection with local cargo-capacity autofill for Trading workflows.
-- Added SC Trade Tools-backed Trade Routes workflow scaffolding with public fallback.
+- Added external trading Trade Routes workflow scaffolding with public fallback.
 - Added automatic public Trading reference-data loading for commodities,
   shops, locations and ships.
-- Expanded Trading ship dropdowns with SC Trade Tools reference ship names,
+- Expanded Trading ship dropdowns with external trading reference ship names,
   while keeping Cargo SCU autofill limited to known local ship metadata.
 - Filtered Trading ship dropdowns to only include ships with known Cargo SCU
   capacity.

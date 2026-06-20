@@ -51,7 +51,7 @@ bug. The goal is practical tester feedback without sharing private local data.
 
 Do not include:
 
-- SC Trade Tools tokens or other private tokens.
+- Private tokens or credentials.
 - personal notes
 - Search History contents
 - player notes/tags
@@ -103,7 +103,8 @@ saved data, OCR text or database contents.
 
 - Builds are unsigned, so Windows SmartScreen warnings are expected.
 - Live websites/APIs can change or fail.
-- Some SC Trade Tools advanced workflows are unavailable in the public build.
+- Some advanced Trading workflows are still alpha-quality and depend on current
+  public UEX market data availability.
 - Reward Scanner is alpha and depends on local capture/OCR behavior.
 - UI polish is ongoing, especially around unusual window sizes and older themes.
 

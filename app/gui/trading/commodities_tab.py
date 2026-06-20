@@ -1,5 +1,4 @@
-from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -19,9 +18,6 @@ from ..workers import BackgroundTaskMixin
 from .reference_data import get_trading_reference_service
 from .route_quality import copy_to_clipboard
 from .searchable_combo import configure_searchable_combo, set_combo_items
-
-
-SC_TRADE_COMMODITIES_URL = "https://sc-trade.tools/commodities"
 
 
 class CommoditiesTab(BackgroundTaskMixin, QWidget):
@@ -75,7 +71,7 @@ class CommoditiesTab(BackgroundTaskMixin, QWidget):
         title = QLabel("Commodities")
         title.setObjectName("moduleHeading")
         subtitle = QLabel(
-            "SC Trade Tools commodity reference. Advanced transaction and route details remain planned."
+            "UEX commodity reference built from the latest public market price refresh."
         )
         subtitle.setObjectName("moduleSubtitle")
         subtitle.setWordWrap(True)
@@ -92,7 +88,7 @@ class CommoditiesTab(BackgroundTaskMixin, QWidget):
         layout.setContentsMargins(16, 14, 16, 16)
         layout.setSpacing(10)
 
-        title = QLabel("SC TRADE TOOLS COMMODITIES")
+        title = QLabel("UEX COMMODITIES")
         title.setObjectName("sectionTitle")
         layout.addWidget(title)
 
@@ -106,18 +102,16 @@ class CommoditiesTab(BackgroundTaskMixin, QWidget):
         self.type_filter.addItem("All types")
         self.type_filter.setEnabled(False)
         self.type_filter.setToolTip(
-            "SC Trade Tools exposes item types, but commodity rows do not include type mapping."
+            "Commodity type mapping is not available in current UEX price rows."
         )
         self.refresh_button = QPushButton("Refresh Reference Data")
-        self.open_source_button = QPushButton("Open Source")
 
         controls.addWidget(self.search_input, 1)
         controls.addWidget(self.type_filter)
         controls.addWidget(self.refresh_button)
-        controls.addWidget(self.open_source_button)
         layout.addLayout(controls)
 
-        self.status_label = QLabel("Loading SC Trade Tools commodity data...")
+        self.status_label = QLabel("Loading UEX commodity data...")
         self.status_label.setObjectName("moduleSubtitle")
         self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
@@ -181,7 +175,6 @@ class CommoditiesTab(BackgroundTaskMixin, QWidget):
 
     def connect_signals(self):
         self.refresh_button.clicked.connect(self.refresh_commodities)
-        self.open_source_button.clicked.connect(self.open_source)
         self.copy_details_button.clicked.connect(self.copy_details)
         self.search_input.textChanged.connect(self.populate_table)
         self.commodities_table.itemSelectionChanged.connect(self.update_details)
@@ -193,9 +186,12 @@ class CommoditiesTab(BackgroundTaskMixin, QWidget):
         self.commodities = list(data.commodities)
         self.commodity_types = list(data.commodity_types)
         self.populate_type_catalog()
+        source_note = ""
+        if getattr(data, "source_error", ""):
+            source_note = f" UEX refresh failed: {data.source_error}"
         self.status_label.setText(
             f"Loaded {len(self.commodities)} commodities and {len(self.commodity_types)} "
-            "commodity types from SC Trade Tools. Item rows expose name only."
+            f"commodity types from UEX reference rows.{source_note}"
         )
         self.populate_table()
 
@@ -205,14 +201,14 @@ class CommoditiesTab(BackgroundTaskMixin, QWidget):
         self.visible_commodities = []
         self.commodities_table.setRowCount(0)
         self.empty_label.setVisible(True)
-        self.status_label.setText(f"Failed to load SC Trade Tools commodities: {exc}")
+        self.status_label.setText(f"Failed to load UEX commodities: {exc}")
         self.update_details()
 
     def on_reference_state_changed(self, state):
         if state == "loading":
             self.refresh_button.setEnabled(False)
             self.refresh_button.setText("Loading...")
-            self.status_label.setText("Loading SC Trade Tools commodity data...")
+            self.status_label.setText("Loading UEX commodity data...")
         else:
             self.refresh_button.setEnabled(True)
             self.refresh_button.setText("Refresh Reference Data")
@@ -237,7 +233,7 @@ class CommoditiesTab(BackgroundTaskMixin, QWidget):
                 "The public commodity item data does not map commodities to these types."
             )
         else:
-            self.type_catalog_label.setText("Commodity type catalog not loaded.")
+            self.type_catalog_label.setText("Commodity type catalog is not available in current UEX data.")
 
     def populate_table(self):
         query = self.search_input.text().strip().lower()
@@ -274,7 +270,7 @@ class CommoditiesTab(BackgroundTaskMixin, QWidget):
             if self.commodities:
                 self.detail_body_label.setText("No commodities match the current search.")
             else:
-                self.detail_body_label.setText("Loading commodity names from SC Trade Tools.")
+                self.detail_body_label.setText("Loading commodity names from UEX reference rows.")
             self.copy_details_button.setEnabled(False)
 
     def update_details(self):
@@ -282,7 +278,7 @@ class CommoditiesTab(BackgroundTaskMixin, QWidget):
         if not commodity:
             if not self.commodities:
                 self.detail_title_label.setText("No commodity selected")
-                self.detail_body_label.setText("Loading commodity names from SC Trade Tools.")
+                self.detail_body_label.setText("Loading commodity names from UEX reference rows.")
             self.copy_details_button.setEnabled(False)
             return
 
@@ -295,9 +291,9 @@ class CommoditiesTab(BackgroundTaskMixin, QWidget):
             f"Commodity: {commodity.name}\n"
             "Type / category: N/A\n"
             "Flags: N/A\n"
-            "Metadata: public commodity data exposes commodity name only.\n"
-            "Source: SC Trade Tools\n"
-            "Note: advanced transaction, buyer and route details are not available in the public build."
+            "Metadata: UEX price rows expose commodity name and market prices.\n"
+            "Source: UEX\n"
+            "Note: use UEX Trading, Trade Routes or Best Buyer for current market results."
         )
 
     def copy_details(self):
@@ -321,6 +317,3 @@ class CommoditiesTab(BackgroundTaskMixin, QWidget):
             return None
 
         return self.visible_commodities[index]
-
-    def open_source(self):
-        QDesktopServices.openUrl(QUrl(SC_TRADE_COMMODITIES_URL))

@@ -45,13 +45,12 @@ local data safety, release reliability and tester-driven polish.
 - UEX Trading is the main live commodity workflow.
 - Create Routes is the smart UEX-backed route assistant for ship/cargo/budget
   planning.
+- Trade Routes, Best Buyer and En Route now use public UEX price rows where the
+  current data exposes enough buy/sell context.
 - Saved Routes and Recent Routes are stored locally.
 - UEX Trading presets are stored locally.
-- Commodity, shop and location reference tools are available.
-- Trade Routes, Best Buyer and En Route are advanced SC Trade Tools workflows
-  that are currently unavailable in the public build.
-- Public Settings keeps advanced SC Trade Tools access controls hidden until
-  the workflow is clearer for normal users.
+- Commodity, shop and location reference tools use UEX-derived public market
+  rows and local ship cargo metadata.
 
 ### Item Finder
 
@@ -159,8 +158,8 @@ local data safety, release reliability and tester-driven polish.
 - Keep UEX Trading and Create Routes as the public operational trading tools.
 - Improve saved/recent route organization.
 - Improve route copy/export formatting.
-- Consider more SC Trade Tools integration only after the public UX and access
-  handling have a proper design.
+- Consider optional route-quality enrichment from a trading tool only after the
+  public UX and access handling have a proper design.
 
 ### 5. BP Overview / Crafting Polish
 

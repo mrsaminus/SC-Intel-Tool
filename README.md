@@ -10,7 +10,7 @@ SC Intel Tool is a Star Citizen desktop utility for player intel, organization c
 
 The app is in active alpha development. Home, Event Center, Player Lookup, Search History, Mining / Salvage, Trading, Item Finder, BP Overview, Watchlists, Wikelo Items, Notes, Settings, AppData persistence, and packaged update checks are usable. BP Overview includes an optional local Reward Scanner alpha foundation with manual region selection; full OCR engine packaging remains planned for later.
 
-Public Trading currently focuses on UEX Trading, Create Routes, Saved Routes, Commodities/Shops reference tools and local workflows. Advanced SC Trade Tools route workflows are not available in the public build yet.
+Public Trading currently focuses on UEX Trading, Create Routes, Trade Routes, Best Buyer, En Route, Saved Routes, Commodities/Shops reference tools and local workflows backed by public UEX market data where available.
 
 ## Install And Run
 
@@ -51,7 +51,7 @@ User data is stored outside the install folder by default, so updates should pre
 
 SC Intel Tool has no telemetry, analytics, tracking, or user reporting. Player notes, lookup history, Event Center events, watchlists, settings, OCR text, screenshots, and local database data are not sent to the developer.
 
-The app only makes outbound requests to public Star Citizen-related data sources needed for its features: RSI, UEX, Cornerstone, SC Focus, SC Craft Tools, SC Trade Tools, the public Wikelo Google Sheet, and GitHub Releases for update checking. SCMDB is documented as a secondary BP Overview reference and may be used in a later enrichment pass. All user data remains local unless the user explicitly exports it.
+The app only makes outbound requests to public Star Citizen-related data sources needed for its features: RSI, UEX, Cornerstone, SC Focus, SC Craft Tools, the public Wikelo Google Sheet, and GitHub Releases for update checking. SCMDB is documented as a secondary BP Overview reference and may be used in a later enrichment pass. All user data remains local unless the user explicitly exports it.
 
 The Reward Scanner is optional and off by default. It can visually select or manually enter a screen region, only reads that region when the user manually triggers a scan, and blueprint ownership changes require explicit confirmation.
 

@@ -7,7 +7,6 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QMessageBox,
     QPushButton,
     QScrollArea,
@@ -16,14 +15,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.database import DB_PATH, get_app_setting, set_app_setting
+from app.database import DB_PATH
 from app.diagnostics import safe_diagnostics_text
 from app.paths import get_active_data_dir, is_packaged_app
-from app.sc_trade_tools_client import (
-    SC_TRADE_TOOLS_TOKEN_SETTING,
-    SCTradeToolsError,
-    test_token_connection,
-)
 from app.update_checker import (
     UpdateCheckError,
     check_for_updates as fetch_update_info,
@@ -256,38 +250,6 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         layout.addLayout(row)
         return card
 
-    def build_sc_trade_tools_card(self):
-        card = self.create_card("SC TRADE TOOLS")
-        layout = card.layout()
-
-        hint = QLabel(
-            "Optional local API token for SC Trade Tools workflows that require authentication. "
-            "Leave empty to keep token-backed Trading subtabs disabled."
-        )
-        hint.setObjectName("moduleSubtitle")
-        hint.setWordWrap(True)
-        layout.addWidget(hint)
-
-        row = QHBoxLayout()
-        self.sc_trade_token_input = QLineEdit()
-        self.sc_trade_token_input.setEchoMode(QLineEdit.Password)
-        self.sc_trade_token_input.setPlaceholderText("SC Trade Tools API token (optional)")
-        self.sc_trade_token_input.setText(get_app_setting(SC_TRADE_TOOLS_TOKEN_SETTING, ""))
-        self.save_sc_trade_token_button = QPushButton("Save Token")
-        self.test_sc_trade_token_button = QPushButton("Test Connection")
-        self.save_sc_trade_token_button.clicked.connect(self.save_sc_trade_token)
-        self.test_sc_trade_token_button.clicked.connect(self.test_sc_trade_token)
-        row.addWidget(self.sc_trade_token_input, 1)
-        row.addWidget(self.save_sc_trade_token_button)
-        row.addWidget(self.test_sc_trade_token_button)
-        layout.addLayout(row)
-
-        self.sc_trade_token_status_label = QLabel("Not configured")
-        self.sc_trade_token_status_label.setObjectName("moduleSubtitle")
-        layout.addWidget(self.sc_trade_token_status_label)
-        self.update_sc_trade_token_status()
-        return card
-
     def build_data_card(self):
         card = self.create_card("LOCAL DATA")
         layout = card.layout()
@@ -471,50 +433,6 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         self.open_releases_button.setEnabled(True)
         self.install_update_button.setText("Install Update")
         self.install_update_button.setEnabled(bool(self.latest_update_info and self.latest_update_info.asset_url))
-
-    def save_sc_trade_token(self):
-        set_app_setting(SC_TRADE_TOOLS_TOKEN_SETTING, self.sc_trade_token_input.text().strip())
-        self.update_sc_trade_token_status()
-
-    def update_sc_trade_token_status(self):
-        token = self.sc_trade_token_input.text().strip()
-        if not token:
-            self.sc_trade_token_status_label.setText("Not configured")
-        else:
-            self.sc_trade_token_status_label.setText("Token saved locally. Connection not tested.")
-
-    def test_sc_trade_token(self):
-        token = self.sc_trade_token_input.text().strip()
-        set_app_setting(SC_TRADE_TOOLS_TOKEN_SETTING, token)
-        if not token:
-            self.sc_trade_token_status_label.setText("Not configured")
-            return
-
-        self.test_sc_trade_token_button.setEnabled(False)
-        self.test_sc_trade_token_button.setText("Testing...")
-        self.sc_trade_token_status_label.setText("Testing SC Trade Tools connection...")
-        self.start_background_task(
-            lambda: test_token_connection(token),
-            self.on_sc_trade_token_tested,
-            self.on_sc_trade_token_error,
-            self.finish_sc_trade_token_test,
-        )
-
-    def on_sc_trade_token_tested(self, connected):
-        if connected:
-            self.sc_trade_token_status_label.setText("Connected")
-        else:
-            self.sc_trade_token_status_label.setText("Invalid")
-
-    def on_sc_trade_token_error(self, exc):
-        if isinstance(exc, SCTradeToolsError):
-            self.sc_trade_token_status_label.setText(f"Invalid: {exc}")
-        else:
-            self.sc_trade_token_status_label.setText(f"Connection failed: {exc}")
-
-    def finish_sc_trade_token_test(self):
-        self.test_sc_trade_token_button.setEnabled(True)
-        self.test_sc_trade_token_button.setText("Test Connection")
 
     def copy_diagnostics(self):
         QApplication.clipboard().setText(safe_diagnostics_text(database_path=DB_PATH))
