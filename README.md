@@ -10,7 +10,23 @@ SC Intel Tool is a Star Citizen desktop utility for player intel, organization c
 
 The app is in active alpha development. Home, Intel, Industrial, Reference and System navigation groups are usable, including Activity Log, Player Lookup, Search History, Mining / Salvage, Trading, Item Finder, BP Overview, Watchlists, Wikelo Items, Notes, Settings, AppData persistence, and packaged update checks. BP Overview includes an optional local Reward Scanner alpha foundation with manual region selection; full OCR engine packaging remains planned for later.
 
+Current navigation:
+
+- Home
+- Intel: Player Lookup, Search History, Watchlists
+- Industrial: Mining / Salvage, Trading, BP Overview
+- Reference: Item Finder, Wikelo Items
+- System: Activity Log, Notes, Settings
+
 Public Trading currently focuses on UEX Trading, Create Routes, Trade Routes, Best Buyer, En Route, Saved Routes, Commodities/Shops reference tools and local workflows backed by public UEX market data where available.
+
+Supported themes:
+
+- SC Intel Dark
+- White Mode
+- Windows XP Luna
+- Windows XP Black Edition
+- Windows 95 Classic
 
 ## Install And Run
 
@@ -97,7 +113,7 @@ The repository source is visible for transparency and project collaboration. No 
 From the repository root:
 
 ```powershell
-.\scripts\build_windows.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_windows.ps1
 ```
 
 The script installs runtime/dev requirements, builds a single-file Windows executable with PyInstaller, writes it to `dist/`, and prints the SHA256 checksum.
@@ -105,7 +121,7 @@ The script installs runtime/dev requirements, builds a single-file Windows execu
 For a portable folder zip instead, run:
 
 ```powershell
-.\scripts\build_windows.ps1 -Package OneDir
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_windows.ps1 -Package OneDir
 ```
 
 Release checklist:
@@ -116,7 +132,8 @@ Release checklist:
    `.\.venv\Scripts\python.exe -m compileall main.py app` and
    `.\.venv\Scripts\python.exe -m pytest`.
 4. Run `.\scripts\build_windows.ps1`.
-5. Create a GitHub Release with a matching tag, for example `v0.1.0-alpha.8.5`.
+5. Create a GitHub Release with a tag matching `APP_VERSION`, for example
+   `v<version>`.
 6. Upload `SC-Intel-Tool.exe` and include the SHA256 checksum in the release notes.
 
 For the full stabilization checklist, see `docs/beta_readiness_checklist.md`.

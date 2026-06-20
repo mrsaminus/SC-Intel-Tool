@@ -6,19 +6,12 @@ bug. The goal is practical tester feedback without sharing private local data.
 ## What To Test
 
 - Launch the app from `SC-Intel-Tool.exe`.
-- Open each main tab:
+- Open each navigation group and tab:
   - Home
-  - Player Lookup
-  - Search History
-  - Mining / Salvage
-  - Trading
-  - Item Finder
-  - Watchlists
-  - Wikelo Items
-  - BP Overview
-  - Event Center
-  - Notes
-  - Settings
+  - Intel: Player Lookup, Search History, Watchlists
+  - Industrial: Mining / Salvage, Trading, BP Overview
+  - Reference: Item Finder, Wikelo Items
+  - System: Activity Log, Notes, Settings
 - Confirm your saved local data survives an app restart:
   - notes/tags
   - Search History
@@ -107,6 +100,8 @@ saved data, OCR text or database contents.
   public UEX market data availability.
 - Reward Scanner is alpha and depends on local capture/OCR behavior.
 - UI polish is ongoing, especially around unusual window sizes and older themes.
+- Supported release themes are SC Intel Dark, White Mode, Windows XP Luna,
+  Windows XP Black Edition and Windows 95 Classic.
 
 ## Privacy
 

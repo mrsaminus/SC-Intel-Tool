@@ -14,6 +14,8 @@
 - Added Windows XP Black Edition as a supported release theme.
 - Inspired the new theme by XP Royale Noir / XP Black community themes while
   preserving the XP green Home/start tab, blue chrome and dark content panels.
+- Audited public documentation for current grouped navigation, Activity Log
+  naming, UEX-powered Trading wording, supported themes and release hygiene.
 
 ## 0.1.0-alpha.8.8.2 - 2026-06-20
 

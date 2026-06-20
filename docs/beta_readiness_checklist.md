@@ -19,19 +19,12 @@ starts cleanly, keeps user data safe, and fails gracefully.
   .\.venv\Scripts\python.exe main.py
   ```
 
-- Smoke test main tabs:
+- Smoke test navigation groups and tabs:
   - Home
-  - Player Lookup
-  - Search History
-  - Mining / Salvage
-  - Trading
-  - Item Finder
-  - Wikelo Items
-  - BP Overview
-  - Watchlists
-  - Event Center
-  - Notes
-  - Settings
+  - Intel: Player Lookup, Search History, Watchlists
+  - Industrial: Mining / Salvage, Trading, BP Overview
+  - Reference: Item Finder, Wikelo Items
+  - System: Activity Log, Notes, Settings
 
 ## 2. Privacy Verification
 
@@ -70,7 +63,7 @@ starts cleanly, keeps user data safe, and fails gracefully.
   - Owned blueprints/materials
   - Trading presets/routes
   - Watchlists
-  - Event Center events
+  - Activity Log events
   - Theme/settings
 
 ## 4. Runtime Asset Verification
@@ -121,7 +114,9 @@ starts cleanly, keeps user data safe, and fails gracefully.
   - app opens without DLL/PyInstaller `_MEI` errors
   - app icon/window/taskbar branding is correct
   - AppData path is used, not executable folder
-  - themes load
+  - supported themes load
+  - SC Intel Dark, White Mode, Windows XP Luna, Windows XP Black Edition and
+    Windows 95 Classic are available
   - Settings opens and shows correct version/data paths
 
 ## 6. Feature Smoke Tests
@@ -160,13 +155,13 @@ starts cleanly, keeps user data safe, and fails gracefully.
 - Region preview failure is handled without crashing.
 - Pasted text matching works without OCR.
 
-### Wikelo / Watchlists / Event Center
+### Wikelo / Watchlists / Activity Log
 
 - Wikelo loads or fails gracefully.
 - Checklist state persists after restart.
 - Reset selected/all Wikelo progress only affects Wikelo checklist state.
 - Watchlist entry/snapshot/event persistence works.
-- Event Center filters and read/unread actions work.
+- Activity Log filters and read/unread actions work.
 
 ## 7. Updater Verification
 
@@ -214,6 +209,7 @@ starts cleanly, keeps user data safe, and fails gracefully.
 - Builds are unsigned, so SmartScreen warnings are expected.
 - Live data sources can fail or change format.
 - Full OCR engine packaging is not yet guaranteed.
-- Private-token Trading workflows are intentionally not exposed in public Settings.
+- Advanced secondary trading-source workflows are intentionally not exposed in
+  public Settings.
 - Large GUI modules still need incremental refactor, especially Refinery,
   Search History, Trading tabs, Wikelo and Player Lookup.

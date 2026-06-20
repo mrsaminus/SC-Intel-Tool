@@ -58,8 +58,8 @@ collapsed to avoid spam.
 
 A trading tool may be revisited later for route-quality research, but it should
 not be exposed as a public dependency until the access model and tester UX are
-clear. Public builds should avoid token prompts, unavailable workflow dead-ends
-and functional-looking controls that cannot produce results.
+clear. Public releases should avoid confusing access prompts, unavailable
+workflow dead-ends and functional-looking controls that cannot produce results.
 
 Possible future path:
 

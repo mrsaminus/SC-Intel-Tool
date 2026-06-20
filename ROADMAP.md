@@ -1,6 +1,6 @@
 # SC Intel Tool Roadmap
 
-Last updated: 2026-06-12
+Last updated: 2026-06-21
 
 SC Intel Tool is a Star Citizen desktop companion for player lookup, local
 intel notes, mining and salvage planning, trading, item lookup, Wikelo tracking,
@@ -106,6 +106,9 @@ local data safety, release reliability and tester-driven polish.
 
 - App version and About section.
 - Active data folder and database path display.
+- Appearance settings with supported release themes:
+  SC Intel Dark, White Mode, Windows XP Luna, Windows XP Black Edition and
+  Windows 95 Classic.
 - Check for updates.
 - Packaged Windows update install with manual restart.
 - GitHub Releases link.
