@@ -56,6 +56,7 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
         self.tabs = QTabWidget()
         self.tabs.setObjectName("mainNavigationTabs")
         self.tabs.setTabBar(ThemeAwareTabBar())
+        self.tabs.tabBar().setObjectName("mainNavigationTabBar")
 
         self.home_tab = HomeTab(self.open_tab)
         self.event_center_tab = EventCenterTab()
@@ -106,6 +107,7 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
     def create_group_tabs(self, object_name):
         tabs = QTabWidget()
         tabs.setObjectName(object_name)
+        tabs.tabBar().setObjectName("groupNavigationTabBar")
         return tabs
 
     def open_tab(self, tab_name):

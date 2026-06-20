@@ -4,9 +4,13 @@
 
 - Reorganized the main navigation into grouped tabs: Home, Intel, Industrial,
   Reference and System.
+- Improved navigation hierarchy so top-level grouped tabs stand apart from
+  second-level group tabs and smaller module subtabs.
+- Prepared the main navigation tab spacing for future icons without adding
+  placeholder icons.
 - Renamed the user-facing Event Center tab to Activity Log.
 - Added a Trading module header to match the Mining / Salvage module structure.
-- Adjusted tab spacing for future icon-ready navigation without adding icons yet.
+- Improved visual consistency across grouped modules.
 
 ## 0.1.0-alpha.8.8.2 - 2026-06-20
 

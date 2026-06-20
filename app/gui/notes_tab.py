@@ -17,9 +17,31 @@ class NotesTab(QWidget):
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(12)
 
+        layout.addWidget(self.create_module_header(
+            "Notes",
+            "Local notes, release notes and lightweight planning space.",
+        ))
         layout.addWidget(self.build_notes_card())
         layout.addWidget(self.build_changelog_card(), 1)
         self.setLayout(layout)
+
+    def create_module_header(self, title, subtitle):
+        card = QFrame()
+        card.setObjectName("playerCard")
+        layout = QVBoxLayout()
+        layout.setContentsMargins(16, 14, 16, 14)
+        layout.setSpacing(4)
+
+        title_label = QLabel(title)
+        title_label.setObjectName("moduleHeading")
+        subtitle_label = QLabel(subtitle)
+        subtitle_label.setObjectName("moduleSubtitle")
+        subtitle_label.setWordWrap(True)
+
+        layout.addWidget(title_label)
+        layout.addWidget(subtitle_label)
+        card.setLayout(layout)
+        return card
 
     def build_notes_card(self):
         card = self.create_card("NOTES")

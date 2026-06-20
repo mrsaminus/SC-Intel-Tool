@@ -73,6 +73,15 @@ def test_main_navigation_is_grouped_and_reachable(monkeypatch, tmp_path, qapp):
     assert tab_labels(window.reference_tabs) == ["Item Finder", "Wikelo Items"]
     assert tab_labels(window.system_tabs) == ["Activity Log", "Notes", "Settings"]
 
+    main_height = window.tabs.tabBar().tabRect(0).height()
+    group_height = window.intel_tabs.tabBar().tabRect(0).height()
+    module_height = window.trading_tab.tabs.tabBar().tabRect(0).height()
+    assert window.tabs.tabBar().objectName() == "mainNavigationTabBar"
+    assert window.intel_tabs.tabBar().objectName() == "groupNavigationTabBar"
+    assert main_height >= 50
+    assert group_height >= 36
+    assert module_height < group_height < main_height
+
     routes = {
         "Player Lookup": ("Intel", window.intel_tabs, "Player Lookup"),
         "Search History": ("Intel", window.intel_tabs, "Search History"),

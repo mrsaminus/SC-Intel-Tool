@@ -54,8 +54,12 @@ BASE_COLORS = {
 
 BASE_METRICS = {
     "font_size": "10pt",
-    "tab_padding": "8px 14px",
-    "tab_min_height": "18px",
+    "tab_padding": "6px 11px",
+    "tab_min_height": "16px",
+    "group_tab_padding": "7px 13px",
+    "group_tab_min_height": "24px",
+    "main_tab_padding": "12px 20px",
+    "main_tab_min_height": "30px",
     "button_padding": "7px 12px",
     "input_padding": "6px",
     "table_header_padding": "7px",
@@ -103,8 +107,12 @@ THEMES = [
         description="Default look with tighter controls for dense screens.",
         metrics={
             "font_size": "9pt",
-            "tab_padding": "5px 9px",
-            "tab_min_height": "16px",
+            "tab_padding": "4px 8px",
+            "tab_min_height": "14px",
+            "group_tab_padding": "6px 11px",
+            "group_tab_min_height": "22px",
+            "main_tab_padding": "10px 17px",
+            "main_tab_min_height": "28px",
             "button_padding": "5px 9px",
             "input_padding": "4px",
             "table_header_padding": "5px",
@@ -328,8 +336,12 @@ THEMES = [
             "radius": "9px",
             "card_radius": "10px",
             "tab_radius": "9px",
-            "tab_padding": "8px 15px",
-            "tab_min_height": "20px",
+            "tab_padding": "6px 12px",
+            "tab_min_height": "18px",
+            "group_tab_padding": "7px 14px",
+            "group_tab_min_height": "25px",
+            "main_tab_padding": "12px 21px",
+            "main_tab_min_height": "32px",
             "top_bar_padding": "4px 5px 0 5px",
             "tab_margin_right": "2px",
             "tab_margin_top": "4px",
@@ -920,6 +932,10 @@ def stylesheet_for_theme(theme):
     tokens["HOME_TAB_FONT_WEIGHT"] = colors.get("home_tab_font_weight", "400")
     tokens["TAB_RADIUS"] = metrics.get("tab_radius", metrics["radius"])
     tokens["TAB_MIN_HEIGHT"] = metrics.get("tab_min_height", "18px")
+    tokens["GROUP_TAB_PADDING"] = metrics.get("group_tab_padding", metrics["tab_padding"])
+    tokens["GROUP_TAB_MIN_HEIGHT"] = metrics.get("group_tab_min_height", "24px")
+    tokens["MAIN_TAB_PADDING"] = metrics.get("main_tab_padding", metrics["tab_padding"])
+    tokens["MAIN_TAB_MIN_HEIGHT"] = metrics.get("main_tab_min_height", "30px")
     tokens["TAB_MARGIN_RIGHT"] = metrics.get("tab_margin_right", "0px")
     tokens["TAB_MARGIN_TOP"] = metrics.get("tab_margin_top", "0px")
     tokens["TAB_SELECTED_MARGIN_TOP"] = metrics.get("tab_selected_margin_top", "0px")
@@ -967,7 +983,7 @@ QTabBar::tab {
     min-height: %(TAB_MIN_HEIGHT)s;
 }
 
-QTabBar::tab:first {
+QTabBar#mainNavigationTabBar::tab:first {
     background: %(HOME_TAB_BG)s;
     color: %(HOME_TAB_TEXT)s;
     border-color: %(HOME_TAB_BORDER)s;
@@ -978,7 +994,7 @@ QTabBar::tab:first {
     font-weight: %(HOME_TAB_FONT_WEIGHT)s;
 }
 
-QTabBar::tab:first:!selected {
+QTabBar#mainNavigationTabBar::tab:first:!selected {
     background: %(HOME_TAB_BG)s;
     color: %(HOME_TAB_TEXT)s;
     border-color: %(HOME_TAB_BORDER)s;
@@ -994,12 +1010,12 @@ QTabBar::tab:hover {
     color: %(TAB_HOVER_TEXT)s;
 }
 
-QTabBar::tab:first:hover {
+QTabBar#mainNavigationTabBar::tab:first:hover {
     background: %(HOME_TAB_HOVER_BG)s;
     color: %(HOME_TAB_TEXT)s;
 }
 
-QTabBar::tab:first:hover:!selected {
+QTabBar#mainNavigationTabBar::tab:first:hover:!selected {
     background: %(HOME_TAB_HOVER_BG)s;
     color: %(HOME_TAB_TEXT)s;
 }
@@ -1016,7 +1032,7 @@ QTabBar::tab:selected {
     margin-bottom: %(TAB_SELECTED_MARGIN_BOTTOM)s;
 }
 
-QTabBar::tab:first:selected {
+QTabBar#mainNavigationTabBar::tab:first:selected {
     background: %(TAB_SELECTED_BG)s;
     color: %(TAB_SELECTED_TEXT)s;
     border-color: %(TAB_SELECTED_BORDER)s;
@@ -1024,6 +1040,18 @@ QTabBar::tab:first:selected {
     border-left-color: %(TAB_SELECTED_BORDER_LEFT)s;
     border-right-color: %(TAB_SELECTED_BORDER_RIGHT)s;
     border-bottom-color: %(TAB_SELECTED_BORDER_BOTTOM)s;
+}
+
+QTabBar#mainNavigationTabBar::tab {
+    font-weight: 700;
+    padding: %(MAIN_TAB_PADDING)s;
+    min-height: %(MAIN_TAB_MIN_HEIGHT)s;
+}
+
+QTabBar#groupNavigationTabBar::tab {
+    font-weight: 600;
+    padding: %(GROUP_TAB_PADDING)s;
+    min-height: %(GROUP_TAB_MIN_HEIGHT)s;
 }
 
 QLineEdit, QTextEdit, QComboBox, QSpinBox, QDoubleSpinBox {
