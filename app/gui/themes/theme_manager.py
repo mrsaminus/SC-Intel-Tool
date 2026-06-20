@@ -11,8 +11,12 @@ RELEASE_THEME_KEYS = (
     "sc_intel_dark",
     "white_mode",
     "windows_xp",
+    "windows_xp_black",
     "windows_95",
 )
+THEME_KEY_ALIASES = {
+    "windows_xp_dark": "windows_xp_black",
+}
 TEXT_SIZE_OPTIONS = {
     "normal": {"label": "Normal", "scale": 1.0},
     "large": {"label": "Large", "scale": 1.1},
@@ -330,6 +334,110 @@ THEMES = [
             "table_bg": "#FFFFFF",
             "table_header_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFFFFF, stop:0.36 #ECF3FB, stop:1 #CFE2FF)",
             "table_grid": "#b4c8e8",
+        },
+        metrics={
+            "font_family": "Tahoma",
+            "radius": "9px",
+            "card_radius": "10px",
+            "tab_radius": "9px",
+            "tab_padding": "6px 12px",
+            "tab_min_height": "18px",
+            "group_tab_padding": "7px 14px",
+            "group_tab_min_height": "25px",
+            "main_tab_padding": "12px 21px",
+            "main_tab_min_height": "32px",
+            "top_bar_padding": "4px 5px 0 5px",
+            "tab_margin_right": "2px",
+            "tab_margin_top": "4px",
+            "tab_selected_margin_top": "0px",
+            "tab_selected_margin_bottom": "-2px",
+            "button_padding": "7px 14px",
+        },
+    ),
+    SC_INTEL_DARK.with_updates(
+        key="windows_xp_black",
+        name="Windows XP Black Edition",
+        category="Retro",
+        description="XP Black Edition-inspired dark chrome with Luna blue highlights and Start-button green.",
+        colors={
+            "background": "#1C1E22",
+            "surface": "#25282D",
+            "surface_alt": "#2D3138",
+            "surface_hover": "#363C47",
+            "top_bar_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #516680, stop:0.08 #263A5A, stop:0.36 #15233B, stop:0.76 #101722, stop:1 #070A10)",
+            "top_bar_border": "#4E89F5",
+            "pane_bg": "#1C1E22",
+            "card_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3A3F49, stop:0.08 #333841, stop:0.48 #2D3138, stop:1 #23262C)",
+            "card_hover_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #475060, stop:0.18 #3C4452, stop:1 #2E3440)",
+            "panel_border": "#3F6DB7",
+            "panel_border_active": "#7FB2FF",
+            "card_border_top": "#596170",
+            "card_border_left": "#596170",
+            "card_border_right": "#111827",
+            "card_border_bottom": "#090D18",
+            "text_primary": "#F2F4F8",
+            "text_base": "#E4EAF3",
+            "text_heading": "#FFFFFF",
+            "text_secondary": "#B7C0CC",
+            "text_muted": "#8F9BAA",
+            "accent": "#7FB2FF",
+            "accent_bright": "#B8D6FF",
+            "accent_soft": "#1B4FAE",
+            "button_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #4B5566, stop:0.14 #344154, stop:0.56 #202B42, stop:1 #101722)",
+            "button_hover": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #5D74A0, stop:0.20 #395987, stop:0.58 #244675, stop:1 #152846)",
+            "button_pressed": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #102F76, stop:0.22 #1B4FAE, stop:0.70 #245EDB, stop:1 #1B4FAE)",
+            "button_disabled": "#20242B",
+            "button_border": "#5A8AEF",
+            "button_border_top": "#9DBFFF",
+            "button_border_left": "#9DBFFF",
+            "button_border_right": "#153A84",
+            "button_border_bottom": "#0C255C",
+            "button_border_hover": "#B8D6FF",
+            "checkbox_checked_bg": "#45a049",
+            "home_card_border": "#4E89F5",
+            "home_card_hover_border": "#8EBBFF",
+            "status_chip_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #344154, stop:1 #17233A)",
+            "input_bg": "#171A1F",
+            "input_border": "#4E76C4",
+            "input_border_top": "#0E121A",
+            "input_border_left": "#0E121A",
+            "input_border_right": "#6A9CFA",
+            "input_border_bottom": "#6A9CFA",
+            "selection_bg": "#316ac5",
+            "selection_text": "#ffffff",
+            "tab_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #354866, stop:0.16 #223452, stop:0.56 #16223A, stop:1 #101722)",
+            "tab_border": "#254A86",
+            "tab_border_top": "#506B92",
+            "tab_border_left": "#506B92",
+            "tab_border_right": "#0B1324",
+            "tab_border_bottom": "#060A12",
+            "tab_hover_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #4C6FA8, stop:0.20 #315C9D, stop:0.58 #244A86, stop:1 #162B51)",
+            "tab_hover_text": "#FFFFFF",
+            "tab_selected_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #D8E9FF, stop:0.14 #9FC6FF, stop:0.54 #3C7FF0, stop:1 #245EDB)",
+            "tab_selected_border": "#4E89F5",
+            "tab_selected_border_top": "#FFFFFF",
+            "tab_selected_border_left": "#D8E9FF",
+            "tab_selected_border_right": "#1D4FBA",
+            "tab_selected_border_bottom": "#0B2C72",
+            "tab_selected_text": "#001B3A",
+            "home_tab_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #B6FF9A, stop:0.16 #6FD643, stop:0.54 #43B72A, stop:1 #2B8F1B)",
+            "home_tab_hover_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #D2FFBF, stop:0.20 #82E65A, stop:0.58 #4EC83A, stop:1 #2F9A20)",
+            "home_tab_border": "#1F7D18",
+            "home_tab_border_top": "#B6FF9A",
+            "home_tab_border_left": "#B6FF9A",
+            "home_tab_border_right": "#1F7D18",
+            "home_tab_border_bottom": "#1F7D18",
+            "home_tab_text": "#FFFFFF",
+            "home_tab_font_weight": "700",
+            "danger": "#FF8A73",
+            "warning": "#FFCF7A",
+            "success": "#78D98B",
+            "table_bg": "#1B1D21",
+            "table_header_bg": "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #303A4B, stop:0.36 #27334A, stop:1 #1C2740)",
+            "table_grid": "#3B4658",
+            "avatar_bg": "#181A1E",
+            "avatar_border": "#7FB2FF",
+            "avatar_text": "#9FB8E8",
         },
         metrics={
             "font_family": "Tahoma",
@@ -797,11 +905,13 @@ def available_text_sizes():
 
 
 def get_theme(key):
+    key = THEME_KEY_ALIASES.get(key, key)
     return THEMES_BY_KEY.get(key) or THEMES_BY_KEY[DEFAULT_THEME_KEY]
 
 
 def get_current_theme_key():
     key = get_app_setting(THEME_SETTING_KEY, DEFAULT_THEME_KEY)
+    key = THEME_KEY_ALIASES.get(key, key)
     if key not in THEMES_BY_KEY or key not in RELEASE_THEME_KEYS:
         return DEFAULT_THEME_KEY
     return key
@@ -812,6 +922,7 @@ def get_current_theme():
 
 
 def set_current_theme(key):
+    key = THEME_KEY_ALIASES.get(key, key)
     if key not in RELEASE_THEME_KEYS:
         key = DEFAULT_THEME_KEY
     theme = get_theme(key)

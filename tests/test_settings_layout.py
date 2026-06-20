@@ -58,7 +58,7 @@ def assert_no_label_overlaps(widget):
                 )
 
 
-@pytest.mark.parametrize("theme_key", ["sc_intel_dark", "white_mode", "windows_xp", "windows_95"])
+@pytest.mark.parametrize("theme_key", ["sc_intel_dark", "white_mode", "windows_xp", "windows_xp_black", "windows_95"])
 @pytest.mark.parametrize("text_size_key", ["normal", "large", "extra_large"])
 def test_settings_layout_wraps_at_reduced_width(monkeypatch, tmp_path, qapp, theme_key, text_size_key):
     database, _db_path = isolated_database(monkeypatch, tmp_path)

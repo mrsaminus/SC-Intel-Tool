@@ -171,7 +171,8 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
 
 class ThemeAwareTabBar(QTabBar):
     def paintEvent(self, _event):
-        if get_current_theme_key() != "windows_xp":
+        theme_key = get_current_theme_key()
+        if theme_key not in {"windows_xp", "windows_xp_black"}:
             super().paintEvent(_event)
             return
 
@@ -185,7 +186,7 @@ class ThemeAwareTabBar(QTabBar):
             painter.drawControl(QStyle.CE_TabBarTab, option)
 
         self.initStyleOption(option, 0)
-        if self.currentIndex() == 0:
+        if self.currentIndex() == 0 and theme_key != "windows_xp_black":
             painter.drawControl(QStyle.CE_TabBarTab, option)
         else:
             self.draw_xp_start_tab(painter, option)

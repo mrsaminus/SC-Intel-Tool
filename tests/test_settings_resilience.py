@@ -19,6 +19,28 @@ def test_hidden_or_invalid_theme_setting_falls_back_safely(monkeypatch, tmp_path
     assert theme_manager.get_current_theme_key() == theme_manager.DEFAULT_THEME_KEY
 
 
+def test_release_theme_list_includes_xp_black_edition(monkeypatch, tmp_path):
+    isolated_database(monkeypatch, tmp_path)
+    theme_manager = reload_module("app.gui.themes.theme_manager")
+
+    assert [(theme.key, theme.name) for theme in theme_manager.available_themes()] == [
+        ("sc_intel_dark", "SC Intel Dark"),
+        ("white_mode", "White Mode"),
+        ("windows_xp", "Windows XP Luna"),
+        ("windows_xp_black", "Windows XP Black Edition"),
+        ("windows_95", "Windows 95 Classic"),
+    ]
+
+
+def test_xp_luna_dark_saved_setting_migrates_to_black_edition(monkeypatch, tmp_path):
+    database, _db_path = isolated_database(monkeypatch, tmp_path)
+    database.set_app_setting("appearance.theme", "windows_xp_dark")
+    theme_manager = reload_module("app.gui.themes.theme_manager")
+
+    assert theme_manager.get_current_theme_key() == "windows_xp_black"
+    assert theme_manager.get_current_theme().name == "Windows XP Black Edition"
+
+
 def test_missing_text_size_setting_uses_default(monkeypatch, tmp_path):
     isolated_database(monkeypatch, tmp_path)
     theme_manager = reload_module("app.gui.themes.theme_manager")

@@ -11,6 +11,9 @@
 - Renamed the user-facing Event Center tab to Activity Log.
 - Added a Trading module header to match the Mining / Salvage module structure.
 - Improved visual consistency across grouped modules.
+- Added Windows XP Black Edition as a supported release theme.
+- Inspired the new theme by XP Royale Noir / XP Black community themes while
+  preserving the XP green Home/start tab, blue chrome and dark content panels.
 
 ## 0.1.0-alpha.8.8.2 - 2026-06-20
 
