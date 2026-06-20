@@ -1,7 +1,7 @@
-from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QCheckBox,
     QComboBox,
     QFrame,
     QHBoxLayout,
@@ -13,10 +13,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.database import get_app_setting
-from app.sc_trade_tools_client import (
-    SC_TRADE_TOOLS_TOKEN_SETTING,
-    fetch_en_route,
+from app.trading_data import format_trade_age, is_suspicious_margin
+from app.trading_en_route import (
+    build_uex_en_route_opportunities,
+    commodity_display_values,
+    fetch_all_commodity_prices,
+    location_display_values,
 )
 from app.trading_storage import (
     TradingRouteRecord,
@@ -27,48 +29,26 @@ from app.trading_storage import (
 from ..sortable_table_item import ROW_ROLE, SORT_ROLE, SortableTableWidgetItem
 from ..table_utils import configure_readable_table_columns
 from ..workers import BackgroundTaskMixin
-from .reference_data import get_trading_reference_service
 from .route_quality import calculate_route_quality, copy_to_clipboard
-from .route_summary import (
-    describe_route_legs,
-    format_route_summary,
-    is_complete_route_record,
-    notes_from_flags,
-)
+from .route_summary import format_route_summary, is_complete_route_record, notes_from_flags
 from .searchable_combo import configure_searchable_combo, selected_combo_text, set_combo_items
-from .shared import PUBLIC_TOKEN_WORKFLOW_UNAVAILABLE
-from .ship_selection import configure_ship_combo, fill_cargo_from_ship, selected_ship_name, update_ship_combo
-
-
-SC_TRADE_EN_ROUTE_URL = "https://sc-trade.tools/en-route"
+from .ship_selection import configure_ship_combo, fill_cargo_from_ship
 
 
 class EnRouteTab(BackgroundTaskMixin, QWidget):
     def __init__(self, reference_service=None):
         super().__init__()
 
-        self.reference_service = reference_service or get_trading_reference_service()
-        self.route_refresh_running = False
-        self.locations = []
-        self.commodities = []
+        self.reference_service = reference_service
+        self.uex_refresh_running = False
+        self.price_rows = []
         self.routes = []
+        self.last_result = None
 
         self.build_ui()
         self.connect_signals()
-        self.connect_reference_service()
         self.populate_routes_table()
         self.update_details()
-
-    def connect_reference_service(self):
-        self.reference_service.loaded.connect(self.on_reference_loaded)
-        self.reference_service.error.connect(self.on_reference_error)
-        self.reference_service.state_changed.connect(self.on_reference_state_changed)
-        if self.reference_service.data is not None:
-            self.on_reference_loaded(self.reference_service.data)
-        elif self.reference_service.is_loading:
-            self.on_reference_state_changed("loading")
-        else:
-            self.reference_service.ensure_loaded()
 
     def build_ui(self):
         layout = QVBoxLayout()
@@ -79,12 +59,12 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         layout.addWidget(self.create_controls())
         layout.addWidget(self.create_results_table(), 1)
 
-        self.empty_label = QLabel("Load lists, enter a route, then search en-route opportunities.")
+        self.empty_label = QLabel("Refresh UEX Data to load public prices, then choose origin and destination.")
         self.empty_label.setObjectName("emptyState")
         self.empty_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.empty_label)
 
-        self.detail_label = QLabel("Select a route opportunity to see details.")
+        self.detail_label = QLabel("Select an En Route opportunity to see details.")
         self.detail_label.setObjectName("valueText")
         self.detail_label.setWordWrap(True)
         layout.addWidget(self.detail_label)
@@ -112,8 +92,8 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         title = QLabel("En Route")
         title.setObjectName("moduleHeading")
         subtitle = QLabel(
-            "Find SC Trade Tools itinerary opportunities between a start and destination. "
-            "Advanced public integration is not enabled yet."
+            "Point-to-point trade opportunities using public UEX prices. "
+            "Results depend on the latest refreshed market data."
         )
         subtitle.setObjectName("moduleSubtitle")
         subtitle.setWordWrap(True)
@@ -129,16 +109,16 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         layout.setContentsMargins(16, 14, 16, 16)
         layout.setSpacing(10)
 
-        title = QLabel("ROUTE SEARCH")
+        title = QLabel("EN ROUTE LITE")
         title.setObjectName("sectionTitle")
         layout.addWidget(title)
 
         first_row = QHBoxLayout()
         first_row.setSpacing(8)
         self.origin_combo = QComboBox()
-        configure_searchable_combo(self.origin_combo, "Start shop...")
+        configure_searchable_combo(self.origin_combo, "Origin / buy location...")
         self.destination_combo = QComboBox()
-        configure_searchable_combo(self.destination_combo, "Destination shop...")
+        configure_searchable_combo(self.destination_combo, "Destination / sell location...")
         self.commodity_combo = QComboBox()
         configure_searchable_combo(self.commodity_combo, "Commodity optional...")
         first_row.addWidget(self.origin_combo, 1)
@@ -150,30 +130,46 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         second_row.setSpacing(8)
         self.ship_combo = QComboBox()
         configure_ship_combo(self.ship_combo)
-        self.ship_combo.setMaximumWidth(180)
+        self.ship_combo.setMaximumWidth(200)
         self.cargo_input = QLineEdit("1")
         self.cargo_input.setPlaceholderText("Cargo SCU")
-        self.cargo_input.setMaximumWidth(100)
-        self.investment_input = QLineEdit("100000")
-        self.investment_input.setPlaceholderText("Investment aUEC")
-        self.investment_input.setMaximumWidth(140)
-        self.detour_input = QLineEdit("25")
-        self.detour_input.setPlaceholderText("Detour %")
-        self.detour_input.setMaximumWidth(100)
-        self.load_locations_button = QPushButton("Refresh Reference Data")
+        self.cargo_input.setMaximumWidth(110)
+        self.cargo_input.setToolTip("Cargo capacity in SCU. UEX commodity prices are per SCU.")
+        self.investment_input = QLineEdit()
+        self.investment_input.setPlaceholderText("Max aUEC optional")
+        self.investment_input.setMaximumWidth(150)
+        self.investment_input.setToolTip("Optional max investment. Empty or 0 uses full cargo capacity.")
+        self.refresh_button = QPushButton("Refresh UEX Data")
         self.find_routes_button = QPushButton("Find En Route")
-        self.open_source_button = QPushButton("Open Source")
         second_row.addWidget(self.ship_combo)
         second_row.addWidget(self.cargo_input)
         second_row.addWidget(self.investment_input)
-        second_row.addWidget(self.detour_input)
-        second_row.addWidget(self.load_locations_button)
+        second_row.addWidget(self.refresh_button)
         second_row.addWidget(self.find_routes_button)
-        second_row.addWidget(self.open_source_button)
         second_row.addStretch(1)
         layout.addLayout(second_row)
 
-        self.status_label = QLabel("Loading SC Trade Tools reference data...")
+        filters = QHBoxLayout()
+        filters.setContentsMargins(0, 2, 0, 0)
+        filters.setSpacing(10)
+        self.min_total_profit_input = QLineEdit()
+        self.min_total_profit_input.setPlaceholderText("Min Total Profit...")
+        self.min_total_profit_input.setMaximumWidth(150)
+        self.min_profit_input = QLineEdit()
+        self.min_profit_input.setPlaceholderText("Min Profit / SCU...")
+        self.min_profit_input.setMaximumWidth(145)
+        self.show_unprofitable_checkbox = QCheckBox("Show unprofitable")
+        self.hide_suspicious_checkbox = QCheckBox("Hide suspicious margins")
+        filters.addWidget(self.min_total_profit_input)
+        filters.addWidget(self.min_profit_input)
+        filters.addWidget(self.show_unprofitable_checkbox)
+        filters.addWidget(self.hide_suspicious_checkbox)
+        filters.addStretch(1)
+        layout.addLayout(filters)
+
+        self.status_label = QLabel(
+            "Uses UEX prices from the latest refresh. Results depend on public market data availability."
+        )
         self.status_label.setObjectName("moduleSubtitle")
         self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
@@ -182,15 +178,20 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         return card
 
     def create_results_table(self):
-        self.routes_table = QTableWidget(0, 7)
+        self.routes_table = QTableWidget(0, 12)
         self.routes_table.setHorizontalHeaderLabels([
             "Commodity",
-            "Origin",
-            "Destination",
-            "Profit",
-            "Profit / Min",
-            "Time",
+            "Buy Location",
+            "Buy / SCU",
+            "Sell Location",
+            "Sell / SCU",
+            "Profit / SCU",
+            "Cargo SCU",
+            "Investment",
+            "Est. Profit",
+            "Margin %",
             "Quality",
+            "Notes",
         ])
         self.routes_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.routes_table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -201,9 +202,8 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         return self.routes_table
 
     def connect_signals(self):
-        self.load_locations_button.clicked.connect(self.load_locations)
+        self.refresh_button.clicked.connect(self.refresh_uex_data)
         self.find_routes_button.clicked.connect(self.find_routes)
-        self.open_source_button.clicked.connect(self.open_source)
         self.ship_combo.currentTextChanged.connect(self.on_ship_changed)
         self.routes_table.itemSelectionChanged.connect(self.update_details)
         self.copy_summary_button.clicked.connect(self.copy_route_summary)
@@ -212,102 +212,74 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
     def on_ship_changed(self):
         fill_cargo_from_ship(self.ship_combo, self.cargo_input, self.status_label)
 
-    def load_locations(self):
-        self.reference_service.refresh(force=True)
-
-    def on_reference_loaded(self, data):
-        self.locations = list(data.shops)
-        self.commodities = list(data.commodities)
-        self.populate_location_combo(self.origin_combo)
-        self.populate_location_combo(self.destination_combo)
-        set_combo_items(self.commodity_combo, (commodity.name for commodity in self.commodities))
-        update_ship_combo(self.ship_combo, data.ships)
-        self.status_label.setText(
-            f"Loaded {len(self.locations)} commodity shops and {len(self.commodities)} commodities. "
-            "Advanced en-route lookup is disabled in this public build."
-        )
-
-    def populate_location_combo(self, combo):
-        set_combo_items(combo, (location.name for location in self.locations))
-
-    def on_reference_state_changed(self, state):
-        if state == "loading":
-            self.load_locations_button.setEnabled(False)
-            self.load_locations_button.setText("Loading...")
-            self.status_label.setText("Loading SC Trade Tools reference data...")
-        else:
-            self.load_locations_button.setEnabled(True)
-            self.load_locations_button.setText("Refresh Reference Data")
-
-    def on_reference_error(self, exc):
-        self.status_label.setText(f"Reference data failed to load: {exc}")
-
-    def find_routes(self):
-        if self.route_refresh_running:
+    def refresh_uex_data(self):
+        if self.uex_refresh_running:
             return
 
-        token = get_app_setting(SC_TRADE_TOOLS_TOKEN_SETTING, "")
-        if not token.strip():
-            self.status_label.setText(PUBLIC_TOKEN_WORKFLOW_UNAVAILABLE)
-            self.empty_label.setText(PUBLIC_TOKEN_WORKFLOW_UNAVAILABLE)
+        self.uex_refresh_running = True
+        self.refresh_button.setEnabled(False)
+        self.refresh_button.setText("Loading...")
+        self.status_label.setText("Loading public UEX price data...")
+
+        self.start_background_task(
+            fetch_all_commodity_prices,
+            self.on_uex_prices_loaded,
+            self.on_uex_prices_error,
+            self.finish_uex_refresh,
+        )
+
+    def on_uex_prices_loaded(self, prices):
+        self.price_rows = list(prices or [])
+        self.routes = []
+        self.last_result = None
+        set_combo_items(self.origin_combo, location_display_values(self.price_rows))
+        set_combo_items(self.destination_combo, location_display_values(self.price_rows))
+        set_combo_items(self.commodity_combo, commodity_display_values(self.price_rows))
+        self.status_label.setText(
+            f"Loaded {len(self.price_rows)} UEX price rows. Choose origin/destination and click Find En Route."
+        )
+        self.empty_label.setText("UEX data loaded. Choose origin/destination and click Find En Route.")
+        self.populate_routes_table()
+
+    def on_uex_prices_error(self, exc):
+        self.price_rows = []
+        self.routes = []
+        self.last_result = None
+        self.status_label.setText(f"Failed to load UEX price data: {exc}")
+        self.empty_label.setText("UEX price data failed to load. Try refreshing again later.")
+        self.populate_routes_table()
+
+    def finish_uex_refresh(self):
+        self.uex_refresh_running = False
+        self.refresh_button.setEnabled(True)
+        self.refresh_button.setText("Refresh UEX Data")
+
+    def find_routes(self):
+        if not self.price_rows:
+            self.status_label.setText("Refresh UEX Data before finding En Route opportunities.")
+            self.empty_label.setText("Refresh UEX Data to load public market prices.")
             self.routes = []
             self.populate_routes_table()
             return
 
-        origin = selected_combo_text(self.origin_combo, allow_free_text=not self.locations)
-        destination = selected_combo_text(self.destination_combo, allow_free_text=not self.locations)
-        if not origin or not destination:
-            self.status_label.setText("Choose start and destination shops from the searchable dropdowns.")
-            return
-        commodity = selected_combo_text(self.commodity_combo, allow_free_text=False)
-        ship = selected_ship_name(self.ship_combo)
-        if not ship:
-            self.status_label.setText("Choose a ship from the searchable dropdown before searching.")
-            return
-
-        self.route_refresh_running = True
-        self.find_routes_button.setEnabled(False)
-        self.find_routes_button.setText("Searching...")
-        self.status_label.setText("Searching SC Trade Tools itinerary opportunities...")
-
-        self.start_background_task(
-            lambda: fetch_en_route(
-                token=token,
-                origin=origin,
-                destination=destination,
-                commodity_name=commodity,
-                ship=ship,
-                max_volume=self.parse_number(self.cargo_input.text(), default=1),
-                investment=self.parse_number(self.investment_input.text(), default=100000),
-                allowable_detour=self.parse_number(self.detour_input.text(), default=25),
-            ),
-            self.on_routes_loaded,
-            self.on_error,
-            self.finish_route_refresh,
+        result = build_uex_en_route_opportunities(
+            self.price_rows,
+            origin=selected_combo_text(self.origin_combo, allow_free_text=True),
+            destination=selected_combo_text(self.destination_combo, allow_free_text=True),
+            cargo_scu=self.parse_number(self.cargo_input.text(), default=1),
+            max_investment=self.parse_positive_number(self.investment_input.text()),
+            commodity_filter=selected_combo_text(self.commodity_combo, allow_free_text=True),
+            min_total_profit=self.parse_number(self.min_total_profit_input.text()),
+            min_profit_per_scu=self.parse_number(self.min_profit_input.text()),
+            include_unprofitable=self.show_unprofitable_checkbox.isChecked(),
+            hide_suspicious=self.hide_suspicious_checkbox.isChecked(),
         )
-
-    def on_routes_loaded(self, routes):
-        self.routes = sorted(
-            routes,
-            key=lambda route: route.profit if route.profit is not None else -1,
-            reverse=True,
+        self.last_result = result
+        self.routes = result.routes
+        self.status_label.setText(
+            f"{result.message} Matched {result.buy_row_count} buy rows and {result.sell_row_count} sell rows."
         )
-        self.status_label.setText(f"Loaded {len(self.routes)} en-route opportunities from SC Trade Tools.")
-        if not self.routes:
-            self.empty_label.setText("No en-route opportunities were returned for the selected route.")
-        self.populate_routes_table()
-
-    def finish_route_refresh(self):
-        self.route_refresh_running = False
-        self.find_routes_button.setEnabled(True)
-        self.find_routes_button.setText("Find En Route")
-
-    def on_error(self, exc):
-        self.status_label.setText(f"SC Trade Tools request failed: {exc}")
-        self.empty_label.setText(
-            "SC Trade Tools en-route lookup failed. This advanced workflow is currently unavailable in the public build."
-        )
-        self.routes = []
+        self.empty_label.setText(result.message)
         self.populate_routes_table()
 
     def populate_routes_table(self):
@@ -317,32 +289,43 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
 
         for row_index, route in enumerate(self.routes):
             quality = self.route_quality(route)
+            notes = self.route_notes(route, quality)
             values = [
                 route.commodity,
-                route.origin,
-                route.destination,
-                self.format_auec(route.profit),
-                self.format_auec(route.profit_per_minute),
-                self.format_seconds(route.time_seconds),
+                route.buy_location,
+                self.format_auec(route.buy_price),
+                route.sell_location,
+                self.format_auec(route.sell_price),
+                self.format_auec(route.profit_per_scu),
+                self.format_scu(route.cargo_scu),
+                self.format_auec(route.buy_cost),
+                self.format_auec(route.total_profit),
+                self.format_percent(route.margin_percent),
                 quality.label,
+                notes,
             ]
             sort_values = [
                 route.commodity,
-                route.origin,
-                route.destination,
-                route.profit,
-                route.profit_per_minute,
-                route.time_seconds,
+                route.buy_location,
+                route.buy_price,
+                route.sell_location,
+                route.sell_price,
+                route.profit_per_scu,
+                route.cargo_scu,
+                route.buy_cost,
+                route.total_profit,
+                route.margin_percent,
                 quality.sort_value,
+                notes,
             ]
             for col_index, value in enumerate(values):
                 item = SortableTableWidgetItem(str(value))
                 item.setData(SORT_ROLE, sort_values[col_index])
                 item.setData(ROW_ROLE, row_index)
-                if quality.flags and col_index == 6:
-                    item.setToolTip(" | ".join(quality.flags))
-                if col_index in (3, 4, 5):
+                if col_index in (2, 4, 5, 6, 7, 8, 9):
                     item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                if notes and col_index in (10, 11):
+                    item.setToolTip(notes)
                 self.routes_table.setItem(row_index, col_index, item)
 
         self.routes_table.setSortingEnabled(sorting_enabled)
@@ -353,45 +336,19 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
     def update_details(self):
         route = self.selected_route()
         if not route:
-            self.detail_label.setText(PUBLIC_TOKEN_WORKFLOW_UNAVAILABLE)
+            self.detail_label.setText("Refresh UEX Data, choose origin/destination, then click Find En Route.")
             self.copy_summary_button.setEnabled(False)
             self.save_route_button.setEnabled(False)
             return
 
-        record = self.route_record_for_route(route)
-        if is_complete_route_record(record):
-            self.detail_label.setText(format_route_summary(record))
-        else:
-            self.detail_label.setText(self.build_route_summary(route))
+        self.detail_label.setText(format_route_summary(self.route_record_for_route(route)))
         self.copy_summary_button.setEnabled(True)
-        self.save_route_button.setEnabled(is_complete_route_record(record))
-
-    def build_route_summary(self, route):
-        record = self.route_record_for_route(route)
-        if is_complete_route_record(record):
-            return format_route_summary(record)
-
-        quality = self.route_quality(route)
-        notes = list(quality.flags)
-        if not notes:
-            notes.append("SC Trade Tools itinerary data does not include buy/sell price details.")
-
-        return (
-            f"Commodity: {route.commodity}\n"
-            f"Buy from: {route.origin}\n"
-            f"Sell to: {route.destination}\n"
-            f"Profit: {self.format_auec(route.profit)}\n"
-            f"Profit / minute: {self.format_auec(route.profit_per_minute)}\n"
-            f"Estimated time: {self.format_seconds(route.time_seconds)}\n"
-            f"Quality: {quality.label}\n"
-            "Source: SC Trade Tools\n"
-            f"Notes: {', '.join(notes)}"
-        )
+        self.save_route_button.setEnabled(True)
 
     def route_record_for_route(self, route):
         quality = self.route_quality(route)
         return TradingRouteRecord(
-            source="SC Trade Tools",
+            source=route.source,
             commodity=route.commodity,
             buy_location=route.buy_location,
             sell_location=route.sell_location,
@@ -402,7 +359,7 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
             buy_cost=route.buy_cost,
             total_profit=route.total_profit,
             quality=quality.label,
-            notes=notes_from_flags(quality.flags, (describe_route_legs(route.raw),)),
+            notes=notes_from_flags(quality.flags, (*route.notes, f"Updated: {format_trade_age(route.date_modified)}")),
         )
 
     def copy_route_summary(self):
@@ -411,12 +368,12 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
             return
 
         record = self.route_record_for_route(route)
-        copy_to_clipboard(self.build_route_summary(route))
+        copy_to_clipboard(format_route_summary(record))
         if is_complete_route_record(record):
             add_recent_trading_route(record)
             self.status_label.setText("Route summary copied and added to recent routes.")
         else:
-            self.status_label.setText("Route summary copied to clipboard. Route is incomplete, so it was not saved.")
+            self.status_label.setText("Route summary copied to clipboard.")
 
     def save_selected_route(self):
         route = self.selected_route()
@@ -433,11 +390,21 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         self.status_label.setText("Route saved locally.")
 
     def route_quality(self, route):
+        investment_limited = "Budget limited" in route.notes
         return calculate_route_quality(
-            total_profit=route.profit,
-            profit_per_minute=route.profit_per_minute,
-            suspicious=False,
+            total_profit=route.total_profit,
+            profit_per_scu=route.profit_per_scu,
+            full_cargo=not investment_limited,
+            affordable=not investment_limited,
+            suspicious=is_suspicious_margin(route),
         )
+
+    def route_notes(self, route, quality):
+        notes = []
+        for note in (*quality.flags, *route.notes):
+            if note and note not in notes:
+                notes.append(note)
+        return ", ".join(notes) if notes else "UEX"
 
     def selected_route(self):
         row = self.routes_table.currentRow()
@@ -463,10 +430,26 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         except ValueError:
             return default
 
+    def parse_positive_number(self, value):
+        parsed = self.parse_number(value)
+        if parsed is None or parsed <= 0:
+            return None
+        return parsed
+
     def format_auec(self, value):
         if value is None:
             return "N/A"
         return f"{self.format_number(value)} aUEC"
+
+    def format_scu(self, value):
+        if value is None:
+            return "N/A"
+        return f"{self.format_number(value)} SCU"
+
+    def format_percent(self, value):
+        if value is None:
+            return "N/A"
+        return f"{self.format_number(value)}%"
 
     def format_number(self, value):
         if value is None:
@@ -478,19 +461,3 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         if number.is_integer():
             return f"{int(number):,}"
         return f"{number:,.2f}".rstrip("0").rstrip(".")
-
-    def format_seconds(self, value):
-        if value is None:
-            return "N/A"
-        total = int(value)
-        hours = total // 3600
-        minutes = (total % 3600) // 60
-        seconds = total % 60
-        if hours:
-            return f"{hours}h {minutes}m {seconds}s"
-        if minutes:
-            return f"{minutes}m {seconds}s"
-        return f"{seconds}s"
-
-    def open_source(self):
-        QDesktopServices.openUrl(QUrl(SC_TRADE_EN_ROUTE_URL))

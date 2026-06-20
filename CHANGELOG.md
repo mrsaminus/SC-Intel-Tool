@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- No unreleased changes.
+- En Route now works in public builds using UEX prices from the latest refresh.
+- Removed the SC Trade Tools token dependency from the public En Route workflow.
 
 ## 0.1.0-alpha.8.8.1 - 2026-06-19
 
