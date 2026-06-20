@@ -485,6 +485,7 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
 
     def add_fact(self, layout, row, label, value):
         container = QWidget()
+        container.setObjectName("transparentPanel")
         container.setMinimumWidth(0)
         container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         container_layout = QVBoxLayout()
