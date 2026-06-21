@@ -65,6 +65,8 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         self.history_sort_column = None
         self.history_sort_order = Qt.AscendingOrder
         self.history_lookup_request_id = 0
+        self._initial_load_started = False
+        self._initial_load_done = False
         self.history_filter_timer = QTimer(self)
         self.history_filter_timer.setSingleShot(True)
         self.history_filter_timer.setInterval(180)
@@ -72,6 +74,10 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
 
         self.build_ui()
         self.reset_detail_panel()
+
+    def ensure_initial_load(self):
+        if self._initial_load_done:
+            return
         self.refresh_history()
 
     def build_ui(self):
@@ -422,6 +428,7 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         self.detail_layout.addWidget(card)
 
     def refresh_history(self, selected_handle=None):
+        self._initial_load_started = True
         if selected_handle is None:
             selected = self.selected_history_row()
             if selected:
@@ -429,6 +436,7 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
 
         self.history_rows = get_lookup_history()
         self.apply_history_filters(selected_handle=selected_handle)
+        self._initial_load_done = True
 
     def apply_history_filters(self, selected_handle=None):
         if selected_handle is None:

@@ -39,6 +39,8 @@ class WatchlistsTab(BackgroundTaskMixin, QWidget):
 
         self.refresh_running = False
         self.panels = []
+        self._initial_load_started = False
+        self._initial_load_done = False
 
         layout = QVBoxLayout()
         layout.setContentsMargins(12, 12, 12, 12)
@@ -78,6 +80,14 @@ class WatchlistsTab(BackgroundTaskMixin, QWidget):
         layout.addWidget(self.tabs, 1)
 
         self.setLayout(layout)
+        self.overview_counts_label.setText("Watchlists will load when opened.")
+        self.overview_categories_label.setText("Categories: not loaded yet.")
+        for panel in self.panels:
+            panel.populate_table()
+
+    def ensure_initial_load(self):
+        if self._initial_load_done:
+            return
         self.reload_all()
 
     def create_header(self):
@@ -161,9 +171,11 @@ class WatchlistsTab(BackgroundTaskMixin, QWidget):
         return widget
 
     def reload_all(self):
+        self._initial_load_started = True
         self.refresh_overview()
         for panel in self.panels:
             panel.reload_entries()
+        self._initial_load_done = True
 
     def refresh_overview(self):
         counts = overview_counts()

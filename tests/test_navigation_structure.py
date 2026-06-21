@@ -43,7 +43,7 @@ def fake_reference_data(reference_module):
     )
 
 
-def build_window(monkeypatch, tmp_path, deferred_calls=None):
+def build_window(monkeypatch, tmp_path, deferred_calls=None, local_deferred_calls=None):
     isolated_database(monkeypatch, tmp_path)
 
     reference_module = reload_module("app.gui.trading.reference_data")
@@ -68,6 +68,45 @@ def build_window(monkeypatch, tmp_path, deferred_calls=None):
             deferred_calls.append(("wikelo", silent))
 
         monkeypatch.setattr(wikelo_module.WikeloItemsTab, "refresh_wikelo_items", record_wikelo_refresh)
+
+    if local_deferred_calls is not None:
+        history_module = reload_module("app.gui.search_history_tab")
+
+        def record_history_refresh(self, selected_handle=None):
+            self._initial_load_started = True
+            self._initial_load_done = True
+            local_deferred_calls.append("search_history")
+
+        monkeypatch.setattr(history_module.SearchHistoryTab, "refresh_history", record_history_refresh)
+
+        watchlists_module = reload_module("app.gui.watchlists_tab")
+
+        def record_watchlists_reload(self):
+            self._initial_load_started = True
+            self._initial_load_done = True
+            local_deferred_calls.append("watchlists")
+
+        monkeypatch.setattr(watchlists_module.WatchlistsTab, "reload_all", record_watchlists_reload)
+
+        event_center_module = reload_module("app.gui.event_center_tab")
+
+        def record_activity_log_refresh(self):
+            self._initial_load_started = True
+            self._initial_load_done = True
+            local_deferred_calls.append("activity_log")
+
+        monkeypatch.setattr(event_center_module.EventCenterTab, "refresh_events", record_activity_log_refresh)
+
+        mining_module = reload_module("app.gui.mining.mining_tab")
+        mining_wrapper_module = reload_module("app.gui.mining_tab")
+
+        def record_mining_population(self):
+            self._initial_load_started = True
+            self._initial_load_done = True
+            local_deferred_calls.append("mining")
+
+        monkeypatch.setattr(mining_module.MiningTab, "populate_mining_tables", record_mining_population)
+        monkeypatch.setattr(mining_wrapper_module.MiningTab, "populate_mining_tables", record_mining_population)
 
     main_window_module = reload_module("app.gui.main_window")
     monkeypatch.setattr(main_window_module, "fetch_update_info", fake_update_info)
@@ -153,5 +192,52 @@ def test_deferred_online_loads_run_on_first_module_show(monkeypatch, tmp_path, q
     window.open_tab("Wikelo Items")
     qapp.processEvents()
     assert calls == ["trading_reference", ("wikelo", True)]
+
+    window.close()
+
+
+def test_deferred_local_loads_run_once_on_first_module_show(monkeypatch, tmp_path, qapp):
+    calls = []
+    window = build_window(monkeypatch, tmp_path, local_deferred_calls=calls)
+    window.show()
+    qapp.processEvents()
+
+    assert calls == []
+
+    window.home_tab.open_target_tab("Search History")
+    qapp.processEvents()
+    assert calls == ["search_history"]
+
+    window.open_tab("Home")
+    window.home_tab.open_target_tab("Search History")
+    qapp.processEvents()
+    assert calls == ["search_history"]
+
+    window.open_tab("Watchlists")
+    qapp.processEvents()
+    assert calls == ["search_history", "watchlists"]
+
+    window.open_tab("Home")
+    window.open_tab("Watchlists")
+    qapp.processEvents()
+    assert calls == ["search_history", "watchlists"]
+
+    window.home_tab.open_target_tab("Mining / Salvage")
+    qapp.processEvents()
+    assert calls == ["search_history", "watchlists", "mining"]
+
+    window.open_tab("Home")
+    window.home_tab.open_target_tab("Mining / Salvage")
+    qapp.processEvents()
+    assert calls == ["search_history", "watchlists", "mining"]
+
+    window.open_tab("Activity Log")
+    qapp.processEvents()
+    assert calls == ["search_history", "watchlists", "mining", "activity_log"]
+
+    window.open_tab("Home")
+    window.open_tab("Activity Log")
+    qapp.processEvents()
+    assert calls == ["search_history", "watchlists", "mining", "activity_log"]
 
     window.close()

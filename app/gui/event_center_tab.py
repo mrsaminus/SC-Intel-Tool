@@ -34,12 +34,19 @@ class EventCenterTab(QWidget):
 
         self.events = []
         self.visible_events = []
+        self._initial_load_started = False
+        self._initial_load_done = False
         self.filter_timer = QTimer(self)
         self.filter_timer.setSingleShot(True)
         self.filter_timer.setInterval(160)
         self.filter_timer.timeout.connect(self.refresh_events)
 
         self.build_ui()
+        self.status_label.setText("Activity Log will load when opened.")
+
+    def ensure_initial_load(self):
+        if self._initial_load_done:
+            return
         self.refresh_events()
 
     def build_ui(self):
@@ -208,6 +215,7 @@ class EventCenterTab(QWidget):
         self.filter_timer.start()
 
     def refresh_events(self):
+        self._initial_load_started = True
         query = self.search_input.text().strip()
         category = self.category_filter.currentText()
         severity = self.severity_filter.currentText()
@@ -221,6 +229,7 @@ class EventCenterTab(QWidget):
         self.visible_events = self.events
         self.populate_table()
         self.update_status()
+        self._initial_load_done = True
 
     def populate_table(self):
         sorting_enabled = self.events_table.isSortingEnabled()
@@ -349,4 +358,4 @@ class EventCenterTab(QWidget):
 
     def showEvent(self, event):
         super().showEvent(event)
-        self.refresh_events()
+        self.ensure_initial_load()

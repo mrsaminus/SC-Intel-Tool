@@ -9,6 +9,8 @@
   heavier local workflows.
 - Deferred nonessential startup auto-work so Trading reference data and Wikelo
   spreadsheet refreshes start on first use instead of during app launch.
+- Deferred local-heavy startup population for Search History, Watchlists,
+  Activity Log and Mining / Salvage tables until first visible use.
 
 ## 0.1.0-alpha.8.8.3 - 2026-06-21
 

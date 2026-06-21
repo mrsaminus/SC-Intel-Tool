@@ -150,6 +150,7 @@ class MiningOverviewMixin:
 
 
     def populate_mining_tables(self):
+        self._initial_load_started = True
         self.populate_overview_summary()
         self.populate_ore_results()
         self.populate_location_results()
@@ -159,6 +160,7 @@ class MiningOverviewMixin:
         self.populate_refinery_table()
         self.populate_rock_breaker_results()
         self.populate_equipment_results()
+        self._initial_load_done = True
 
 
     def populate_overview_summary(self):

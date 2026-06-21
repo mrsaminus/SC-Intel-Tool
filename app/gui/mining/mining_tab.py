@@ -56,6 +56,8 @@ class MiningTab(
         self.equipment_filter_timer = self.create_debounce_timer(self.populate_equipment_results)
         self.rock_filter_timer = self.create_debounce_timer(self.populate_rock_breaker_results)
         self.ore_results_columns_sized = False
+        self._initial_load_started = False
+        self._initial_load_done = False
 
         layout = QVBoxLayout()
         layout.setContentsMargins(12, 12, 12, 12)
@@ -80,8 +82,12 @@ class MiningTab(
 
         self.setLayout(layout)
         self.connect_signals()
-        self.populate_mining_tables()
+        self.mining_status_label.setText("Mining reference tables will populate when opened.")
 
+    def ensure_initial_load(self):
+        if self._initial_load_done:
+            return
+        self.populate_mining_tables()
 
     def connect_signals(self):
         self.ore_search_input.textChanged.connect(self.schedule_ore_results_refresh)
