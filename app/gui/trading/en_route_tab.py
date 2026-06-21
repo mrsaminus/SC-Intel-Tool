@@ -41,6 +41,8 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
 
         self.reference_service = reference_service
         self.uex_refresh_running = False
+        self.route_calculation_running = False
+        self.route_request_id = 0
         self.price_rows = []
         self.routes = []
         self.last_result = None
@@ -255,6 +257,9 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         self.refresh_button.setText("Refresh UEX Data")
 
     def find_routes(self):
+        if self.route_calculation_running:
+            self.status_label.setText("En Route calculation already running.")
+            return
         if not self.price_rows:
             self.status_label.setText("Refresh UEX Data before finding En Route opportunities.")
             self.empty_label.setText("Refresh UEX Data to load public market prices.")
@@ -262,18 +267,39 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
             self.populate_routes_table()
             return
 
-        result = build_uex_en_route_opportunities(
-            self.price_rows,
-            origin=selected_combo_text(self.origin_combo, allow_free_text=True),
-            destination=selected_combo_text(self.destination_combo, allow_free_text=True),
-            cargo_scu=self.parse_number(self.cargo_input.text(), default=1),
-            max_investment=self.parse_positive_number(self.investment_input.text()),
-            commodity_filter=selected_combo_text(self.commodity_combo, allow_free_text=True),
-            min_total_profit=self.parse_number(self.min_total_profit_input.text()),
-            min_profit_per_scu=self.parse_number(self.min_profit_input.text()),
-            include_unprofitable=self.show_unprofitable_checkbox.isChecked(),
-            hide_suspicious=self.hide_suspicious_checkbox.isChecked(),
+        self.route_request_id += 1
+        request_id = self.route_request_id
+        price_rows = tuple(self.price_rows)
+        filters = {
+            "origin": selected_combo_text(self.origin_combo, allow_free_text=True),
+            "destination": selected_combo_text(self.destination_combo, allow_free_text=True),
+            "cargo_scu": self.parse_number(self.cargo_input.text(), default=1),
+            "max_investment": self.parse_positive_number(self.investment_input.text()),
+            "commodity_filter": selected_combo_text(self.commodity_combo, allow_free_text=True),
+            "min_total_profit": self.parse_number(self.min_total_profit_input.text()),
+            "min_profit_per_scu": self.parse_number(self.min_profit_input.text()),
+            "include_unprofitable": self.show_unprofitable_checkbox.isChecked(),
+            "hide_suspicious": self.hide_suspicious_checkbox.isChecked(),
+        }
+
+        self.route_calculation_running = True
+        self.find_routes_button.setEnabled(False)
+        self.find_routes_button.setText("Finding...")
+        self.refresh_button.setEnabled(False)
+        self.status_label.setText("Finding En Route opportunities from refreshed UEX prices...")
+        self.empty_label.setText("Finding En Route opportunities...")
+        self.empty_label.setVisible(True)
+
+        self.start_background_task(
+            lambda: build_uex_en_route_opportunities(price_rows, **filters),
+            lambda result, current_request=request_id: self.on_routes_calculated(current_request, result),
+            lambda exc, current_request=request_id: self.on_route_calculation_error(current_request, exc),
+            lambda current_request=request_id: self.finish_route_calculation(current_request),
         )
+
+    def on_routes_calculated(self, request_id, result):
+        if request_id != self.route_request_id:
+            return
         self.last_result = result
         self.routes = result.routes
         self.status_label.setText(
@@ -281,6 +307,23 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         )
         self.empty_label.setText(result.message)
         self.populate_routes_table()
+
+    def on_route_calculation_error(self, request_id, exc):
+        if request_id != self.route_request_id:
+            return
+        self.last_result = None
+        self.routes = []
+        self.status_label.setText(f"En Route calculation failed: {exc}")
+        self.empty_label.setText("En Route calculation failed. Adjust filters or refresh UEX data.")
+        self.populate_routes_table()
+
+    def finish_route_calculation(self, request_id):
+        if request_id != self.route_request_id:
+            return
+        self.route_calculation_running = False
+        self.find_routes_button.setEnabled(True)
+        self.find_routes_button.setText("Find En Route")
+        self.refresh_button.setEnabled(not self.uex_refresh_running)
 
     def populate_routes_table(self):
         sorting_enabled = self.routes_table.isSortingEnabled()

@@ -73,6 +73,55 @@ def capture_region_image(region):
     return ImageGrab.grab(bbox=(x, y, x + width, y + height))
 
 
+def scan_region_for_blueprint_text(region, blueprints, capture_function=None, ocr_function=None):
+    blueprints = tuple(blueprints or ())
+    capture_function = capture_function or capture_region_image
+    try:
+        image = capture_function(region)
+    except Exception as exc:
+        return {
+            "status": "capture_error",
+            "message": str(exc),
+            "text": "",
+            "matches": [],
+            "blueprint_count": len(blueprints),
+        }
+
+    if ocr_function is None:
+        try:
+            import pytesseract
+        except ImportError:
+            return {
+                "status": "missing_ocr",
+                "message": "",
+                "text": "",
+                "matches": [],
+                "blueprint_count": len(blueprints),
+            }
+        ocr_function = pytesseract.image_to_string
+
+    try:
+        text = ocr_function(image)
+    except Exception as exc:
+        return {
+            "status": "ocr_error",
+            "message": str(exc),
+            "text": "",
+            "matches": [],
+            "blueprint_count": len(blueprints),
+        }
+
+    text = str(text or "")
+    matches = match_blueprint_text(text, blueprints) if text.strip() and blueprints else []
+    return {
+        "status": "ok",
+        "message": "",
+        "text": text,
+        "matches": matches,
+        "blueprint_count": len(blueprints),
+    }
+
+
 def pixmap_from_image(image):
     from PIL.ImageQt import ImageQt
 

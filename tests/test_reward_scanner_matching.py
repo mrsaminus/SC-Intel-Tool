@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from app.gui.bp_overview.reward_scanner_matching import (
     match_blueprint_text,
     normalize_match_text,
+    scan_region_for_blueprint_text,
     token_overlap_score,
 )
 
@@ -54,3 +55,57 @@ def test_reward_scanner_limits_and_orders_ambiguous_matches():
         "Field Recon Arms",
         "Field Recon Core",
     ]
+
+
+def test_scan_region_for_blueprint_text_uses_injected_capture_and_ocr():
+    blueprints = [BlueprintStub("field-recon-helmet", "Field Recon Helmet")]
+    captured_regions = []
+
+    def capture(region):
+        captured_regions.append(region)
+        return object()
+
+    result = scan_region_for_blueprint_text(
+        (10, 20, 300, 120),
+        blueprints,
+        capture_function=capture,
+        ocr_function=lambda image: "Reward: Field Recon Helmet",
+    )
+
+    assert captured_regions == [(10, 20, 300, 120)]
+    assert result["status"] == "ok"
+    assert result["blueprint_count"] == 1
+    assert result["text"] == "Reward: Field Recon Helmet"
+    assert result["matches"][0]["blueprint"].key == "field-recon-helmet"
+
+
+def test_scan_region_for_blueprint_text_reports_capture_error():
+    def capture(region):
+        raise RuntimeError("screen unavailable")
+
+    result = scan_region_for_blueprint_text(
+        (10, 20, 300, 120),
+        [BlueprintStub("field-recon-helmet", "Field Recon Helmet")],
+        capture_function=capture,
+        ocr_function=lambda image: "unused",
+    )
+
+    assert result["status"] == "capture_error"
+    assert "screen unavailable" in result["message"]
+    assert result["matches"] == []
+
+
+def test_scan_region_for_blueprint_text_reports_ocr_error():
+    def ocr(image):
+        raise RuntimeError("ocr unavailable")
+
+    result = scan_region_for_blueprint_text(
+        (10, 20, 300, 120),
+        [BlueprintStub("field-recon-helmet", "Field Recon Helmet")],
+        capture_function=lambda region: object(),
+        ocr_function=ocr,
+    )
+
+    assert result["status"] == "ocr_error"
+    assert "ocr unavailable" in result["message"]
+    assert result["matches"] == []

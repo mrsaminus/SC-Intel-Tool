@@ -26,6 +26,7 @@ from .reward_scanner_matching import (
     capture_region_image,
     match_blueprint_text,
     pixmap_from_image,
+    scan_region_for_blueprint_text,
 )
 from .reward_scanner_overlay import RegionSelectionOverlay
 from .shared import ROW_ROLE, create_card, create_table, table_item
@@ -42,6 +43,8 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         self.selected_match = None
         self.ownership_changed_callback = ownership_changed_callback
         self.scan_running = False
+        self.scan_once_running = False
+        self.scan_once_request_id = 0
         self.region_overlay = None
 
         layout = QVBoxLayout()
@@ -195,6 +198,9 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
                 "Enable the scanner manually before scanning. It remains off by default.",
             )
             return
+        if self.scan_once_running:
+            self.status_label.setText("Scan already running. Wait for the current scan to finish.")
+            return
         region = self.region()
         if not region:
             QMessageBox.warning(self, "Region Required", "Enter X, Y, Width and Height before Scan Once.")
@@ -202,28 +208,58 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         if self.remember_region_checkbox.isChecked():
             self.save_region()
 
-        try:
-            image = capture_region_image(region)
-        except Exception as exc:
-            self.status_label.setText(f"Region capture failed locally: {exc}")
+        self.scan_once_running = True
+        self.scan_once_request_id += 1
+        request_id = self.scan_once_request_id
+        blueprints = tuple(self.blueprints)
+        self.scan_once_button.setEnabled(False)
+        self.scan_once_button.setText("Scanning...")
+        self.status_label.setText("Capturing selected region and running local OCR...")
+
+        self.start_background_task(
+            lambda: scan_region_for_blueprint_text(region, blueprints),
+            lambda result, current_request=request_id: self.on_scan_once_result(current_request, result),
+            lambda exc, current_request=request_id: self.on_scan_once_error(current_request, exc),
+            lambda current_request=request_id: self.finish_scan_once(current_request),
+        )
+
+    def on_scan_once_result(self, request_id, result):
+        if request_id != self.scan_once_request_id:
             return
 
-        try:
-            import pytesseract
-        except ImportError:
+        status = result.get("status")
+        if status == "capture_error":
+            self.status_label.setText(f"Region capture failed locally: {result.get('message', '')}")
+            return
+        if status == "missing_ocr":
             self.status_label.setText(
                 "Region captured once. No local OCR engine is available in this build; paste OCR text manually and click Parse Text."
             )
             return
-
-        try:
-            text = pytesseract.image_to_string(image)
-        except Exception as exc:
-            self.status_label.setText(f"Scan failed locally: {exc}")
+        if status == "ocr_error":
+            self.status_label.setText(f"Scan failed locally: {result.get('message', '')}")
             return
 
+        text = result.get("text", "")
         self.ocr_text.setPlainText(text)
-        self.parse_text()
+        if not result.get("blueprint_count"):
+            self.status_label.setText("Load blueprint names before parsing reward text.")
+            self.populate_matches([])
+            self.update_match_state(None)
+            return
+        self.apply_matches(text, result.get("matches", []))
+
+    def on_scan_once_error(self, request_id, exc):
+        if request_id != self.scan_once_request_id:
+            return
+        self.status_label.setText(f"Scan failed locally: {exc}")
+
+    def finish_scan_once(self, request_id):
+        if request_id != self.scan_once_request_id:
+            return
+        self.scan_once_running = False
+        self.scan_once_button.setEnabled(True)
+        self.scan_once_button.setText("Scan Once")
 
     def parse_text(self):
         text = self.ocr_text.toPlainText().strip()
@@ -238,6 +274,14 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
             self.update_match_state(None)
             return
         matches = match_blueprint_text(text, self.blueprints)
+        self.apply_matches(text, matches)
+
+    def apply_matches(self, text, matches):
+        if not str(text or "").strip():
+            self.status_label.setText("No OCR text to parse.")
+            self.populate_matches([])
+            self.update_match_state(None)
+            return
         self.populate_matches(matches)
         self.update_match_state(matches[0] if matches else None)
         if matches:

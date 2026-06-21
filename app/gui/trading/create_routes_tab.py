@@ -56,6 +56,9 @@ class CreateRoutesTab(BackgroundTaskMixin, QWidget):
         super().__init__()
         self.reference_service = reference_service or get_trading_reference_service()
         self.refresh_running = False
+        self.route_generation_running = False
+        self.route_generation_request_id = 0
+        self.pending_route_generation = False
         self.all_opportunities = []
         self.visible_results = []
         self.price_row_count = 0
@@ -65,6 +68,11 @@ class CreateRoutesTab(BackgroundTaskMixin, QWidget):
         self.settings_save_timer.setSingleShot(True)
         self.settings_save_timer.setInterval(350)
         self.settings_save_timer.timeout.connect(self.save_current_settings)
+
+        self.route_generation_timer = QTimer(self)
+        self.route_generation_timer.setSingleShot(True)
+        self.route_generation_timer.setInterval(120)
+        self.route_generation_timer.timeout.connect(self.request_route_generation)
 
         self.build_ui()
         self.connect_signals()
@@ -344,10 +352,10 @@ class CreateRoutesTab(BackgroundTaskMixin, QWidget):
             return
         self.settings_save_timer.start()
         if self.all_opportunities:
-            self.populate_routes()
+            self.route_generation_timer.start()
 
     def generate_routes(self):
-        if self.refresh_running:
+        if self.refresh_running or self.route_generation_running:
             return
 
         self.save_current_settings()
@@ -369,11 +377,13 @@ class CreateRoutesTab(BackgroundTaskMixin, QWidget):
         opportunities, price_row_count = result
         self.all_opportunities = opportunities
         self.price_row_count = price_row_count
-        self.populate_routes()
+        self.request_route_generation()
 
     def on_trading_data_error(self, exc):
         self.all_opportunities = []
         self.visible_results = []
+        self.pending_route_generation = False
+        self.route_generation_request_id += 1
         self.routes_table.setRowCount(0)
         self.empty_label.setText("UEX trading data failed to load. Try again later.")
         self.empty_label.setVisible(True)
@@ -383,12 +393,76 @@ class CreateRoutesTab(BackgroundTaskMixin, QWidget):
 
     def finish_refresh(self):
         self.refresh_running = False
-        self.generate_button.setEnabled(True)
-        self.generate_button.setText("Generate Routes")
+        if not self.route_generation_running:
+            self.generate_button.setEnabled(True)
+            self.generate_button.setText("Generate Routes")
 
     def populate_routes(self):
+        self.request_route_generation()
+
+    def request_route_generation(self):
+        if not self.all_opportunities:
+            self.visible_results = []
+            self.render_routes_table()
+            return
+        if self.route_generation_running:
+            self.pending_route_generation = True
+            return
+
+        self.start_route_generation()
+
+    def start_route_generation(self):
+        if not self.all_opportunities:
+            return
         settings = self.current_settings()
-        self.visible_results = generate_create_routes(self.all_opportunities, settings)
+        opportunities = tuple(self.all_opportunities)
+        self.route_generation_running = True
+        self.pending_route_generation = False
+        self.route_generation_request_id += 1
+        request_id = self.route_generation_request_id
+        self.generate_button.setEnabled(False)
+        self.generate_button.setText("Calculating...")
+        self.status_label.setText("Calculating route suggestions from loaded UEX data...")
+        self.empty_label.setText("Calculating route suggestions...")
+        self.empty_label.setVisible(True)
+
+        self.start_background_task(
+            lambda: generate_create_routes(opportunities, settings),
+            lambda results, current_request=request_id: self.on_routes_generated(current_request, results),
+            lambda exc, current_request=request_id: self.on_route_generation_error(current_request, exc),
+            lambda current_request=request_id: self.finish_route_generation(current_request),
+        )
+
+    def on_routes_generated(self, request_id, results):
+        if request_id != self.route_generation_request_id:
+            return
+        self.visible_results = list(results or [])
+        self.render_routes_table()
+
+    def on_route_generation_error(self, request_id, exc):
+        if request_id != self.route_generation_request_id:
+            return
+        self.visible_results = []
+        self.routes_table.setRowCount(0)
+        self.empty_label.setText("Route generation failed. Adjust filters or reload UEX data.")
+        self.empty_label.setVisible(True)
+        self.detail_label.setText("Route generation failed before results could be built.")
+        self.status_label.setText(f"Route generation failed: {exc}")
+        self.set_route_buttons_enabled(False)
+
+    def finish_route_generation(self, request_id):
+        if request_id != self.route_generation_request_id:
+            return
+        self.route_generation_running = False
+        if self.pending_route_generation:
+            self.pending_route_generation = False
+            self.start_route_generation()
+            return
+        if not self.refresh_running:
+            self.generate_button.setEnabled(True)
+            self.generate_button.setText("Generate Routes")
+
+    def render_routes_table(self):
 
         sorting_enabled = self.routes_table.isSortingEnabled()
         self.routes_table.setSortingEnabled(False)
