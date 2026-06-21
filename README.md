@@ -131,7 +131,7 @@ Release checklist:
 3. Run compile/test validation locally:
    `.\.venv\Scripts\python.exe -m compileall main.py app` and
    `.\.venv\Scripts\python.exe -m pytest`.
-4. Run `.\scripts\build_windows.ps1`.
+4. Run `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_windows.ps1`.
 5. Create a GitHub Release with a tag matching `APP_VERSION`, for example
    `v<version>`.
 6. Upload `SC-Intel-Tool.exe` and include the SHA256 checksum in the release notes.

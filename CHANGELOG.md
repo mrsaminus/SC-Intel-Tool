@@ -2,20 +2,33 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.8.8.3 - 2026-06-21
+
+### UI / Navigation
+
 - Reorganized the main navigation into grouped tabs: Home, Intel, Industrial,
   Reference and System.
 - Improved navigation hierarchy so top-level grouped tabs stand apart from
   second-level group tabs and smaller module subtabs.
 - Prepared the main navigation tab spacing for future icons without adding
   placeholder icons.
-- Renamed the user-facing Event Center tab to Activity Log.
+- Standardized Activity Log naming across public documentation and navigation.
 - Added a Trading module header to match the Mining / Salvage module structure.
 - Improved visual consistency across grouped modules.
+- Standardized the Mining / Salvage module header wording.
+
+### Themes
+
 - Added Windows XP Black Edition as a supported release theme.
 - Inspired the new theme by XP Royale Noir / XP Black community themes while
   preserving the XP green Home/start tab, blue chrome and dark content panels.
+
+### Documentation / Hygiene
+
 - Audited public documentation for current grouped navigation, Activity Log
   naming, UEX-powered Trading wording, supported themes and release hygiene.
+- Updated release/build instructions and tester checklists for the current
+  public alpha workflow.
 
 ## 0.1.0-alpha.8.8.2 - 2026-06-20
 

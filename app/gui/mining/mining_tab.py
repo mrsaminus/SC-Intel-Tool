@@ -62,7 +62,7 @@ class MiningTab(
         layout.setSpacing(12)
 
         header = self.create_module_header(
-            "Mining & Salvage Intelligence",
+            "Mining / Salvage Intelligence",
             "Ore search, salvage resources, refining, rock breaking, equipment and profit tools.",
         )
         layout.addWidget(header)
