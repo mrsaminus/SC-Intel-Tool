@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.8.9 - 2026-06-21
+
 ### Responsiveness
 
 - Moved Reward Scanner capture/OCR, En Route matching and Create Routes route
@@ -11,6 +13,8 @@
   spreadsheet refreshes start on first use instead of during app launch.
 - Deferred local-heavy startup population for Search History, Watchlists,
   Activity Log and Mining / Salvage tables until first visible use.
+- Improved startup responsiveness without changing feature workflows,
+  calculations or local data schema.
 
 ## 0.1.0-alpha.8.8.3 - 2026-06-21
 
