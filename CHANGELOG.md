@@ -7,6 +7,8 @@
 - Moved Reward Scanner capture/OCR, En Route matching and Create Routes route
   generation into background workers so the GUI remains responsive during
   heavier local workflows.
+- Deferred nonessential startup auto-work so Trading reference data and Wikelo
+  spreadsheet refreshes start on first use instead of during app launch.
 
 ## 0.1.0-alpha.8.8.3 - 2026-06-21
 

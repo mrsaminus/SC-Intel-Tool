@@ -84,8 +84,6 @@ class CreateRoutesTab(BackgroundTaskMixin, QWidget):
         self.reference_service.loaded.connect(self.on_reference_loaded)
         if self.reference_service.data is not None:
             self.on_reference_loaded(self.reference_service.data)
-        else:
-            self.reference_service.ensure_loaded()
 
     def on_reference_loaded(self, data):
         current_ship = self.ship_combo.currentText().strip()

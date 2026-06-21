@@ -20,6 +20,7 @@ class TradingTab(QWidget):
         layout.setSpacing(12)
 
         self.reference_service = get_trading_reference_service()
+        self.initial_reference_load_started = False
 
         layout.addWidget(self.create_module_header())
 
@@ -44,12 +45,18 @@ class TradingTab(QWidget):
         layout.addWidget(self.tabs)
         self.setLayout(layout)
         self.tabs.currentChanged.connect(self.on_tab_changed)
-        self.reference_service.ensure_loaded()
 
     def on_tab_changed(self, index):
         widget = self.tabs.widget(index)
         if widget is self.saved_routes_tab:
             self.saved_routes_tab.refresh_routes()
+
+    def ensure_initial_load(self):
+        if self.initial_reference_load_started:
+            return
+
+        self.initial_reference_load_started = True
+        self.reference_service.ensure_loaded()
 
     def create_module_header(self):
         header = QFrame()

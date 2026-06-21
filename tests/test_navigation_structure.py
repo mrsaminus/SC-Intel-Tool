@@ -43,7 +43,7 @@ def fake_reference_data(reference_module):
     )
 
 
-def build_window(monkeypatch, tmp_path):
+def build_window(monkeypatch, tmp_path, deferred_calls=None):
     isolated_database(monkeypatch, tmp_path)
 
     reference_module = reload_module("app.gui.trading.reference_data")
@@ -53,9 +53,21 @@ def build_window(monkeypatch, tmp_path):
         "load_trading_reference_data",
         lambda: fake_reference_data(reference_module),
     )
+    if deferred_calls is not None:
+        monkeypatch.setattr(
+            reference_module.TradingReferenceService,
+            "ensure_loaded",
+            lambda self: deferred_calls.append("trading_reference"),
+        )
 
     wikelo_module = reload_module("app.gui.wikelo_tab")
     monkeypatch.setattr(wikelo_module, "fetch_wikelo_items", lambda: [])
+    if deferred_calls is not None:
+        def record_wikelo_refresh(self, silent=False):
+            self.initial_refresh_started = True
+            deferred_calls.append(("wikelo", silent))
+
+        monkeypatch.setattr(wikelo_module.WikeloItemsTab, "refresh_wikelo_items", record_wikelo_refresh)
 
     main_window_module = reload_module("app.gui.main_window")
     monkeypatch.setattr(main_window_module, "fetch_update_info", fake_update_info)
@@ -113,4 +125,33 @@ def test_main_navigation_is_grouped_and_reachable(monkeypatch, tmp_path, qapp):
         "Shops",
     ]
     assert any(label.text() == "Activity Log" for label in window.event_center_tab.findChildren(QLabel))
+    window.close()
+
+
+def test_deferred_online_loads_run_on_first_module_show(monkeypatch, tmp_path, qapp):
+    calls = []
+    window = build_window(monkeypatch, tmp_path, deferred_calls=calls)
+    window.show()
+    qapp.processEvents()
+
+    assert calls == []
+
+    window.open_tab("Trading")
+    qapp.processEvents()
+    assert calls == ["trading_reference"]
+
+    window.open_tab("Home")
+    window.open_tab("Trading")
+    qapp.processEvents()
+    assert calls == ["trading_reference"]
+
+    window.open_tab("Wikelo Items")
+    qapp.processEvents()
+    assert calls == ["trading_reference", ("wikelo", True)]
+
+    window.open_tab("Home")
+    window.open_tab("Wikelo Items")
+    qapp.processEvents()
+    assert calls == ["trading_reference", ("wikelo", True)]
+
     window.close()

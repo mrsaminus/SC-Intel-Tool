@@ -46,8 +46,6 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
             self.on_reference_loaded(self.reference_service.data)
         elif self.reference_service.is_loading:
             self.on_reference_state_changed("loading")
-        else:
-            self.reference_service.ensure_loaded()
 
     def build_ui(self):
         layout = QVBoxLayout()

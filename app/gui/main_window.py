@@ -102,6 +102,7 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
         self.tabs.addTab(self.system_tabs, "System")
 
         self.setCentralWidget(self.tabs)
+        self.connect_deferred_initial_loads()
         QTimer.singleShot(700, self.start_startup_update_check)
 
     def create_group_tabs(self, object_name):
@@ -109,6 +110,20 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
         tabs.setObjectName(object_name)
         tabs.tabBar().setObjectName("groupNavigationTabBar")
         return tabs
+
+    def connect_deferred_initial_loads(self):
+        self.tabs.currentChanged.connect(lambda _index: self.run_visible_tab_initial_load())
+        for group_tabs in (self.intel_tabs, self.industrial_tabs, self.reference_tabs, self.system_tabs):
+            group_tabs.currentChanged.connect(lambda _index: self.run_visible_tab_initial_load())
+
+    def run_visible_tab_initial_load(self):
+        widget = self.tabs.currentWidget()
+        if isinstance(widget, QTabWidget):
+            widget = widget.currentWidget()
+
+        initial_load = getattr(widget, "ensure_initial_load", None)
+        if callable(initial_load):
+            initial_load()
 
     def open_tab(self, tab_name):
         aliases = {
@@ -119,6 +134,7 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
         for index in range(self.tabs.count()):
             if self.tabs.tabText(index) == target:
                 self.tabs.setCurrentIndex(index)
+                self.run_visible_tab_initial_load()
                 return
 
         for index in range(self.tabs.count()):
@@ -129,6 +145,7 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
                 if group_tabs.tabText(child_index) == target:
                     self.tabs.setCurrentIndex(index)
                     group_tabs.setCurrentIndex(child_index)
+                    self.run_visible_tab_initial_load()
                     return
 
     def apply_theme(self, theme):

@@ -52,6 +52,7 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
         self.wikelo_items = []
         self.visible_wikelo_items = []
         self.wikelo_refresh_running = False
+        self.initial_refresh_started = False
         self.loading_wikelo_requirements_table = False
 
         layout = QVBoxLayout()
@@ -73,7 +74,6 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
         self.connect_signals()
         self.populate_wikelo_results()
         self.update_selected_wikelo_panel()
-        self.refresh_wikelo_items(silent=True)
 
     def build_wikelo_search_panel(self):
         card = self.create_filter_card("WIKELO ITEM SEARCH")
@@ -97,7 +97,7 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
         button_row.addWidget(self.open_wikelo_source_button)
         layout.addLayout(button_row)
 
-        self.wikelo_status_label = QLabel("Loading Wikelo spreadsheet data...")
+        self.wikelo_status_label = QLabel("Wikelo data will load when this tab is opened or Refresh Wikelo Data is clicked.")
         self.wikelo_status_label.setObjectName("moduleSubtitle")
         self.wikelo_status_label.setWordWrap(True)
         layout.addWidget(self.wikelo_status_label)
@@ -181,6 +181,7 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
         if self.wikelo_refresh_running:
             return
 
+        self.initial_refresh_started = True
         self.wikelo_refresh_running = True
         self.refresh_wikelo_button.setEnabled(False)
         self.refresh_wikelo_button.setText("Refreshing...")
@@ -210,6 +211,12 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
         self.wikelo_refresh_running = False
         self.refresh_wikelo_button.setEnabled(True)
         self.refresh_wikelo_button.setText("Refresh Wikelo Data")
+
+    def ensure_initial_load(self):
+        if self.initial_refresh_started:
+            return
+
+        self.refresh_wikelo_items(silent=True)
 
     def refresh_category_filter(self):
         current = self.wikelo_category_filter.currentText()
