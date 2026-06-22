@@ -24,6 +24,13 @@ from app.database import (
     reset_wikelo_checklist_reward,
     set_wikelo_checklist_state,
 )
+from app.local_cache import (
+    WIKELO_CACHE_KEY,
+    cache_is_fresh,
+    load_wikelo_cache,
+    mark_cache_error,
+    save_wikelo_cache,
+)
 from app.wikelo_client import WIKELO_SOURCE_URL, fetch_wikelo_items, normalized_key
 
 from .sortable_table_item import SORT_ROLE, SortableTableWidgetItem
@@ -61,7 +68,7 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
 
         layout.addWidget(self.create_module_header(
             "Wikelo Items",
-            "Live Wikelo mission, trade-in and reward browser from the public Wikelo spreadsheet.",
+            "Wikelo mission, trade-in and reward browser from the public Wikelo spreadsheet, cached locally after first load.",
         ))
 
         content = QHBoxLayout()
@@ -196,13 +203,15 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
 
     def on_wikelo_items_loaded(self, items):
         self.wikelo_items = list(items)
+        save_wikelo_cache(self.wikelo_items)
         self.refresh_category_filter()
         self.wikelo_status_label.setText(
-            f"Loaded {len(self.wikelo_items)} Wikelo rows from the public spreadsheet. Data is in-memory only."
+            f"Loaded {len(self.wikelo_items)} Wikelo rows from the public spreadsheet. Cached locally for faster reuse."
         )
         self.populate_wikelo_results()
 
     def on_wikelo_items_error(self, exc, silent=False):
+        mark_cache_error(WIKELO_CACHE_KEY, "Public Wikelo spreadsheet", "1", str(exc))
         self.wikelo_status_label.setText(f"Wikelo data refresh failed: {exc}")
         if not silent:
             QMessageBox.warning(self, "Wikelo refresh failed", str(exc))
@@ -216,7 +225,29 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
         if self.initial_refresh_started:
             return
 
+        self.initial_refresh_started = True
+        if self.load_wikelo_cache_if_available():
+            return
+
         self.refresh_wikelo_items(silent=True)
+
+    def load_wikelo_cache_if_available(self):
+        items, metadata = load_wikelo_cache()
+        if not items:
+            return False
+
+        self.wikelo_items = list(items)
+        self.refresh_category_filter()
+        if metadata and cache_is_fresh(WIKELO_CACHE_KEY):
+            self.wikelo_status_label.setText(
+                f"Loaded {len(self.wikelo_items)} cached Wikelo rows. Cache is fresh for up to 6 hours."
+            )
+        else:
+            self.wikelo_status_label.setText(
+                f"Loaded {len(self.wikelo_items)} cached Wikelo rows. Refresh Wikelo Data when you want the latest spreadsheet."
+            )
+        self.populate_wikelo_results()
+        return True
 
     def refresh_category_filter(self):
         current = self.wikelo_category_filter.currentText()

@@ -27,7 +27,7 @@ class ItemFinderTab(
         self.item_location_cache = {}
         self.current_finder_item_id = None
         self.finder_last_refresh = None
-        self.finder_refresh_interval = timedelta(hours=4)
+        self.finder_refresh_interval = timedelta(hours=6)
         self.availability_counts = {}
         self.auto_availability_limit = 25
         self.location_search_limit = 60
@@ -49,7 +49,7 @@ class ItemFinderTab(
 
         layout.addWidget(self.create_module_header(
             "Item Finder",
-            "Live lookup for equipment, ship sale/rental locations and other SC shopping intel. No source data is stored locally.",
+            "Lookup for equipment, ship sale/rental locations and other SC shopping intel. Source rows are cached locally after first load.",
         ))
 
         content = QHBoxLayout()
@@ -93,7 +93,7 @@ class ItemFinderTab(
         layout.addLayout(button_row)
 
         self.finder_status_label = QLabel(
-            "Press Enter to load live data. First load can take a while and the app may look frozen briefly; Not Sold Cornerstone items are skipped."
+            "Press Enter to load cached item data or fetch live data if the local cache is missing. Not Sold Cornerstone items are skipped."
         )
         self.finder_status_label.setObjectName("moduleSubtitle")
         self.finder_status_label.setWordWrap(True)

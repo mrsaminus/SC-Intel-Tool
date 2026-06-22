@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Local Data
+
+- Introduced a shared SQLite cache metadata layer for local-first data sources.
+- Added local cache support for Item Finder source rows and Wikelo spreadsheet rows.
+- Item Finder and Wikelo now reuse fresh cached data first and keep existing
+  refresh controls for live source updates.
+
 ## 0.1.0-alpha.8.9 - 2026-06-21
 
 ### Responsiveness

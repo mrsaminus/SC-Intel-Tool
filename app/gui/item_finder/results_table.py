@@ -55,7 +55,7 @@ class ItemResultsTableMixin:
 
         self.item_empty_label.setVisible(not self.visible_finder_items)
         if not self.finder_items:
-            self.item_empty_label.setText("No live item data loaded yet.")
+            self.item_empty_label.setText("No item data loaded yet.")
         else:
             self.item_empty_label.setText("No items match the current filters.")
         self.update_selected_item_panel()
