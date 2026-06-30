@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from app.uex_client import fetch_all_commodity_prices
+from app.uex_client import load_all_commodity_prices
 
 
 SUSPICIOUS_MARGIN_RATIO = 25
@@ -29,8 +29,8 @@ class TradingEstimate:
     full_cargo_affordable: bool
 
 
-def fetch_trading_opportunities(include_unprofitable=False):
-    prices = fetch_all_commodity_prices()
+def fetch_trading_opportunities(include_unprofitable=False, force_refresh=False):
+    prices = load_all_commodity_prices(force_refresh=force_refresh).prices
     return build_trading_opportunities(prices, include_unprofitable=include_unprofitable), len(prices)
 
 

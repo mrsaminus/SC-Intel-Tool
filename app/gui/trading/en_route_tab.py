@@ -17,9 +17,9 @@ from app.trading_data import format_trade_age, is_suspicious_margin
 from app.trading_en_route import (
     build_uex_en_route_opportunities,
     commodity_display_values,
-    fetch_all_commodity_prices,
     location_display_values,
 )
+from app.uex_client import load_all_commodity_prices
 from app.trading_storage import (
     TradingRouteRecord,
     add_recent_trading_route,
@@ -32,7 +32,7 @@ from ..workers import BackgroundTaskMixin
 from .route_quality import calculate_route_quality, copy_to_clipboard
 from .route_summary import format_route_summary, is_complete_route_record, notes_from_flags
 from .searchable_combo import configure_searchable_combo, selected_combo_text, set_combo_items
-from .ship_selection import configure_ship_combo, fill_cargo_from_ship
+from .ship_selection import configure_ship_combo, fill_cargo_from_ship, update_ship_combo
 
 
 class EnRouteTab(BackgroundTaskMixin, QWidget):
@@ -49,8 +49,42 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
 
         self.build_ui()
         self.connect_signals()
+        self.connect_reference_service()
         self.populate_routes_table()
         self.update_details()
+
+    def connect_reference_service(self):
+        if self.reference_service is None:
+            return
+        self.reference_service.loaded.connect(self.on_reference_loaded)
+        self.reference_service.error.connect(self.on_reference_error)
+        self.reference_service.state_changed.connect(self.on_reference_state_changed)
+        if self.reference_service.data is not None:
+            self.on_reference_loaded(self.reference_service.data)
+        elif self.reference_service.is_loading:
+            self.on_reference_state_changed("loading")
+
+    def on_reference_loaded(self, data):
+        update_ship_combo(self.ship_combo, data.ships)
+        if data.price_rows and not self.uex_refresh_running:
+            self.apply_price_rows(data.price_rows)
+            source_note = "Local UEX cache loaded."
+            if getattr(data, "cache_status", "") in {"stale", "error"}:
+                source_note = "UEX cache stale; refresh available."
+            if getattr(data, "source_error", ""):
+                source_note = f"UEX reference refresh failed: {data.source_error}"
+            self.status_label.setText(
+                f"Loaded {len(self.price_rows)} UEX price rows for En Route. {source_note}"
+            )
+            self.empty_label.setText("UEX data loaded. Choose origin/destination and click Find En Route.")
+            self.populate_routes_table()
+
+    def on_reference_error(self, exc):
+        self.status_label.setText(f"Reference data failed to load: {exc}")
+
+    def on_reference_state_changed(self, state):
+        if state == "loading":
+            self.status_label.setText("Loading UEX price data...")
 
     def build_ui(self):
         layout = QVBoxLayout()
@@ -224,24 +258,28 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         self.status_label.setText("Loading public UEX price data...")
 
         self.start_background_task(
-            fetch_all_commodity_prices,
+            lambda: load_all_commodity_prices(force_refresh=True),
             self.on_uex_prices_loaded,
             self.on_uex_prices_error,
             self.finish_uex_refresh,
         )
 
-    def on_uex_prices_loaded(self, prices):
+    def on_uex_prices_loaded(self, snapshot):
+        prices = snapshot.prices if hasattr(snapshot, "prices") else snapshot
+        self.apply_price_rows(prices)
+        self.status_label.setText(
+            f"Loaded {len(self.price_rows)} UEX price rows. Choose origin/destination and click Find En Route."
+        )
+        self.empty_label.setText("UEX data loaded. Choose origin/destination and click Find En Route.")
+        self.populate_routes_table()
+
+    def apply_price_rows(self, prices):
         self.price_rows = list(prices or [])
         self.routes = []
         self.last_result = None
         set_combo_items(self.origin_combo, location_display_values(self.price_rows))
         set_combo_items(self.destination_combo, location_display_values(self.price_rows))
         set_combo_items(self.commodity_combo, commodity_display_values(self.price_rows))
-        self.status_label.setText(
-            f"Loaded {len(self.price_rows)} UEX price rows. Choose origin/destination and click Find En Route."
-        )
-        self.empty_label.setText("UEX data loaded. Choose origin/destination and click Find En Route.")
-        self.populate_routes_table()
 
     def on_uex_prices_error(self, exc):
         self.price_rows = []

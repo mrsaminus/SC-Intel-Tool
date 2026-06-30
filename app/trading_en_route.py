@@ -8,7 +8,7 @@ from app.trading_data import (
     is_suspicious_margin,
     max_date_modified,
 )
-from app.uex_client import fetch_all_commodity_prices
+from app.uex_client import load_all_commodity_prices
 
 
 @dataclass(frozen=True)
@@ -40,7 +40,7 @@ class EnRouteResult:
 
 
 def fetch_uex_en_route_opportunities(**filters):
-    prices = fetch_all_commodity_prices()
+    prices = load_all_commodity_prices().prices
     return build_uex_en_route_opportunities(prices, **filters)
 
 

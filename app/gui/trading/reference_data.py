@@ -4,7 +4,7 @@ from PySide6.QtCore import QObject, QThreadPool, Signal
 
 from app.trading_data import format_trade_location
 from app.trading_ship_cargo import trading_ship_names
-from app.uex_client import fetch_all_commodity_prices
+from app.uex_client import load_all_commodity_prices
 
 from ..workers import FunctionWorker
 
@@ -43,12 +43,15 @@ class TradingReferenceData:
     ships: tuple
     price_rows: tuple = ()
     source_error: str = ""
+    cache_status: str = "missing"
+    last_updated: str = ""
 
 
-def load_trading_reference_data():
+def load_trading_reference_data(force_refresh=False):
     ships = tuple(trading_ship_names())
     try:
-        price_rows = tuple(fetch_all_commodity_prices())
+        snapshot = load_all_commodity_prices(force_refresh=force_refresh)
+        price_rows = snapshot.prices
     except Exception as exc:  # noqa: BLE001 - keep Trading usable when UEX is unavailable.
         return TradingReferenceData(
             commodities=(),
@@ -58,6 +61,7 @@ def load_trading_reference_data():
             ships=ships,
             price_rows=(),
             source_error=str(exc),
+            cache_status="missing",
         )
 
     commodities = tuple(
@@ -100,6 +104,9 @@ def load_trading_reference_data():
         shops=shops,
         ships=ships,
         price_rows=price_rows,
+        source_error=snapshot.source_error,
+        cache_status=snapshot.cache_status,
+        last_updated=snapshot.last_updated,
     )
 
 
@@ -155,7 +162,7 @@ class TradingReferenceService(QObject):
         self.error_message = ""
         self.state_changed.emit("loading")
 
-        worker = FunctionWorker(load_trading_reference_data)
+        worker = FunctionWorker(load_trading_reference_data, force)
         self._workers.add(worker)
         worker.signals.result.connect(self._on_loaded)
         worker.signals.error.connect(self._on_error)

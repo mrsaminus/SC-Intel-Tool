@@ -187,6 +187,10 @@ class CommoditiesTab(BackgroundTaskMixin, QWidget):
         source_note = ""
         if getattr(data, "source_error", ""):
             source_note = f" UEX refresh failed: {data.source_error}"
+        elif getattr(data, "cache_status", "") in {"stale", "error"}:
+            source_note = " UEX cache stale; refresh available."
+        elif getattr(data, "cache_status", "") == "fresh":
+            source_note = " Local UEX cache loaded."
         self.status_label.setText(
             f"Loaded {len(self.commodities)} commodities and {len(self.commodity_types)} "
             f"commodity types from UEX reference rows.{source_note}"

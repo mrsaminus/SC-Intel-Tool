@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.database import get_app_setting, set_app_setting
-from app.trading_data import fetch_trading_opportunities
+from app.trading_data import build_trading_opportunities, fetch_trading_opportunities
 from app.trading_storage import TradingRouteRecord, add_recent_trading_route, save_trading_route
 from app.watchlists.service import add_trading_route_watch
 
@@ -90,6 +90,18 @@ class CreateRoutesTab(BackgroundTaskMixin, QWidget):
         update_ship_combo(self.ship_combo, data.ships)
         if current_ship:
             self.ship_combo.setCurrentText(current_ship)
+        if data.price_rows:
+            self.all_opportunities = build_trading_opportunities(data.price_rows, include_unprofitable=False)
+            self.price_row_count = len(data.price_rows)
+            source_note = "Local UEX cache loaded."
+            if getattr(data, "cache_status", "") in {"stale", "error"}:
+                source_note = "UEX cache stale; refresh available."
+            if getattr(data, "source_error", ""):
+                source_note = f"UEX reference refresh failed: {data.source_error}"
+            self.status_label.setText(
+                f"Loaded {len(self.all_opportunities)} UEX buy/sell comparisons from "
+                f"{self.price_row_count} cached price rows. {source_note}"
+            )
 
     def build_ui(self):
         layout = QVBoxLayout()
@@ -357,6 +369,10 @@ class CreateRoutesTab(BackgroundTaskMixin, QWidget):
             return
 
         self.save_current_settings()
+        if self.all_opportunities:
+            self.request_route_generation()
+            return
+
         self.refresh_running = True
         self.generate_button.setEnabled(False)
         self.generate_button.setText("Loading...")

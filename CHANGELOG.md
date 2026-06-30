@@ -8,6 +8,9 @@
 - Added local cache support for Item Finder source rows and Wikelo spreadsheet rows.
 - Item Finder and Wikelo now reuse fresh cached data first and keep existing
   refresh controls for live source updates.
+- Added local cache support for UEX Trading market/reference rows.
+- Trading tabs can now reuse cached UEX market data and degrade more cleanly
+  when UEX is unavailable.
 
 ## 0.1.0-alpha.8.9 - 2026-06-21
 

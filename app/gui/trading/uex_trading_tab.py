@@ -24,6 +24,7 @@ from app.trading_storage import (
 )
 from app.watchlists.service import add_trading_commodity_watch, add_trading_route_watch
 from app.trading_data import (
+    build_trading_opportunities,
     calculate_trade_estimate,
     fetch_trading_opportunities,
     format_trade_age,
@@ -54,6 +55,7 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         self.all_opportunities = []
         self.visible_opportunities = []
         self.price_row_count = 0
+        self.trading_source_note = ""
         self.presets = []
 
         self.build_ui()
@@ -68,6 +70,11 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
 
     def on_reference_loaded(self, data):
         update_ship_combo(self.ship_combo, data.ships)
+        if data.price_rows and not self.trading_refresh_running:
+            self.all_opportunities = build_trading_opportunities(data.price_rows, include_unprofitable=True)
+            self.price_row_count = len(data.price_rows)
+            self.trading_source_note = self.reference_source_note(data)
+            self.populate_trade_table()
 
     def build_ui(self):
         layout = QVBoxLayout()
@@ -138,7 +145,7 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         title = QLabel("Trading")
         title.setObjectName("moduleHeading")
         subtitle = QLabel(
-            "Simple commodity buy/sell comparison using live UEX market data. "
+            "Simple commodity buy/sell comparison using cached or refreshed UEX market data. "
             "Complex route planning is deferred to later phases."
         )
         subtitle.setObjectName("moduleSubtitle")
@@ -229,7 +236,7 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         presets.addStretch(1)
         layout.addLayout(presets)
 
-        self.status_label = QLabel("Trading data is loaded live from UEX on demand and is not stored locally.")
+        self.status_label = QLabel("Trading data loads from the local UEX cache when available. Refresh updates live UEX data.")
         self.status_label.setObjectName("moduleSubtitle")
         self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
@@ -272,7 +279,7 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         self.status_label.setText("Loading trading data...")
 
         self.start_background_task(
-            lambda: fetch_trading_opportunities(include_unprofitable=True),
+            lambda: fetch_trading_opportunities(include_unprofitable=True, force_refresh=True),
             self.on_trading_data_loaded,
             self.on_trading_data_error,
             self.finish_trading_refresh,
@@ -282,6 +289,7 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         opportunities, price_row_count = result
         self.all_opportunities = opportunities
         self.price_row_count = price_row_count
+        self.trading_source_note = "Live UEX refresh completed and local cache updated."
         self.populate_trade_table()
 
     def on_trading_data_error(self, exc):
@@ -616,11 +624,27 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         if not self.all_opportunities:
             return
 
+        note = f" {self.trading_source_note}" if self.trading_source_note else ""
         self.status_label.setText(
             f"Trading data loaded: showing {len(self.visible_opportunities)} of "
             f"{len(self.all_opportunities)} buy/sell comparisons from "
-            f"{self.price_row_count} UEX price rows. Prices are per SCU."
+            f"{self.price_row_count} UEX price rows. Prices are per SCU.{note}"
         )
+
+    def reference_source_note(self, data):
+        status = getattr(data, "cache_status", "")
+        last_updated = getattr(data, "last_updated", "")
+        source_error = getattr(data, "source_error", "")
+        if status == "fresh":
+            return f"Local UEX cache loaded. Last updated: {last_updated}."
+        if status in {"stale", "error"}:
+            note = f"UEX cache stale. Last updated: {last_updated}. Refresh available."
+            if source_error:
+                note = f"{note} Last refresh warning: {source_error}"
+            return note
+        if status == "offline":
+            return f"UEX unavailable; using cached market data from {last_updated}."
+        return ""
 
     def parse_number(self, value, default=None):
         value = (value or "").replace(",", "").replace(" ", "").strip()

@@ -24,6 +24,15 @@ class UEXCommodityPrice:
     date_modified: int | None
 
 
+@dataclass(frozen=True)
+class UEXPriceSnapshot:
+    prices: tuple[UEXCommodityPrice, ...]
+    cache_status: str
+    source_error: str = ""
+    last_updated: str = ""
+    from_cache: bool = False
+
+
 def fetch_commodity_sell_prices(commodity_name):
     try:
         response = requests.get(
@@ -69,6 +78,65 @@ def fetch_all_commodity_prices():
         normalize_price_record(record)
         for record in extract_records(payload)
     ]
+
+
+def load_all_commodity_prices(force_refresh=False):
+    from app.local_cache import (
+        UEX_PRICES_CACHE_KEY,
+        UEX_PRICES_SCHEMA_VERSION,
+        cache_status,
+        load_uex_prices_cache,
+        mark_cache_error,
+        save_uex_prices_cache,
+    )
+
+    if not force_refresh:
+        cached_prices, metadata = load_uex_prices_cache()
+        if cached_prices:
+            return UEXPriceSnapshot(
+                prices=tuple(cached_prices),
+                cache_status=cache_status(UEX_PRICES_CACHE_KEY),
+                source_error=metadata.error_message if metadata else "",
+                last_updated=metadata.last_updated if metadata else "",
+                from_cache=True,
+            )
+
+    try:
+        prices = tuple(fetch_all_commodity_prices())
+    except Exception as exc:
+        cached_prices, metadata = load_uex_prices_cache()
+        if cached_prices:
+            mark_cache_error(
+                UEX_PRICES_CACHE_KEY,
+                "UEX public market prices",
+                UEX_PRICES_SCHEMA_VERSION,
+                str(exc),
+            )
+            return UEXPriceSnapshot(
+                prices=tuple(cached_prices),
+                cache_status="offline",
+                source_error=str(exc),
+                last_updated=metadata.last_updated if metadata else "",
+                from_cache=True,
+            )
+
+        mark_cache_error(
+            UEX_PRICES_CACHE_KEY,
+            "UEX public market prices",
+            UEX_PRICES_SCHEMA_VERSION,
+            str(exc),
+        )
+        raise
+
+    save_uex_prices_cache(prices)
+    metadata = load_uex_prices_cache()[1]
+    return UEXPriceSnapshot(
+        prices=prices,
+        cache_status="fresh",
+        source_error="",
+        last_updated=metadata.last_updated if metadata else "",
+        from_cache=False,
+    )
 
 
 def extract_records(payload):

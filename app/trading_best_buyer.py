@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from app.trading_data import format_trade_age, format_trade_location
-from app.uex_client import fetch_all_commodity_prices
+from app.uex_client import load_all_commodity_prices
 
 
 @dataclass(frozen=True)
@@ -15,8 +15,8 @@ class BestBuyerResult:
     date_modified: int | None
 
 
-def fetch_uex_best_buyers(commodity_name, quantity_scu=1):
-    prices = fetch_all_commodity_prices()
+def fetch_uex_best_buyers(commodity_name, quantity_scu=1, force_refresh=False):
+    prices = load_all_commodity_prices(force_refresh=force_refresh).prices
     return build_best_buyers(prices, commodity_name, quantity_scu=quantity_scu), len(prices)
 
 

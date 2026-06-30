@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.trading_data import (
+    build_trading_opportunities,
     calculate_trade_estimate,
     fetch_trading_opportunities,
     format_trade_age,
@@ -215,6 +216,10 @@ class TradeRoutesTab(BackgroundTaskMixin, QWidget):
         source_note = ""
         if getattr(data, "source_error", ""):
             source_note = f" UEX reference refresh failed: {data.source_error}"
+        elif getattr(data, "cache_status", "") in {"stale", "error"}:
+            source_note = " UEX cache stale; refresh available."
+        elif getattr(data, "cache_status", "") == "fresh":
+            source_note = " Local UEX cache loaded."
         self.status_label.setText(
             f"Loaded {len(self.shops)} shops, {len(self.locations)} locations and "
             f"{len(self.commodities)} commodities from UEX reference rows.{source_note}"
@@ -247,11 +252,19 @@ class TradeRoutesTab(BackgroundTaskMixin, QWidget):
         self.status_label.setText("Loading UEX trade routes...")
 
         self.start_background_task(
-            lambda: fetch_trading_opportunities(include_unprofitable=False),
+            self.load_trade_routes,
             self.on_routes_loaded,
             self.on_error,
             self.finish_routes_refresh,
         )
+
+    def load_trade_routes(self):
+        data = self.reference_service.data
+        if data is not None and data.price_rows:
+            routes = build_trading_opportunities(data.price_rows, include_unprofitable=False)
+            return routes, len(data.price_rows)
+
+        return fetch_trading_opportunities(include_unprofitable=False)
 
     def on_routes_loaded(self, result):
         routes, price_row_count = result

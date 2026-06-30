@@ -6,8 +6,10 @@ from datetime import datetime, timedelta, timezone
 CACHE_TTL_HOURS = 6
 ITEM_FINDER_CACHE_KEY = "item_finder.reference"
 WIKELO_CACHE_KEY = "wikelo.items"
+UEX_PRICES_CACHE_KEY = "uex_prices"
 ITEM_FINDER_SCHEMA_VERSION = "1"
 WIKELO_SCHEMA_VERSION = "1"
+UEX_PRICES_SCHEMA_VERSION = "1"
 
 
 @dataclass(frozen=True)
@@ -103,6 +105,50 @@ def ensure_cache_tables(cursor):
         quantity TEXT,
         source TEXT,
         PRIMARY KEY (item_id, requirement_index)
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS cache_uex_prices (
+        cache_key TEXT NOT NULL,
+        commodity_name TEXT NOT NULL,
+        price_buy REAL,
+        price_sell REAL,
+        terminal_name TEXT,
+        star_system_name TEXT,
+        location_name TEXT,
+        date_modified INTEGER,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (cache_key, sort_order)
+    )
+    """)
+    cursor.execute("""
+    CREATE INDEX IF NOT EXISTS idx_cache_uex_prices_commodity
+    ON cache_uex_prices (cache_key, commodity_name)
+    """)
+    cursor.execute("""
+    CREATE INDEX IF NOT EXISTS idx_cache_uex_prices_location
+    ON cache_uex_prices (cache_key, star_system_name, location_name, terminal_name)
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS cache_uex_commodities (
+        cache_key TEXT NOT NULL,
+        name TEXT NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (cache_key, name)
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS cache_uex_locations (
+        cache_key TEXT NOT NULL,
+        name TEXT NOT NULL,
+        star_system_name TEXT,
+        location_name TEXT,
+        terminal_name TEXT,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (cache_key, name)
     )
     """)
 
@@ -424,6 +470,99 @@ def load_wikelo_cache():
     return items, get_cache_metadata(WIKELO_CACHE_KEY)
 
 
+def save_uex_prices_cache(prices, warnings=None):
+    warnings = warnings or []
+    prices = list(prices or [])
+    with _connect() as conn:
+        cur = conn.cursor()
+        ensure_cache_tables(cur)
+        cur.execute("DELETE FROM cache_uex_prices WHERE cache_key = ?", (UEX_PRICES_CACHE_KEY,))
+        cur.execute("DELETE FROM cache_uex_commodities WHERE cache_key = ?", (UEX_PRICES_CACHE_KEY,))
+        cur.execute("DELETE FROM cache_uex_locations WHERE cache_key = ?", (UEX_PRICES_CACHE_KEY,))
+
+        for sort_order, price in enumerate(prices):
+            cur.execute("""
+                INSERT INTO cache_uex_prices (
+                    cache_key, commodity_name, price_buy, price_sell,
+                    terminal_name, star_system_name, location_name,
+                    date_modified, sort_order
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                UEX_PRICES_CACHE_KEY,
+                price.commodity_name,
+                price.price_buy,
+                price.price_sell,
+                price.terminal_name,
+                price.star_system_name,
+                price.location_name,
+                price.date_modified,
+                sort_order,
+            ))
+
+        for sort_order, commodity in enumerate(unique_uex_commodities(prices)):
+            cur.execute("""
+                INSERT OR REPLACE INTO cache_uex_commodities (cache_key, name, sort_order)
+                VALUES (?, ?, ?)
+            """, (UEX_PRICES_CACHE_KEY, commodity, sort_order))
+
+        for sort_order, location in enumerate(unique_uex_locations(prices)):
+            cur.execute("""
+                INSERT OR REPLACE INTO cache_uex_locations (
+                    cache_key, name, star_system_name, location_name, terminal_name, sort_order
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                UEX_PRICES_CACHE_KEY,
+                location["name"],
+                location["star_system_name"],
+                location["location_name"],
+                location["terminal_name"],
+                sort_order,
+            ))
+
+        update_cache_metadata_in_cursor(
+            cur,
+            UEX_PRICES_CACHE_KEY,
+            "UEX public market prices",
+            UEX_PRICES_SCHEMA_VERSION,
+            len(prices),
+            status="ready",
+            error_message="; ".join(warnings),
+        )
+        conn.commit()
+
+
+def load_uex_prices_cache():
+    from app.uex_client import UEXCommodityPrice
+
+    with _connect() as conn:
+        cur = conn.cursor()
+        ensure_cache_tables(cur)
+        cur.execute("""
+            SELECT commodity_name, price_buy, price_sell, terminal_name,
+                   star_system_name, location_name, date_modified
+            FROM cache_uex_prices
+            WHERE cache_key = ?
+            ORDER BY sort_order
+        """, (UEX_PRICES_CACHE_KEY,))
+        rows = cur.fetchall()
+
+    prices = [
+        UEXCommodityPrice(
+            commodity_name=row[0] or "Unknown",
+            price_buy=row[1],
+            price_sell=row[2],
+            terminal_name=row[3] or "N/A",
+            star_system_name=row[4] or "N/A",
+            location_name=row[5] or "N/A",
+            date_modified=row[6],
+        )
+        for row in rows
+    ]
+    return prices, get_cache_metadata(UEX_PRICES_CACHE_KEY)
+
+
 def serialize_item_finder_item(item):
     payload = asdict(item)
     if item.__class__.__name__ == "SCFocusShipItem":
@@ -452,6 +591,49 @@ def deserialize_item_finder_item(payload_type, payload):
     from app.cstone_client import CStoneItem
 
     return CStoneItem(**payload)
+
+
+def unique_uex_commodities(prices):
+    return sorted({
+        price.commodity_name
+        for price in prices
+        if price.commodity_name and price.commodity_name != "Unknown"
+    }, key=str.lower)
+
+
+def unique_uex_locations(prices):
+    locations = {}
+    for price in prices:
+        name = uex_cache_location_name(price)
+        if name == "N/A":
+            continue
+        key = name.lower()
+        if key in locations:
+            continue
+        locations[key] = {
+            "name": name,
+            "star_system_name": price.star_system_name,
+            "location_name": price.location_name,
+            "terminal_name": price.terminal_name,
+        }
+
+    return [
+        locations[key]
+        for key in sorted(locations)
+    ]
+
+
+def uex_cache_location_name(price):
+    parts = [
+        value
+        for value in (
+            price.star_system_name if price.star_system_name != "N/A" else "",
+            price.location_name if price.location_name != "N/A" else "",
+            price.terminal_name if price.terminal_name != "N/A" else "",
+        )
+        if value
+    ]
+    return " - ".join(parts) or "N/A"
 
 
 def update_cache_metadata_in_cursor(
