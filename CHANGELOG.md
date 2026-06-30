@@ -11,6 +11,8 @@
 - Added local cache support for UEX Trading market/reference rows.
 - Trading tabs can now reuse cached UEX market data and degrade more cleanly
   when UEX is unavailable.
+- Added Local Data Platform management in Settings for cache status,
+  refresh, clear and tester diagnostics visibility.
 
 ## 0.1.0-alpha.8.9 - 2026-06-21
 

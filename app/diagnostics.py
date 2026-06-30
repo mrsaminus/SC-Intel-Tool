@@ -39,6 +39,7 @@ def collect_diagnostics(database_path=None):
         from .database import DB_PATH
 
         database_path = DB_PATH
+    from .cache_manager import enumerate_cache_sources
 
     return {
         "app_version": APP_VERSION,
@@ -51,6 +52,7 @@ def collect_diagnostics(database_path=None):
         "log_file": str(get_log_file_path()),
         "public_mining_root": str(PUBLIC_MINING_ROOT),
         "runtime_assets": runtime_asset_status(),
+        "cache_sources": enumerate_cache_sources(),
     }
 
 
@@ -143,6 +145,13 @@ def format_diagnostics(diagnostics):
 
     for name, available in sorted((diagnostics.get("runtime_assets") or {}).items()):
         lines.append(f"  - {name}: {'available' if available else 'missing'}")
+
+    lines.append("Cache sources:")
+    for source in diagnostics.get("cache_sources") or ():
+        lines.append(
+            f"  - {source.name}: {source.status}; rows={source.row_count}; "
+            f"updated={source.last_updated}; age={source.age}; schema={source.schema_version}"
+        )
 
     lines.extend([
         "",

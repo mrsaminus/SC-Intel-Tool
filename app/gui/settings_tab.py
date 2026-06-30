@@ -16,6 +16,13 @@ from PySide6.QtWidgets import (
 )
 
 from app.database import DB_PATH
+from app.cache_manager import (
+    clear_all_cached_data,
+    clear_cache_source,
+    enumerate_cache_sources,
+    refresh_all_cache_sources as refresh_all_cache_sources_data,
+    refresh_cache_source as refresh_cache_source_data,
+)
 from app.diagnostics import safe_diagnostics_text
 from app.paths import get_active_data_dir, is_packaged_app
 from app.update_checker import (
@@ -53,6 +60,9 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         self.latest_update_info = None
         self.loading_theme_combo = False
         self.loading_text_size_combo = False
+        self.cache_action_running = False
+        self.cache_source_rows = {}
+        self.cache_action_buttons = []
 
         outer_layout = QVBoxLayout()
         outer_layout.setContentsMargins(0, 0, 0, 0)
@@ -77,6 +87,7 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         layout.addWidget(self.build_appearance_card())
         layout.addWidget(self.build_updates_card())
         layout.addWidget(self.build_data_card())
+        layout.addWidget(self.build_local_data_platform_card())
         layout.addStretch(1)
 
         content.setLayout(layout)
@@ -278,6 +289,221 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         row.addStretch(1)
         layout.addLayout(row)
         return card
+
+    def build_local_data_platform_card(self):
+        card = self.create_card("LOCAL DATA PLATFORM")
+        layout = card.layout()
+
+        hint = QLabel(
+            "Cached external reference data is stored locally for faster reuse and better offline diagnostics."
+        )
+        hint.setObjectName("moduleSubtitle")
+        hint.setWordWrap(True)
+        self.configure_wrapping_label(hint)
+        layout.addWidget(hint)
+
+        self.cache_platform_status_label = QLabel("Cache metadata inspected locally. No sources refresh on startup.")
+        self.cache_platform_status_label.setObjectName("moduleSubtitle")
+        self.cache_platform_status_label.setWordWrap(True)
+        self.configure_wrapping_label(self.cache_platform_status_label)
+        layout.addWidget(self.cache_platform_status_label)
+
+        self.cache_sources_layout = QVBoxLayout()
+        self.cache_sources_layout.setSpacing(8)
+        layout.addLayout(self.cache_sources_layout)
+
+        action_row = QVBoxLayout()
+        action_row.setSpacing(8)
+        self.refresh_all_cache_button = QPushButton("Refresh All Sources")
+        self.clear_all_cache_button = QPushButton("Clear All Cached Data")
+        self.refresh_all_cache_button.clicked.connect(self.refresh_all_cache_sources)
+        self.clear_all_cache_button.clicked.connect(self.confirm_clear_all_cached_data)
+        for button in (self.refresh_all_cache_button, self.clear_all_cache_button):
+            button.setMinimumWidth(0)
+            button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.cache_action_buttons.extend((self.refresh_all_cache_button, self.clear_all_cache_button))
+        action_row.addWidget(self.refresh_all_cache_button)
+        action_row.addWidget(self.clear_all_cache_button)
+        layout.addLayout(action_row)
+
+        self.rebuild_cache_source_rows()
+        return card
+
+    def rebuild_cache_source_rows(self):
+        while self.cache_sources_layout.count():
+            item = self.cache_sources_layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+
+        self.cache_source_rows = {}
+        self.cache_action_buttons = [
+            self.refresh_all_cache_button,
+            self.clear_all_cache_button,
+        ]
+        for info in enumerate_cache_sources():
+            widget = self.create_cache_source_widget(info)
+            self.cache_sources_layout.addWidget(widget)
+
+    def create_cache_source_widget(self, info):
+        row = QFrame()
+        row.setObjectName("transparentPanel")
+        row.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
+
+        top_row = QHBoxLayout()
+        title = QLabel(info.name)
+        title.setObjectName("valueText")
+        description = QLabel(info.description)
+        description.setObjectName("moduleSubtitle")
+        description.setWordWrap(True)
+        self.configure_wrapping_label(description)
+        top_row.addWidget(title, 1)
+
+        details = QLabel()
+        details.setObjectName("moduleSubtitle")
+        details.setWordWrap(True)
+        self.configure_wrapping_label(details)
+
+        button_row = QVBoxLayout()
+        button_row.setSpacing(6)
+        refresh_button = QPushButton("Refresh")
+        clear_button = QPushButton("Clear")
+        for button in (refresh_button, clear_button):
+            button.setMinimumWidth(0)
+            button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        refresh_button.setEnabled(info.refresh_supported)
+        clear_button.setEnabled(info.clear_supported)
+        refresh_button.clicked.connect(lambda _checked=False, key=info.key: self.refresh_cache_source(key))
+        clear_button.clicked.connect(lambda _checked=False, key=info.key: self.confirm_clear_cache_source(key))
+        self.cache_action_buttons.extend((refresh_button, clear_button))
+        button_row.addWidget(refresh_button)
+        button_row.addWidget(clear_button)
+
+        layout.addLayout(top_row)
+        layout.addWidget(description)
+        layout.addWidget(details)
+        layout.addLayout(button_row)
+        row.setLayout(layout)
+
+        self.cache_source_rows[info.key] = {
+            "details": details,
+            "refresh": refresh_button,
+            "clear": clear_button,
+        }
+        self.update_cache_source_row(info)
+        return row
+
+    def update_cache_source_rows(self):
+        for info in enumerate_cache_sources():
+            self.update_cache_source_row(info)
+
+    def update_cache_source_row(self, info):
+        row = self.cache_source_rows.get(info.key)
+        if not row:
+            return
+
+        details = row["details"]
+        details.setText(
+            f"Status: {info.status} | Last Updated: {info.last_updated} | "
+            f"Rows Cached: {info.row_count} | Cache Age: {info.age} | "
+            f"Schema: {info.schema_version}"
+        )
+        if info.error_message:
+            details.setToolTip(info.error_message)
+        else:
+            details.setToolTip("")
+
+    def refresh_cache_source(self, cache_key):
+        if self.cache_action_running:
+            return
+
+        self.cache_action_running = True
+        self.set_cache_action_buttons_enabled(False)
+        self.cache_platform_status_label.setText("Refreshing cache source...")
+        self.start_background_task(
+            lambda: refresh_cache_source_data(cache_key),
+            self.on_cache_source_refreshed,
+            self.on_cache_action_error,
+            self.finish_cache_action,
+        )
+
+    def refresh_all_cache_sources(self):
+        if self.cache_action_running:
+            return
+
+        self.cache_action_running = True
+        self.set_cache_action_buttons_enabled(False)
+        self.cache_platform_status_label.setText("Refreshing all cache sources sequentially...")
+        self.start_background_task(
+            refresh_all_cache_sources_data,
+            self.on_all_cache_sources_refreshed,
+            self.on_cache_action_error,
+            self.finish_cache_action,
+        )
+
+    def on_cache_source_refreshed(self, result):
+        self.update_cache_source_rows()
+        self.cache_platform_status_label.setText(result.message)
+
+    def on_all_cache_sources_refreshed(self, results):
+        self.update_cache_source_rows()
+        failed = [result for result in results if not result.success]
+        if failed:
+            self.cache_platform_status_label.setText(
+                f"Refresh completed with {len(failed)} warning(s). Cached data remains available when present."
+            )
+        else:
+            self.cache_platform_status_label.setText("All cache sources refreshed.")
+
+    def on_cache_action_error(self, exc):
+        self.update_cache_source_rows()
+        self.cache_platform_status_label.setText(f"Cache action failed: {exc}")
+        QMessageBox.warning(self, "Cache action failed", str(exc))
+
+    def finish_cache_action(self):
+        self.cache_action_running = False
+        self.set_cache_action_buttons_enabled(True)
+
+    def confirm_clear_cache_source(self, cache_key):
+        if self.cache_action_running:
+            return
+
+        answer = QMessageBox.question(
+            self,
+            "Clear Cached Data",
+            "Clear this cached external reference source?\n\n"
+            "This does not delete notes, history, watchlists or user-created data.",
+        )
+        if answer != QMessageBox.Yes:
+            return
+
+        clear_cache_source(cache_key)
+        self.update_cache_source_rows()
+        self.cache_platform_status_label.setText("Cached source cleared.")
+
+    def confirm_clear_all_cached_data(self):
+        if self.cache_action_running:
+            return
+
+        answer = QMessageBox.question(
+            self,
+            "Clear All Cached Data",
+            "Clear all cached external reference data?\n\n"
+            "This does not delete notes, history, watchlists or user-created data.",
+        )
+        if answer != QMessageBox.Yes:
+            return
+
+        clear_all_cached_data()
+        self.update_cache_source_rows()
+        self.cache_platform_status_label.setText("All cached external reference data cleared.")
+
+    def set_cache_action_buttons_enabled(self, enabled):
+        for button in self.cache_action_buttons:
+            button.setEnabled(enabled)
 
     def on_theme_selected(self):
         if self.loading_theme_combo:

@@ -281,6 +281,29 @@ def invalidate_cache(cache_key):
     )
 
 
+def clear_cache_key(cache_key):
+    with _connect() as conn:
+        cur = conn.cursor()
+        ensure_cache_tables(cur)
+        if cache_key == ITEM_FINDER_CACHE_KEY:
+            cur.execute("DELETE FROM cache_item_finder_items WHERE cache_key = ?", (cache_key,))
+            cur.execute("DELETE FROM cache_item_finder_locations WHERE cache_key = ?", (cache_key,))
+        elif cache_key == WIKELO_CACHE_KEY:
+            cur.execute("DELETE FROM cache_wikelo_requirements")
+            cur.execute("DELETE FROM cache_wikelo_items")
+        elif cache_key == UEX_PRICES_CACHE_KEY:
+            cur.execute("DELETE FROM cache_uex_prices WHERE cache_key = ?", (cache_key,))
+            cur.execute("DELETE FROM cache_uex_commodities WHERE cache_key = ?", (cache_key,))
+            cur.execute("DELETE FROM cache_uex_locations WHERE cache_key = ?", (cache_key,))
+        cur.execute("DELETE FROM cache_metadata WHERE cache_key = ?", (cache_key,))
+        conn.commit()
+
+
+def clear_all_cache_data():
+    for cache_key in (ITEM_FINDER_CACHE_KEY, WIKELO_CACHE_KEY, UEX_PRICES_CACHE_KEY):
+        clear_cache_key(cache_key)
+
+
 def save_item_finder_cache(items, cstone_locations, warnings=None):
     warnings = warnings or []
     with _connect() as conn:
