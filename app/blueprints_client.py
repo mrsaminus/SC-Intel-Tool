@@ -65,6 +65,15 @@ class BlueprintRecord:
         return "N/A"
 
 
+@dataclass(frozen=True)
+class BlueprintSnapshot:
+    blueprints: tuple[BlueprintRecord, ...]
+    cache_status: str
+    source_error: str = ""
+    last_updated: str = ""
+    from_cache: bool = False
+
+
 def fetch_blueprints():
     session = requests.Session()
     session.headers.update({"User-Agent": "SC-Intel-Tool"})
@@ -87,6 +96,73 @@ def fetch_blueprints():
 
     blueprints.sort(key=lambda item: (item.category.lower(), item.blueprint_name.lower()))
     return blueprints
+
+
+def load_blueprints(force_refresh=False, raise_on_missing=True):
+    from app.local_cache import (
+        BLUEPRINT_CACHE_KEY,
+        BLUEPRINT_SCHEMA_VERSION,
+        cache_status,
+        load_blueprint_cache,
+        mark_cache_error,
+        save_blueprint_cache,
+    )
+
+    if not force_refresh:
+        cached_blueprints, metadata = load_blueprint_cache()
+        if cached_blueprints:
+            return BlueprintSnapshot(
+                blueprints=tuple(cached_blueprints),
+                cache_status=cache_status(BLUEPRINT_CACHE_KEY),
+                source_error=metadata.error_message if metadata else "",
+                last_updated=metadata.last_updated if metadata else "",
+                from_cache=True,
+            )
+
+    try:
+        blueprints = tuple(fetch_blueprints())
+    except Exception as exc:
+        cached_blueprints, metadata = load_blueprint_cache()
+        if cached_blueprints:
+            mark_cache_error(
+                BLUEPRINT_CACHE_KEY,
+                "SC Craft Tools blueprints",
+                BLUEPRINT_SCHEMA_VERSION,
+                str(exc),
+            )
+            return BlueprintSnapshot(
+                blueprints=tuple(cached_blueprints),
+                cache_status="offline",
+                source_error=str(exc),
+                last_updated=metadata.last_updated if metadata else "",
+                from_cache=True,
+            )
+
+        mark_cache_error(
+            BLUEPRINT_CACHE_KEY,
+            "SC Craft Tools blueprints",
+            BLUEPRINT_SCHEMA_VERSION,
+            str(exc),
+        )
+        if not raise_on_missing:
+            return BlueprintSnapshot(
+                blueprints=(),
+                cache_status="missing",
+                source_error=str(exc),
+                last_updated="",
+                from_cache=False,
+            )
+        raise
+
+    save_blueprint_cache(blueprints)
+    metadata = load_blueprint_cache()[1]
+    return BlueprintSnapshot(
+        blueprints=blueprints,
+        cache_status="fresh",
+        source_error="",
+        last_updated=metadata.last_updated if metadata else "",
+        from_cache=False,
+    )
 
 
 def fetch_blueprints_page(session, page):

@@ -53,6 +53,11 @@ CACHE_SOURCES = (
         name="UEX Trading",
         description="UEX market price rows used by Trading workflows.",
     ),
+    CacheSourceDefinition(
+        key=local_cache.BLUEPRINT_CACHE_KEY,
+        name="BP Overview",
+        description="Blueprint recipe, material and mission reference rows.",
+    ),
 )
 
 
@@ -127,6 +132,8 @@ def refresh_cache_source(cache_key):
         success, message = refresh_wikelo_cache()
     elif cache_key == local_cache.UEX_PRICES_CACHE_KEY:
         success, message = refresh_uex_cache()
+    elif cache_key == local_cache.BLUEPRINT_CACHE_KEY:
+        success, message = refresh_blueprint_cache()
     else:
         raise ValueError(f"Unknown cache source: {cache_key}")
 
@@ -230,3 +237,14 @@ def refresh_uex_cache():
     if snapshot.source_error:
         return False, f"UEX unavailable; using existing cached rows. {snapshot.source_error}"
     return True, f"Cached {len(snapshot.prices)} UEX price rows."
+
+
+def refresh_blueprint_cache():
+    from .blueprints_client import load_blueprints
+
+    snapshot = load_blueprints(force_refresh=True, raise_on_missing=False)
+    if snapshot.source_error:
+        if snapshot.cache_status == "missing":
+            return False, f"Blueprint source unavailable and no cached blueprint rows are available. {snapshot.source_error}"
+        return False, f"Blueprint source unavailable; using existing cached rows. {snapshot.source_error}"
+    return True, f"Cached {len(snapshot.blueprints)} blueprint rows."

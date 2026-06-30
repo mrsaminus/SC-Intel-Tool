@@ -43,3 +43,6 @@ class BPOverviewTab(QWidget):
     def refresh_owned(self):
         self.browser_tab.refresh_owned_keys()
         self.owned_tab.refresh_owned()
+
+    def ensure_initial_load(self):
+        self.browser_tab.ensure_initial_load()

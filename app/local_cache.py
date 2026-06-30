@@ -7,9 +7,11 @@ CACHE_TTL_HOURS = 6
 ITEM_FINDER_CACHE_KEY = "item_finder.reference"
 WIKELO_CACHE_KEY = "wikelo.items"
 UEX_PRICES_CACHE_KEY = "uex_prices"
+BLUEPRINT_CACHE_KEY = "bp_overview.blueprints"
 ITEM_FINDER_SCHEMA_VERSION = "1"
 WIKELO_SCHEMA_VERSION = "1"
 UEX_PRICES_SCHEMA_VERSION = "1"
+BLUEPRINT_SCHEMA_VERSION = "1"
 
 
 @dataclass(frozen=True)
@@ -149,6 +151,60 @@ def ensure_cache_tables(cursor):
         terminal_name TEXT,
         sort_order INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY (cache_key, name)
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS cache_blueprints (
+        cache_key TEXT NOT NULL,
+        blueprint_key TEXT NOT NULL,
+        blueprint_name TEXT NOT NULL,
+        crafted_item TEXT,
+        category TEXT,
+        ownable INTEGER NOT NULL DEFAULT 1,
+        craft_time_seconds INTEGER,
+        patch TEXT,
+        source TEXT,
+        source_url TEXT,
+        raw_json TEXT NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (cache_key, blueprint_key)
+    )
+    """)
+    cursor.execute("""
+    CREATE INDEX IF NOT EXISTS idx_cache_blueprints_category
+    ON cache_blueprints (cache_key, category, blueprint_name)
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS cache_blueprint_materials (
+        cache_key TEXT NOT NULL,
+        blueprint_key TEXT NOT NULL,
+        material_index INTEGER NOT NULL,
+        slot TEXT,
+        name TEXT NOT NULL,
+        quantity REAL,
+        unit TEXT,
+        min_quality REAL,
+        quality_effects_json TEXT NOT NULL,
+        PRIMARY KEY (cache_key, blueprint_key, material_index)
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS cache_blueprint_sources (
+        cache_key TEXT NOT NULL,
+        blueprint_key TEXT NOT NULL,
+        source_index INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        drop_chance TEXT,
+        mission_id TEXT,
+        contractor TEXT,
+        reputation_giver TEXT,
+        reputation_rank TEXT,
+        location TEXT,
+        system TEXT,
+        PRIMARY KEY (cache_key, blueprint_key, source_index)
     )
     """)
 
@@ -295,12 +351,16 @@ def clear_cache_key(cache_key):
             cur.execute("DELETE FROM cache_uex_prices WHERE cache_key = ?", (cache_key,))
             cur.execute("DELETE FROM cache_uex_commodities WHERE cache_key = ?", (cache_key,))
             cur.execute("DELETE FROM cache_uex_locations WHERE cache_key = ?", (cache_key,))
+        elif cache_key == BLUEPRINT_CACHE_KEY:
+            cur.execute("DELETE FROM cache_blueprint_sources WHERE cache_key = ?", (cache_key,))
+            cur.execute("DELETE FROM cache_blueprint_materials WHERE cache_key = ?", (cache_key,))
+            cur.execute("DELETE FROM cache_blueprints WHERE cache_key = ?", (cache_key,))
         cur.execute("DELETE FROM cache_metadata WHERE cache_key = ?", (cache_key,))
         conn.commit()
 
 
 def clear_all_cache_data():
-    for cache_key in (ITEM_FINDER_CACHE_KEY, WIKELO_CACHE_KEY, UEX_PRICES_CACHE_KEY):
+    for cache_key in (ITEM_FINDER_CACHE_KEY, WIKELO_CACHE_KEY, UEX_PRICES_CACHE_KEY, BLUEPRINT_CACHE_KEY):
         clear_cache_key(cache_key)
 
 
@@ -584,6 +644,175 @@ def load_uex_prices_cache():
         for row in rows
     ]
     return prices, get_cache_metadata(UEX_PRICES_CACHE_KEY)
+
+
+def save_blueprint_cache(blueprints, warnings=None):
+    warnings = warnings or []
+    blueprints = list(blueprints or [])
+    with _connect() as conn:
+        cur = conn.cursor()
+        ensure_cache_tables(cur)
+        cur.execute("DELETE FROM cache_blueprint_sources WHERE cache_key = ?", (BLUEPRINT_CACHE_KEY,))
+        cur.execute("DELETE FROM cache_blueprint_materials WHERE cache_key = ?", (BLUEPRINT_CACHE_KEY,))
+        cur.execute("DELETE FROM cache_blueprints WHERE cache_key = ?", (BLUEPRINT_CACHE_KEY,))
+
+        for sort_order, blueprint in enumerate(blueprints):
+            cur.execute("""
+                INSERT INTO cache_blueprints (
+                    cache_key, blueprint_key, blueprint_name, crafted_item,
+                    category, ownable, craft_time_seconds, patch, source,
+                    source_url, raw_json, sort_order
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                BLUEPRINT_CACHE_KEY,
+                blueprint.key,
+                blueprint.blueprint_name,
+                blueprint.crafted_item,
+                blueprint.category,
+                1 if blueprint.ownable else 0,
+                blueprint.craft_time_seconds,
+                blueprint.patch,
+                blueprint.source,
+                blueprint.source_url,
+                json.dumps(blueprint.raw or {}, sort_keys=True),
+                sort_order,
+            ))
+
+            for material_index, ingredient in enumerate(blueprint.ingredients):
+                cur.execute("""
+                    INSERT INTO cache_blueprint_materials (
+                        cache_key, blueprint_key, material_index, slot, name,
+                        quantity, unit, min_quality, quality_effects_json
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    BLUEPRINT_CACHE_KEY,
+                    blueprint.key,
+                    material_index,
+                    ingredient.slot,
+                    ingredient.name,
+                    ingredient.quantity,
+                    ingredient.unit,
+                    ingredient.min_quality,
+                    json.dumps(tuple(ingredient.quality_effects or ()), sort_keys=True),
+                ))
+
+            for source_index, mission in enumerate(blueprint.missions):
+                cur.execute("""
+                    INSERT INTO cache_blueprint_sources (
+                        cache_key, blueprint_key, source_index, name, drop_chance,
+                        mission_id, contractor, reputation_giver, reputation_rank,
+                        location, system
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    BLUEPRINT_CACHE_KEY,
+                    blueprint.key,
+                    source_index,
+                    mission.name,
+                    mission.drop_chance,
+                    mission.mission_id,
+                    mission.contractor,
+                    mission.reputation_giver,
+                    mission.reputation_rank,
+                    mission.location,
+                    mission.system,
+                ))
+
+        update_cache_metadata_in_cursor(
+            cur,
+            BLUEPRINT_CACHE_KEY,
+            "SC Craft Tools blueprints",
+            BLUEPRINT_SCHEMA_VERSION,
+            len(blueprints),
+            status="ready",
+            error_message="; ".join(warnings),
+        )
+        conn.commit()
+
+
+def load_blueprint_cache():
+    from app.blueprints_client import BlueprintIngredient, BlueprintMission, BlueprintRecord
+
+    with _connect() as conn:
+        cur = conn.cursor()
+        ensure_cache_tables(cur)
+        cur.execute("""
+            SELECT blueprint_key, blueprint_name, crafted_item, category,
+                   ownable, craft_time_seconds, patch, source, source_url,
+                   raw_json
+            FROM cache_blueprints
+            WHERE cache_key = ?
+            ORDER BY sort_order, category, blueprint_name
+        """, (BLUEPRINT_CACHE_KEY,))
+        blueprint_rows = cur.fetchall()
+
+        cur.execute("""
+            SELECT blueprint_key, slot, name, quantity, unit, min_quality,
+                   quality_effects_json
+            FROM cache_blueprint_materials
+            WHERE cache_key = ?
+            ORDER BY blueprint_key, material_index
+        """, (BLUEPRINT_CACHE_KEY,))
+        material_rows = cur.fetchall()
+
+        cur.execute("""
+            SELECT blueprint_key, name, drop_chance, mission_id, contractor,
+                   reputation_giver, reputation_rank, location, system
+            FROM cache_blueprint_sources
+            WHERE cache_key = ?
+            ORDER BY blueprint_key, source_index
+        """, (BLUEPRINT_CACHE_KEY,))
+        source_rows = cur.fetchall()
+
+    materials_by_blueprint = {}
+    for row in material_rows:
+        quality_effects = json.loads(row[6] or "[]")
+        materials_by_blueprint.setdefault(row[0], []).append(
+            BlueprintIngredient(
+                slot=row[1] or "Material",
+                name=row[2] or "Unknown",
+                quantity=row[3],
+                unit=row[4] or "scu",
+                min_quality=row[5],
+                quality_effects=tuple(str(effect) for effect in quality_effects),
+            )
+        )
+
+    sources_by_blueprint = {}
+    for row in source_rows:
+        sources_by_blueprint.setdefault(row[0], []).append(
+            BlueprintMission(
+                name=row[1] or "Unknown mission",
+                drop_chance=row[2] or "",
+                mission_id=row[3] or "",
+                contractor=row[4] or "",
+                reputation_giver=row[5] or "",
+                reputation_rank=row[6] or "",
+                location=row[7] or "",
+                system=row[8] or "",
+            )
+        )
+
+    blueprints = [
+        BlueprintRecord(
+            key=row[0],
+            blueprint_name=row[1],
+            crafted_item=row[2] or row[1],
+            category=row[3] or "N/A",
+            ownable=bool(row[4]),
+            craft_time_seconds=row[5],
+            ingredients=tuple(materials_by_blueprint.get(row[0], ())),
+            missions=tuple(sources_by_blueprint.get(row[0], ())),
+            patch=row[6] or "N/A",
+            source=row[7] or "SC Craft Tools",
+            source_url=row[8] or "",
+            raw=json.loads(row[9] or "{}"),
+        )
+        for row in blueprint_rows
+    ]
+    return blueprints, get_cache_metadata(BLUEPRINT_CACHE_KEY)
 
 
 def serialize_item_finder_item(item):

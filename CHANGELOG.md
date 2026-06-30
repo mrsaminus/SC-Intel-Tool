@@ -13,6 +13,8 @@
   when UEX is unavailable.
 - Added Local Data Platform management in Settings for cache status,
   refresh, clear and tester diagnostics visibility.
+- Added BP Overview / blueprint reference data to the Local Data Platform so
+  blueprint recipes, materials and mission context can load from local cache.
 
 ## 0.1.0-alpha.8.9 - 2026-06-21
 

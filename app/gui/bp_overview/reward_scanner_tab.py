@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.blueprints_client import fetch_blueprints
+from app.blueprints_client import load_blueprints
 from app.blueprints_storage import get_owned_blueprint_keys, set_blueprint_owned
 from app.database import get_app_setting, set_app_setting
 from app.event_center.service import record_event
@@ -173,14 +173,17 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         self.load_blueprints_button.setText("Loading...")
         self.status_label.setText("Loading blueprint names...")
         self.start_background_task(
-            fetch_blueprints,
+            lambda: load_blueprints(raise_on_missing=False),
             self.on_blueprints_loaded,
             self.on_blueprints_error,
             self.finish_blueprint_refresh,
         )
 
-    def on_blueprints_loaded(self, blueprints):
+    def on_blueprints_loaded(self, snapshot):
+        blueprints = snapshot.blueprints if hasattr(snapshot, "blueprints") else snapshot
         self.set_blueprints([blueprint for blueprint in blueprints if blueprint.ownable])
+        if hasattr(snapshot, "source_error") and snapshot.source_error and not blueprints:
+            self.status_label.setText(f"Blueprint name load failed: {snapshot.source_error}")
 
     def on_blueprints_error(self, exc):
         self.status_label.setText(f"Blueprint name load failed: {exc}")

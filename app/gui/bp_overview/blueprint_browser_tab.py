@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.blueprints_client import fetch_blueprints
+from app.blueprints_client import load_blueprints
 from app.blueprints_storage import get_owned_blueprint_keys, get_owned_crafting_materials
 
 from ..workers import BackgroundTaskMixin
@@ -31,6 +31,7 @@ class BlueprintBrowserTab(BackgroundTaskMixin, QWidget):
         self.owned_changed_callback = owned_changed_callback
         self.blueprints_loaded_callback = blueprints_loaded_callback
         self.refresh_running = False
+        self.initial_load_started = False
         self.filter_timer = QTimer(self)
         self.filter_timer.setSingleShot(True)
         self.filter_timer.setInterval(160)
@@ -106,7 +107,7 @@ class BlueprintBrowserTab(BackgroundTaskMixin, QWidget):
         return card
 
     def connect_signals(self):
-        self.refresh_button.clicked.connect(self.refresh_blueprints)
+        self.refresh_button.clicked.connect(lambda: self.refresh_blueprints(force_refresh=True))
         self.search_input.textChanged.connect(self.queue_filter)
         self.category_filter.currentTextChanged.connect(self.populate_table)
         self.owned_only_checkbox.stateChanged.connect(self.on_owned_filter_changed)
@@ -114,31 +115,54 @@ class BlueprintBrowserTab(BackgroundTaskMixin, QWidget):
         self.craftable_only_checkbox.stateChanged.connect(self.populate_table)
         self.blueprint_table.itemSelectionChanged.connect(self.update_details)
 
-    def refresh_blueprints(self):
+    def ensure_initial_load(self):
+        if self.initial_load_started:
+            return
+        self.initial_load_started = True
+        self.refresh_blueprints(force_refresh=False)
+
+    def refresh_blueprints(self, force_refresh=True):
         if self.refresh_running:
             return
+        self.initial_load_started = True
         self.refresh_running = True
         self.refresh_button.setEnabled(False)
         self.refresh_button.setText("Loading...")
         self.status_label.setText("Loading blueprint data...")
         self.start_background_task(
-            fetch_blueprints,
+            lambda: load_blueprints(force_refresh=force_refresh, raise_on_missing=False),
             self.on_blueprints_loaded,
             self.on_blueprints_error,
             self.finish_refresh,
         )
 
-    def on_blueprints_loaded(self, blueprints):
+    def on_blueprints_loaded(self, snapshot):
+        blueprints = snapshot.blueprints if hasattr(snapshot, "blueprints") else snapshot
         self.blueprints = [blueprint for blueprint in blueprints if blueprint.ownable]
         self.owned_keys = get_owned_blueprint_keys()
         self.populate_category_filter()
-        self.status_label.setText(
-            f"Loaded {len(self.blueprints)} blueprints. "
-            "Owned state is local-only."
-        )
+        self.status_label.setText(self.blueprint_status_text(snapshot, len(self.blueprints)))
         if self.blueprints_loaded_callback:
             self.blueprints_loaded_callback(self.blueprints)
         self.populate_table()
+
+    def blueprint_status_text(self, snapshot, count):
+        base = f"Loaded {count} blueprints. Owned state is local-only."
+        if not hasattr(snapshot, "cache_status"):
+            return base
+
+        if snapshot.cache_status == "fresh" and snapshot.from_cache:
+            return f"Loaded {count} cached blueprints. Cache is fresh for up to 6 hours. Owned state is local-only."
+        if snapshot.cache_status == "stale":
+            return f"Loaded {count} cached blueprints. Cache is stale; refresh available. Owned state is local-only."
+        if snapshot.cache_status == "offline":
+            return (
+                f"SC Craft Tools unavailable; loaded {count} cached blueprints. "
+                f"Last refresh warning: {snapshot.source_error}"
+            )
+        if snapshot.cache_status == "missing" and snapshot.source_error:
+            return f"Blueprint refresh failed: {snapshot.source_error}"
+        return base
 
     def on_blueprints_error(self, exc):
         self.status_label.setText(f"Blueprint refresh failed: {exc}")
