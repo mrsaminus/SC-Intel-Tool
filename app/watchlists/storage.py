@@ -273,6 +273,7 @@ def mark_watchlist_events_read(watchlist_id=None):
 
 def set_watchlist_active(watchlist_id, active):
     ensure_watchlist_tables()
+    entry = get_watchlist_entry(watchlist_id)
     with get_connection() as conn:
         cur = conn.cursor()
         cur.execute("""
@@ -281,18 +282,51 @@ def set_watchlist_active(watchlist_id, active):
         WHERE id = ?
         """, (1 if active else 0, watchlist_id))
         conn.commit()
-        return cur.rowcount
+        changed = cur.rowcount
+    if changed and entry:
+        add_watchlist_event(
+            watchlist_id,
+            "enabled" if active else "disabled",
+            f"{'Enabled' if active else 'Disabled'} watch: {entry.name}",
+        )
+    return changed
 
 
 def delete_watchlist_entry(watchlist_id):
     ensure_watchlist_tables()
+    entry = get_watchlist_entry(watchlist_id)
     with get_connection() as conn:
         cur = conn.cursor()
         cur.execute("DELETE FROM watchlist_snapshots WHERE watchlist_id = ?", (watchlist_id,))
         cur.execute("DELETE FROM watchlist_events WHERE watchlist_id = ?", (watchlist_id,))
         cur.execute("DELETE FROM watchlist_entries WHERE id = ?", (watchlist_id,))
         conn.commit()
-        return cur.rowcount
+        changed = cur.rowcount
+    if changed and entry:
+        record_watchlist_deleted(entry)
+    return changed
+
+
+def record_watchlist_deleted(entry):
+    try:
+        from app.event_center.service import record_event
+
+        record_event(
+            category="Watchlists",
+            source=entry.source or "Watchlists",
+            entity_name=entry.name,
+            event_type="deleted",
+            message=f"Removed watchlist entry: {entry.name}",
+            metadata={
+                "watchlist_id": entry.id,
+                "watchlist_category": entry.category,
+                "watchlist_key": entry.key,
+            },
+            severity="Info",
+            dedupe=False,
+        )
+    except Exception:
+        pass
 
 
 def overview_counts():

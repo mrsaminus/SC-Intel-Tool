@@ -61,3 +61,4 @@ def test_database_initialization_creates_core_tables(monkeypatch, tmp_path):
     assert "lookup_history" in tables
     assert "app_settings" in tables
     assert "wikelo_checklist_state" in tables
+    assert "knowledge_notes" in tables

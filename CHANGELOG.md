@@ -19,6 +19,14 @@
   including improved Local Data Platform diagnostics and recent activity
   visibility in Settings.
 
+### Watchlists / Notes
+
+- Improved Watchlists overview, filtering and summary visibility while keeping
+  tracking local-first and manual-refresh based.
+- Added Activity Log entries for watchlist disable/enable/delete actions.
+- Expanded Notes into a local knowledge base with title, category, tags,
+  body search, timestamps and local CRUD actions.
+
 ## 0.1.0-alpha.8.9 - 2026-06-21
 
 ### Responsiveness

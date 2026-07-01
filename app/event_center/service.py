@@ -17,6 +17,9 @@ WATCHLIST_EVENT_SEVERITY = {
     "org_visibility_changed": "Important",
     "piracy_changed": "Important",
     "profile_changed": "Change",
+    "deleted": "Info",
+    "enabled": "Info",
+    "disabled": "Info",
 }
 
 
@@ -27,6 +30,8 @@ WATCHLIST_CATEGORY_MAP = {
     "ship": "Item",
     "player": "Player",
     "org": "Organization",
+    "blueprint": "Blueprint",
+    "material": "Blueprint",
 }
 
 

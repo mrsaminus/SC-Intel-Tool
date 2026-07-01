@@ -27,10 +27,13 @@ ITEM = "item"
 SHIP = "ship"
 PLAYER = "player"
 ORG = "org"
+BLUEPRINT = "blueprint"
+MATERIAL = "material"
 
 TRADING_CATEGORIES = {TRADING_ROUTE, TRADING_COMMODITY}
 ITEM_CATEGORIES = {ITEM, SHIP}
 INTEL_CATEGORIES = {PLAYER, ORG}
+BLUEPRINT_CATEGORIES = {BLUEPRINT, MATERIAL}
 
 
 def add_trading_route_watch(record):
@@ -95,6 +98,44 @@ def add_item_watch(item_name, category, source="", metadata=None, watch_category
         entry_id,
         "created" if created else "updated",
         f"{'Added' if created else 'Updated'} {display_category(watch_category).lower()} watch: {item_name}",
+    )
+    return get_watchlist_entry(entry_id)
+
+
+def add_blueprint_watch(blueprint_name, source="BP Overview", metadata=None):
+    blueprint_name = (blueprint_name or "").strip()
+    key = normalized_key(source, blueprint_name)
+    entry_id, created = upsert_watchlist_entry(
+        BLUEPRINT,
+        blueprint_name,
+        key,
+        source,
+        metadata or {"blueprint": blueprint_name},
+    )
+    add_watchlist_snapshot(entry_id, "tracked", metadata or {"blueprint": blueprint_name}, "Initial blueprint watch.")
+    add_watchlist_event(
+        entry_id,
+        "created" if created else "updated",
+        f"{'Added' if created else 'Updated'} blueprint watch: {blueprint_name}",
+    )
+    return get_watchlist_entry(entry_id)
+
+
+def add_material_watch(material_name, source="BP Overview", metadata=None):
+    material_name = (material_name or "").strip()
+    key = normalized_key(source, material_name)
+    entry_id, created = upsert_watchlist_entry(
+        MATERIAL,
+        material_name,
+        key,
+        source,
+        metadata or {"material": material_name},
+    )
+    add_watchlist_snapshot(entry_id, "tracked", metadata or {"material": material_name}, "Initial material watch.")
+    add_watchlist_event(
+        entry_id,
+        "created" if created else "updated",
+        f"{'Added' if created else 'Updated'} material watch: {material_name}",
     )
     return get_watchlist_entry(entry_id)
 
@@ -186,6 +227,8 @@ def refresh_watchlist_entries(entries):
             results.append(refresh_trading_entry(entry, opportunities))
         elif entry.category in ITEM_CATEGORIES:
             results.append(refresh_local_only_entry(entry))
+        elif entry.category in BLUEPRINT_CATEGORIES:
+            results.append(refresh_blueprint_entry(entry))
         elif entry.category == PLAYER:
             results.append(refresh_player_entry(entry))
         elif entry.category == ORG:
@@ -284,6 +327,16 @@ def refresh_local_only_entry(entry):
         "refresh_pending",
         value,
         "Live Item Finder refresh is planned; current metadata remains tracked locally.",
+    )
+
+
+def refresh_blueprint_entry(entry):
+    value = dict(entry.metadata or {})
+    return record_refresh_result(
+        entry,
+        "tracked",
+        value,
+        "Blueprint reference data is tracked locally through BP Overview cache.",
     )
 
 
@@ -541,6 +594,8 @@ def display_category(category):
         SHIP: "Ship",
         PLAYER: "Player",
         ORG: "Organization",
+        BLUEPRINT: "Blueprint",
+        MATERIAL: "Material",
     }.get(category, category.replace("_", " ").title())
 
 
@@ -558,6 +613,58 @@ def status_text(status):
         "redacted": "Redacted / Hidden",
         "piracy_found": "Piracy signal found",
     }.get(status or "", status or "Not checked")
+
+
+def watchlist_overview_summary():
+    from .storage import list_watchlist_entries, list_watchlist_events, overview_counts
+
+    entries = list_watchlist_entries(include_inactive=True)
+    active_entries = [entry for entry in entries if entry.is_active]
+    counts = overview_counts()
+    group_counts = {
+        "Intel": sum(1 for entry in active_entries if entry.category in INTEL_CATEGORIES),
+        "Items": sum(1 for entry in active_entries if entry.category in ITEM_CATEGORIES),
+        "Trading": sum(1 for entry in active_entries if entry.category in TRADING_CATEGORIES),
+        "Blueprints": sum(1 for entry in active_entries if entry.category in BLUEPRINT_CATEGORIES),
+    }
+    source_counts = {}
+    status_counts = {}
+    for entry in active_entries:
+        source_counts[entry.source or "Local"] = source_counts.get(entry.source or "Local", 0) + 1
+        status = status_text(entry.last_status)
+        status_counts[status] = status_counts.get(status, 0) + 1
+
+    recent_events = list_watchlist_events(limit=10)
+    local_data = local_data_watchlist_summary()
+    return {
+        "total": len(entries),
+        "active": counts["active_count"],
+        "inactive": len(entries) - counts["active_count"],
+        "unread": counts["unread_count"],
+        "last_checked": counts["last_checked"],
+        "groups": group_counts,
+        "categories": counts["categories"],
+        "sources": source_counts,
+        "statuses": status_counts,
+        "recent_activity": len(recent_events),
+        "local_data": local_data,
+    }
+
+
+def local_data_watchlist_summary():
+    try:
+        from app.cache_manager import enumerate_cache_sources
+    except Exception:
+        return {"available": [], "warnings": ["Local Data Platform unavailable."]}
+
+    sources = list(enumerate_cache_sources())
+    available = [source.name for source in sources if source.row_count > 0]
+    warnings = [
+        f"{source.name}: {source.status}"
+        for source in sources
+        if source.status in {"Stale", "Offline", "Missing"}
+    ]
+    return {"available": available, "warnings": warnings}
 
 
 def clear_rsi_caches():

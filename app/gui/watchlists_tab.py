@@ -68,6 +68,16 @@ class WatchlistsTab(BackgroundTaskMixin, QWidget):
         self.tabs.addTab(self.items_panel, "Items & Ships")
         self.panels.append(self.items_panel)
 
+        self.blueprints_panel = WatchlistPanel(
+            self,
+            ("blueprint", "material"),
+            "Blueprint Watchlists",
+            "Track BP Overview blueprints and material references using local cached data where available.",
+            empty_text="No tracked blueprints or materials yet.",
+        )
+        self.tabs.addTab(self.blueprints_panel, "Blueprints")
+        self.panels.append(self.blueprints_panel)
+
         self.intel_panel = WatchlistPanel(
             self,
             ("player", "org"),
@@ -81,7 +91,9 @@ class WatchlistsTab(BackgroundTaskMixin, QWidget):
 
         self.setLayout(layout)
         self.overview_counts_label.setText("Watchlists will load when opened.")
+        self.overview_summary_label.setText("Summary: not loaded yet.")
         self.overview_categories_label.setText("Categories: not loaded yet.")
+        self.overview_local_data_label.setText("Local Data Platform: not loaded yet.")
         for panel in self.panels:
             panel.populate_table()
 
@@ -100,7 +112,7 @@ class WatchlistsTab(BackgroundTaskMixin, QWidget):
         title = QLabel("Watchlists")
         title.setObjectName("moduleHeading")
         subtitle = QLabel(
-            "Local-only tracking for Trading routes, commodities, items and ships. "
+            "Local-only tracking for intel, Trading, items, ships and blueprints. "
             "No telemetry, no cloud sync, no background polling."
         )
         subtitle.setObjectName("moduleSubtitle")
@@ -126,12 +138,20 @@ class WatchlistsTab(BackgroundTaskMixin, QWidget):
         self.overview_counts_label = QLabel("")
         self.overview_counts_label.setObjectName("valueText")
         self.overview_counts_label.setWordWrap(True)
+        self.overview_summary_label = QLabel("")
+        self.overview_summary_label.setObjectName("moduleSubtitle")
+        self.overview_summary_label.setWordWrap(True)
         self.overview_categories_label = QLabel("")
         self.overview_categories_label.setObjectName("moduleSubtitle")
         self.overview_categories_label.setWordWrap(True)
+        self.overview_local_data_label = QLabel("")
+        self.overview_local_data_label.setObjectName("moduleSubtitle")
+        self.overview_local_data_label.setWordWrap(True)
         stats_layout.addWidget(title)
         stats_layout.addWidget(self.overview_counts_label)
+        stats_layout.addWidget(self.overview_summary_label)
         stats_layout.addWidget(self.overview_categories_label)
+        stats_layout.addWidget(self.overview_local_data_label)
         stats.setLayout(stats_layout)
         layout.addWidget(stats)
 
@@ -179,10 +199,19 @@ class WatchlistsTab(BackgroundTaskMixin, QWidget):
 
     def refresh_overview(self):
         counts = overview_counts()
+        summary = service.watchlist_overview_summary()
         self.overview_counts_label.setText(
-            f"Active watches: {counts['active_count']} | "
-            f"Unread events: {counts['unread_count']} | "
-            f"Last checked: {counts['last_checked']}"
+            f"Total watches: {summary['total']} | Active: {summary['active']} | "
+            f"Inactive: {summary['inactive']} | Unread events: {summary['unread']}"
+        )
+        group_parts = [
+            f"{group}: {count}"
+            for group, count in summary["groups"].items()
+        ]
+        self.overview_summary_label.setText(
+            f"Recent activity: {summary['recent_activity']} | "
+            f"Last checked: {summary['last_checked']} | "
+            + " | ".join(group_parts)
         )
         categories = counts["categories"]
         if categories:
@@ -193,6 +222,13 @@ class WatchlistsTab(BackgroundTaskMixin, QWidget):
             self.overview_categories_label.setText("Categories: " + " | ".join(parts))
         else:
             self.overview_categories_label.setText("Categories: none yet.")
+
+        local_data = summary["local_data"]
+        available = ", ".join(local_data["available"]) if local_data["available"] else "none cached yet"
+        warnings = ", ".join(local_data["warnings"][:4]) if local_data["warnings"] else "none"
+        self.overview_local_data_label.setText(
+            f"Local cached sources available: {available}. Cache warnings: {warnings}."
+        )
 
         events = list_watchlist_events(limit=20)
         entries = {entry.id: entry for entry in list_watchlist_entries(include_inactive=True)}
@@ -290,11 +326,22 @@ class WatchlistPanel(QWidget):
         self.category_filter.addItem("All categories")
         for category in self.categories:
             self.category_filter.addItem(service.display_category(category), category)
+        self.source_filter = QComboBox()
+        self.source_filter.addItem("All sources", "All")
+        self.status_filter = QComboBox()
+        self.status_filter.addItem("All statuses", "All")
         self.show_inactive_checkbox = QCheckBox("Show inactive")
         row.addWidget(self.search_input, 1)
         row.addWidget(self.category_filter)
+        row.addWidget(self.source_filter)
+        row.addWidget(self.status_filter)
         row.addWidget(self.show_inactive_checkbox)
         layout.addLayout(row)
+
+        self.summary_label = QLabel("No watches loaded yet.")
+        self.summary_label.setObjectName("moduleSubtitle")
+        self.summary_label.setWordWrap(True)
+        layout.addWidget(self.summary_label)
 
         button_row = QHBoxLayout()
         button_row.setSpacing(8)
@@ -320,6 +367,8 @@ class WatchlistPanel(QWidget):
 
         self.search_input.textChanged.connect(self.populate_table)
         self.category_filter.currentTextChanged.connect(self.populate_table)
+        self.source_filter.currentIndexChanged.connect(self.populate_table)
+        self.status_filter.currentIndexChanged.connect(self.populate_table)
         self.show_inactive_checkbox.stateChanged.connect(self.reload_entries)
         self.refresh_selected_button.clicked.connect(self.refresh_selected)
         self.refresh_all_button.clicked.connect(self.refresh_all)
@@ -401,16 +450,45 @@ class WatchlistPanel(QWidget):
             self.categories,
             include_inactive=self.show_inactive_checkbox.isChecked(),
         )
+        self.update_filter_options()
         self.populate_table()
+
+    def update_filter_options(self):
+        current_source = self.source_filter.currentData() or "All"
+        current_status = self.status_filter.currentData() or "All"
+
+        self.source_filter.blockSignals(True)
+        self.source_filter.clear()
+        self.source_filter.addItem("All sources", "All")
+        for source in sorted({entry.source or "Local" for entry in self.entries}, key=str.lower):
+            self.source_filter.addItem(source, source)
+        source_index = self.source_filter.findData(current_source)
+        self.source_filter.setCurrentIndex(source_index if source_index >= 0 else 0)
+        self.source_filter.blockSignals(False)
+
+        self.status_filter.blockSignals(True)
+        self.status_filter.clear()
+        self.status_filter.addItem("All statuses", "All")
+        statuses = {
+            entry.last_status or "not_checked": service.status_text(entry.last_status)
+            for entry in self.entries
+        }
+        for status, label in sorted(statuses.items(), key=lambda item: item[1].lower()):
+            self.status_filter.addItem(label, status)
+        status_index = self.status_filter.findData(current_status)
+        self.status_filter.setCurrentIndex(status_index if status_index >= 0 else 0)
+        self.status_filter.blockSignals(False)
 
     def populate_table(self):
         query = self.search_input.text().strip().lower()
         category_data = self.category_filter.currentData()
+        source_data = self.source_filter.currentData()
+        status_data = self.status_filter.currentData()
 
         self.visible_entries = [
             entry
             for entry in self.entries
-            if self.entry_matches(entry, query, category_data)
+            if self.entry_matches(entry, query, category_data, source_data, status_data)
         ]
 
         sorting_enabled = self.table.isSortingEnabled()
@@ -446,10 +524,15 @@ class WatchlistPanel(QWidget):
         self.table.setSortingEnabled(sorting_enabled)
         configure_readable_table_columns(self.table, min_width=100, max_width=360, stretch_last=True)
         self.empty_label.setVisible(not self.visible_entries)
+        self.update_summary()
         self.update_details()
 
-    def entry_matches(self, entry, query, category_data):
+    def entry_matches(self, entry, query, category_data, source_data="All", status_data="All"):
         if category_data and entry.category != category_data:
+            return False
+        if source_data and source_data != "All" and (entry.source or "Local") != source_data:
+            return False
+        if status_data and status_data != "All" and (entry.last_status or "not_checked") != status_data:
             return False
         if not query:
             return True
@@ -462,6 +545,16 @@ class WatchlistPanel(QWidget):
             str(entry.metadata),
         )).lower()
         return query in haystack
+
+    def update_summary(self):
+        active_count = sum(1 for entry in self.visible_entries if entry.is_active)
+        unread_count = sum(entry.unread_events for entry in self.visible_entries)
+        sources = sorted({entry.source or "Local" for entry in self.visible_entries}, key=str.lower)
+        source_text = ", ".join(sources[:4]) if sources else "none"
+        self.summary_label.setText(
+            f"Showing {len(self.visible_entries)} watch(es), {active_count} active, "
+            f"{unread_count} unread event(s). Sources: {source_text}."
+        )
 
     def selected_entry(self):
         row = self.table.currentRow()
