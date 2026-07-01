@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### OCR
+
+- Introduced a reusable local-only OCR Foundation with capture, preprocessing,
+  OCR service, parser, confidence, region and worker abstractions.
+- Migrated Reward Scanner capture/OCR matching through the shared OCR service
+  while preserving existing scanner behavior.
+
 ## 0.1.0-alpha.8.9.2 - 2026-07-01
 
 ### Local Data
