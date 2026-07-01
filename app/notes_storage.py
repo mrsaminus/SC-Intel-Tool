@@ -156,7 +156,9 @@ def save_note(note):
                 note.id,
             ))
             conn.commit()
-            return get_note(note.id)
+            saved = get_note(note.id)
+            record_note_event(saved, "updated")
+            return saved
 
         cur.execute("""
         INSERT INTO knowledge_notes (
@@ -177,16 +179,22 @@ def save_note(note):
         ))
         note_id = cur.lastrowid
         conn.commit()
-    return get_note(note_id)
+    saved = get_note(note_id)
+    record_note_event(saved, "created")
+    return saved
 
 
 def delete_note(note_id):
     ensure_notes_tables()
+    note = get_note(note_id)
     with get_connection() as conn:
         cur = conn.cursor()
         cur.execute("DELETE FROM knowledge_notes WHERE id = ?", (note_id,))
         conn.commit()
-        return cur.rowcount
+        changed = cur.rowcount
+    if changed:
+        record_note_event(note, "deleted")
+    return changed
 
 
 def duplicate_note(note_id):
@@ -271,6 +279,34 @@ def ensure_column(cursor, table, column, definition):
 
 def utc_timestamp():
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+
+
+def record_note_event(note, event_type):
+    if not note:
+        return
+    try:
+        from app.event_center.service import record_event
+
+        messages = {
+            "created": f"Created note: {note.title}",
+            "updated": f"Updated note: {note.title}",
+            "deleted": f"Deleted note: {note.title}",
+        }
+        record_event(
+            category="Notes",
+            source="Notes",
+            entity_name=note.title,
+            event_type=event_type,
+            message=messages.get(event_type, f"Note event: {note.title}"),
+            metadata={
+                "note_id": note.id,
+                "category": note.category,
+            },
+            severity="Info",
+            dedupe=False,
+        )
+    except Exception:
+        pass
 
 
 def get_connection():

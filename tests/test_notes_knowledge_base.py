@@ -64,6 +64,39 @@ def test_notes_migration_preserves_player_notes(monkeypatch, tmp_path):
     assert notes.get_note(saved.id).body == "Local KB"
 
 
+def test_notes_record_safe_activity_log_events(monkeypatch, tmp_path):
+    isolated_database(monkeypatch, tmp_path)
+    notes = reload_module("app.notes_storage")
+    event_storage = reload_module("app.event_center.storage")
+
+    saved = notes.save_note(notes.KnowledgeNote(
+        title="Sensitive Local Note",
+        category="Trading",
+        tags="private-tag",
+        body="Secret body text should stay out of activity metadata.",
+        linked_key="private-linked-key",
+    ))
+    notes.save_note(notes.KnowledgeNote(
+        id=saved.id,
+        title="Sensitive Local Note",
+        category="Trading",
+        body="Updated secret body.",
+    ))
+    assert notes.delete_note(saved.id) == 1
+
+    events = event_storage.list_notification_events(category="Notes")
+    event_types = {event.event_type for event in events}
+
+    assert {"created", "updated", "deleted"}.issubset(event_types)
+    for event in events:
+        assert event.source == "Notes"
+        assert event.severity == "Info"
+        assert "Secret body" not in event.message
+        assert "Secret body" not in str(event.metadata)
+        assert "private-tag" not in str(event.metadata)
+        assert "private-linked-key" not in str(event.metadata)
+
+
 def test_notes_table_migration_adds_missing_columns(monkeypatch, tmp_path):
     database, _db_path = isolated_database(monkeypatch, tmp_path)
     notes = reload_module("app.notes_storage")

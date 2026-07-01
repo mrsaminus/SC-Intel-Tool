@@ -26,6 +26,8 @@
 - Added Activity Log entries for watchlist disable/enable/delete actions.
 - Expanded Notes into a local knowledge base with title, category, tags,
   body search, timestamps and local CRUD actions.
+- Added safe Activity Log entries for Notes create, update and delete actions
+  without recording note body text or private link metadata.
 
 ## 0.1.0-alpha.8.9 - 2026-06-21
 
