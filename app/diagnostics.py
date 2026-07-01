@@ -39,7 +39,7 @@ def collect_diagnostics(database_path=None):
         from .database import DB_PATH
 
         database_path = DB_PATH
-    from .cache_manager import enumerate_cache_sources
+    from .cache_manager import enumerate_cache_sources, recent_cache_operation_summaries
 
     return {
         "app_version": APP_VERSION,
@@ -53,6 +53,7 @@ def collect_diagnostics(database_path=None):
         "public_mining_root": str(PUBLIC_MINING_ROOT),
         "runtime_assets": runtime_asset_status(),
         "cache_sources": enumerate_cache_sources(),
+        "cache_operations": recent_cache_operation_summaries(limit=8),
     }
 
 
@@ -150,8 +151,20 @@ def format_diagnostics(diagnostics):
     for source in diagnostics.get("cache_sources") or ():
         lines.append(
             f"  - {source.name}: {source.status}; rows={source.row_count}; "
-            f"updated={source.last_updated}; age={source.age}; schema={source.schema_version}"
+            f"updated={source.last_updated}; age={source.age}; schema={source.schema_version}; "
+            f"last_success={source.last_success}; last_failure={source.last_failure}; "
+            f"last_operation={source.last_operation_status}; duration={source.last_refresh_duration}"
         )
+        if source.last_error:
+            lines.append(f"    last_error={source.last_error}")
+
+    lines.append("Recent cache operations:")
+    recent_operations = diagnostics.get("cache_operations") or ()
+    if recent_operations:
+        for operation in recent_operations:
+            lines.append(f"  - {operation}")
+    else:
+        lines.append("  - none")
 
     lines.extend([
         "",

@@ -120,6 +120,38 @@ def test_cache_manager_refresh_updates_uex_metadata(monkeypatch, tmp_path):
     assert "Cached 2 UEX price rows" in result.message
     assert info.status == "Fresh"
     assert info.row_count == 2
+    operations = cache.recent_cache_operations(cache_key=cache.UEX_PRICES_CACHE_KEY)
+    assert operations[0].operation == "refresh"
+    assert operations[0].status == "success"
+    assert operations[0].rows_before == 0
+    assert operations[0].rows_after == 2
+
+
+def test_cache_manager_refresh_failure_logs_offline_fallback(monkeypatch, tmp_path):
+    isolated_database(monkeypatch, tmp_path)
+    cache = reload_module("app.local_cache")
+    uex_client = reload_module("app.uex_client")
+    manager = reload_module("app.cache_manager")
+    cache.save_uex_prices_cache(sample_price_rows())
+
+    def fail_fetch():
+        raise RuntimeError("network down")
+
+    monkeypatch.setattr(uex_client, "fetch_all_commodity_prices", fail_fetch)
+
+    result = manager.refresh_cache_source(cache.UEX_PRICES_CACHE_KEY)
+    info = manager.cache_source_info(cache.UEX_PRICES_CACHE_KEY)
+    operations = cache.recent_cache_operations(cache_key=cache.UEX_PRICES_CACHE_KEY)
+
+    assert not result.success
+    assert "using existing cached rows" in result.message
+    assert info.status == "Offline"
+    assert operations[0].operation == "refresh"
+    assert operations[0].status == "failed"
+    assert operations[0].rows_before == 2
+    assert operations[0].rows_after == 2
+    assert operations[0].details["cached_rows_available"] is True
+    assert "network down" in operations[0].error_message
 
 
 def test_cache_manager_refresh_updates_blueprint_metadata(monkeypatch, tmp_path):
@@ -136,6 +168,9 @@ def test_cache_manager_refresh_updates_blueprint_metadata(monkeypatch, tmp_path)
     assert "Cached 1 blueprint rows" in result.message
     assert info.status == "Fresh"
     assert info.row_count == 1
+    assert info.last_operation_status == "success"
+    assert info.last_success != "Never"
+    assert info.last_refresh_duration != "-"
 
 
 def test_cache_manager_refresh_all_runs_sources_sequentially(monkeypatch, tmp_path):
@@ -169,9 +204,16 @@ def test_cache_manager_clear_source_and_clear_all(monkeypatch, tmp_path):
     rows, metadata = cache.load_uex_prices_cache()
     assert rows == []
     assert metadata is None
+    clear_operations = cache.recent_cache_operations(cache_key=cache.UEX_PRICES_CACHE_KEY)
+    assert clear_operations[0].operation == "clear"
+    assert clear_operations[0].status == "success"
+    assert clear_operations[0].rows_before == 2
+    assert clear_operations[0].rows_after == 0
 
     manager.clear_all_cached_data()
     assert {source.status for source in manager.enumerate_cache_sources()} == {"Missing"}
+    recent = cache.recent_cache_operations(limit=8)
+    assert any(operation.operation == "clear_all" and operation.status == "success" for operation in recent)
 
 
 def test_diagnostics_include_cache_sources(monkeypatch, tmp_path):
@@ -179,6 +221,13 @@ def test_diagnostics_include_cache_sources(monkeypatch, tmp_path):
     cache = reload_module("app.local_cache")
     diagnostics = reload_module("app.diagnostics")
     cache.update_cache_metadata(cache.UEX_PRICES_CACHE_KEY, "UEX public market prices", "1", row_count=2)
+    cache.record_cache_operation(
+        cache.UEX_PRICES_CACHE_KEY,
+        "UEX Trading",
+        "refresh",
+        "success",
+        rows_after=2,
+    )
 
     text = diagnostics.safe_diagnostics_text()
 
@@ -186,6 +235,8 @@ def test_diagnostics_include_cache_sources(monkeypatch, tmp_path):
     assert "UEX Trading: Fresh; rows=2" in text
     assert "BP Overview: Missing; rows=0" in text
     assert "schema=1" in text
+    assert "Recent cache operations:" in text
+    assert "UEX Trading - Refresh Success - 2 rows" in text
 
 
 def test_settings_local_data_platform_section_displays_cache_sources(monkeypatch, tmp_path, qapp):
@@ -193,6 +244,13 @@ def test_settings_local_data_platform_section_displays_cache_sources(monkeypatch
     cache = reload_module("app.local_cache")
     settings_module = reload_module("app.gui.settings_tab")
     cache.update_cache_metadata(cache.UEX_PRICES_CACHE_KEY, "UEX public market prices", "1", row_count=2)
+    cache.record_cache_operation(
+        cache.UEX_PRICES_CACHE_KEY,
+        "UEX Trading",
+        "refresh",
+        "success",
+        rows_after=2,
+    )
 
     settings = settings_module.SettingsTab()
     labels = [label.text() for label in settings.findChildren(settings_module.QLabel)]
@@ -203,4 +261,6 @@ def test_settings_local_data_platform_section_displays_cache_sources(monkeypatch
     assert "UEX Trading" in labels
     assert "BP Overview" in labels
     assert any("Rows Cached: 2" in label for label in labels)
+    assert any("Recent Cache Activity" in label for label in labels)
+    assert any("UEX Trading - Refresh Success - 2 rows" in label for label in labels)
     settings.close()

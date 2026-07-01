@@ -15,6 +15,9 @@
   refresh, clear and tester diagnostics visibility.
 - Added BP Overview / blueprint reference data to the Local Data Platform so
   blueprint recipes, materials and mission context can load from local cache.
+- Added cache operation history for refresh, clear and refresh-all activity,
+  including improved Local Data Platform diagnostics and recent activity
+  visibility in Settings.
 
 ## 0.1.0-alpha.8.9 - 2026-06-21
 

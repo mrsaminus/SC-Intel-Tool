@@ -128,6 +128,56 @@ def test_cache_metadata_error_and_invalidation(monkeypatch, tmp_path):
     assert cache.cache_status("unit.test") == "stale"
 
 
+def test_cache_operation_logging_round_trip(monkeypatch, tmp_path):
+    isolated_database(monkeypatch, tmp_path)
+    cache = reload_module("app.local_cache")
+
+    operation_id = cache.start_cache_operation(
+        "unit.test",
+        "Unit Test",
+        "refresh",
+        rows_before=1,
+        details={"phase": "started"},
+    )
+    cache.finish_cache_operation(
+        operation_id,
+        "success",
+        rows_after=3,
+        details={"phase": "finished"},
+    )
+
+    operations = cache.recent_cache_operations(cache_key="unit.test")
+
+    assert len(operations) == 1
+    assert operations[0].operation == "refresh"
+    assert operations[0].status == "success"
+    assert operations[0].rows_before == 1
+    assert operations[0].rows_after == 3
+    assert operations[0].duration_ms is not None
+    assert operations[0].details["phase"] == "finished"
+
+
+def test_cache_operation_history_retention(monkeypatch, tmp_path):
+    isolated_database(monkeypatch, tmp_path)
+    cache = reload_module("app.local_cache")
+
+    for index in range(260):
+        cache.record_cache_operation(
+            "unit.test",
+            "Unit Test",
+            "refresh",
+            "success",
+            rows_after=index,
+            details={"index": index},
+        )
+
+    operations = cache.recent_cache_operations(limit=300)
+
+    assert len(operations) == 250
+    assert operations[0].rows_after == 259
+    assert operations[-1].rows_after == 10
+
+
 def test_item_finder_cache_round_trip(monkeypatch, tmp_path):
     isolated_database(monkeypatch, tmp_path)
     cache = reload_module("app.local_cache")

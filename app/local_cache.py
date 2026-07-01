@@ -34,6 +34,22 @@ class CacheMetadata:
         return parse_cache_datetime(self.expires_at)
 
 
+@dataclass(frozen=True)
+class CacheOperation:
+    id: int
+    cache_key: str
+    source: str
+    operation: str
+    status: str
+    started_at: str
+    finished_at: str
+    duration_ms: int | None
+    rows_before: int
+    rows_after: int
+    error_message: str
+    details: dict
+
+
 def ensure_cache_tables(cursor):
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS cache_metadata (
@@ -208,6 +224,31 @@ def ensure_cache_tables(cursor):
     )
     """)
 
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS cache_operations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        cache_key TEXT NOT NULL,
+        source TEXT NOT NULL,
+        operation TEXT NOT NULL,
+        status TEXT NOT NULL,
+        started_at TEXT NOT NULL,
+        finished_at TEXT,
+        duration_ms INTEGER,
+        rows_before INTEGER NOT NULL DEFAULT 0,
+        rows_after INTEGER NOT NULL DEFAULT 0,
+        error_message TEXT,
+        details_json TEXT NOT NULL DEFAULT '{}'
+    )
+    """)
+    cursor.execute("""
+    CREATE INDEX IF NOT EXISTS idx_cache_operations_recent
+    ON cache_operations (started_at DESC, id DESC)
+    """)
+    cursor.execute("""
+    CREATE INDEX IF NOT EXISTS idx_cache_operations_source
+    ON cache_operations (cache_key, started_at DESC, id DESC)
+    """)
+
 
 def get_cache_metadata(cache_key):
     with _connect() as conn:
@@ -362,6 +403,233 @@ def clear_cache_key(cache_key):
 def clear_all_cache_data():
     for cache_key in (ITEM_FINDER_CACHE_KEY, WIKELO_CACHE_KEY, UEX_PRICES_CACHE_KEY, BLUEPRINT_CACHE_KEY):
         clear_cache_key(cache_key)
+
+
+def start_cache_operation(cache_key, source, operation, rows_before=0, details=None, started_at=None):
+    started_at = started_at or utc_now()
+    with _connect() as conn:
+        cur = conn.cursor()
+        ensure_cache_tables(cur)
+        cur.execute("""
+            INSERT INTO cache_operations (
+                cache_key, source, operation, status, started_at,
+                rows_before, rows_after, details_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            str(cache_key or ""),
+            str(source or ""),
+            str(operation or ""),
+            "running",
+            format_cache_datetime(started_at),
+            int(rows_before or 0),
+            int(rows_before or 0),
+            json.dumps(safe_operation_details(details), sort_keys=True),
+        ))
+        operation_id = cur.lastrowid
+        conn.commit()
+
+    cleanup_cache_operations()
+    return operation_id
+
+
+def finish_cache_operation(operation_id, status, rows_after=0, error_message="", details=None, finished_at=None):
+    finished_at = finished_at or utc_now()
+    with _connect() as conn:
+        cur = conn.cursor()
+        ensure_cache_tables(cur)
+        cur.execute("""
+            SELECT started_at, details_json
+            FROM cache_operations
+            WHERE id = ?
+        """, (operation_id,))
+        row = cur.fetchone()
+        if not row:
+            return
+
+        started_at = parse_cache_datetime(row[0]) or finished_at
+        duration_ms = max(0, int((finished_at - started_at).total_seconds() * 1000))
+        existing_details = {}
+        try:
+            existing_details = json.loads(row[1] or "{}")
+        except (TypeError, ValueError):
+            existing_details = {}
+        merged_details = dict(existing_details)
+        merged_details.update(safe_operation_details(details))
+        cur.execute("""
+            UPDATE cache_operations
+            SET status = ?,
+                finished_at = ?,
+                duration_ms = ?,
+                rows_after = ?,
+                error_message = ?,
+                details_json = ?
+            WHERE id = ?
+        """, (
+            str(status or ""),
+            format_cache_datetime(finished_at),
+            duration_ms,
+            int(rows_after or 0),
+            safe_operation_message(error_message),
+            json.dumps(merged_details, sort_keys=True),
+            operation_id,
+        ))
+        conn.commit()
+    cleanup_cache_operations()
+
+
+def record_cache_operation(
+    cache_key,
+    source,
+    operation,
+    status,
+    rows_before=0,
+    rows_after=0,
+    error_message="",
+    details=None,
+):
+    operation_id = start_cache_operation(
+        cache_key,
+        source,
+        operation,
+        rows_before=rows_before,
+        details=details,
+    )
+    finish_cache_operation(
+        operation_id,
+        status,
+        rows_after=rows_after,
+        error_message=error_message,
+        details=details,
+    )
+    return operation_id
+
+
+def recent_cache_operations(limit=10, cache_key=None):
+    limit = max(1, min(int(limit or 10), 250))
+    with _connect() as conn:
+        cur = conn.cursor()
+        ensure_cache_tables(cur)
+        if cache_key:
+            cur.execute("""
+                SELECT id, cache_key, source, operation, status, started_at,
+                       COALESCE(finished_at, ''), duration_ms, rows_before,
+                       rows_after, COALESCE(error_message, ''), details_json
+                FROM cache_operations
+                WHERE cache_key = ?
+                ORDER BY started_at DESC, id DESC
+                LIMIT ?
+            """, (cache_key, limit))
+        else:
+            cur.execute("""
+                SELECT id, cache_key, source, operation, status, started_at,
+                       COALESCE(finished_at, ''), duration_ms, rows_before,
+                       rows_after, COALESCE(error_message, ''), details_json
+                FROM cache_operations
+                ORDER BY started_at DESC, id DESC
+                LIMIT ?
+            """, (limit,))
+        rows = cur.fetchall()
+
+    return tuple(cache_operation_from_row(row) for row in rows)
+
+
+def cache_operation_summary(cache_key):
+    latest = recent_cache_operations(limit=1, cache_key=cache_key)
+    last_success = latest_cache_operation(cache_key, operation="refresh", statuses=("success",))
+    last_failure = latest_cache_operation(cache_key, operation="refresh", statuses=("failed",))
+    last_refresh = latest_cache_operation(cache_key, operation="refresh")
+    return {
+        "last_operation_status": latest[0].status if latest else "None",
+        "last_success": last_success.finished_at or last_success.started_at if last_success else "Never",
+        "last_failure": last_failure.finished_at or last_failure.started_at if last_failure else "Never",
+        "last_error": last_failure.error_message if last_failure else "",
+        "last_refresh_duration_ms": last_refresh.duration_ms if last_refresh else None,
+    }
+
+
+def latest_cache_operation(cache_key, operation=None, statuses=None):
+    statuses = tuple(statuses or ())
+    with _connect() as conn:
+        cur = conn.cursor()
+        ensure_cache_tables(cur)
+        filters = ["cache_key = ?"]
+        values = [cache_key]
+        if operation:
+            filters.append("operation = ?")
+            values.append(operation)
+        if statuses:
+            filters.append(f"status IN ({','.join('?' for _ in statuses)})")
+            values.extend(statuses)
+        cur.execute(f"""
+            SELECT id, cache_key, source, operation, status, started_at,
+                   COALESCE(finished_at, ''), duration_ms, rows_before,
+                   rows_after, COALESCE(error_message, ''), details_json
+            FROM cache_operations
+            WHERE {' AND '.join(filters)}
+            ORDER BY started_at DESC, id DESC
+            LIMIT 1
+        """, values)
+        row = cur.fetchone()
+    return cache_operation_from_row(row) if row else None
+
+
+def cleanup_cache_operations(limit=250):
+    with _connect() as conn:
+        cur = conn.cursor()
+        ensure_cache_tables(cur)
+        cur.execute("""
+            DELETE FROM cache_operations
+            WHERE id NOT IN (
+                SELECT id FROM cache_operations
+                ORDER BY started_at DESC, id DESC
+                LIMIT ?
+            )
+        """, (int(limit or 250),))
+        conn.commit()
+
+
+def cache_operation_from_row(row):
+    details = {}
+    try:
+        details = json.loads(row[11] or "{}")
+    except (TypeError, ValueError):
+        details = {}
+    return CacheOperation(
+        id=int(row[0]),
+        cache_key=row[1] or "",
+        source=row[2] or "",
+        operation=row[3] or "",
+        status=row[4] or "",
+        started_at=row[5] or "",
+        finished_at=row[6] or "",
+        duration_ms=row[7],
+        rows_before=int(row[8] or 0),
+        rows_after=int(row[9] or 0),
+        error_message=row[10] or "",
+        details=details,
+    )
+
+
+def safe_operation_details(details):
+    if not details:
+        return {}
+    safe = {}
+    for key, value in dict(details).items():
+        if value is None:
+            safe[str(key)] = ""
+        elif isinstance(value, (bool, int, float)):
+            safe[str(key)] = value
+        else:
+            safe[str(key)] = safe_operation_message(value)
+    return safe
+
+
+def safe_operation_message(value, limit=500):
+    text = str(value or "").replace("\r", " ").replace("\n", " ").strip()
+    if len(text) > limit:
+        return text[: limit - 3] + "..."
+    return text
 
 
 def save_item_finder_cache(items, cstone_locations, warnings=None):

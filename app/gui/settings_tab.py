@@ -20,6 +20,7 @@ from app.cache_manager import (
     clear_all_cached_data,
     clear_cache_source,
     enumerate_cache_sources,
+    recent_cache_operation_summaries,
     refresh_all_cache_sources as refresh_all_cache_sources_data,
     refresh_cache_source as refresh_cache_source_data,
 )
@@ -326,7 +327,18 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         action_row.addWidget(self.clear_all_cache_button)
         layout.addLayout(action_row)
 
+        recent_title = QLabel("Recent Cache Activity")
+        recent_title.setObjectName("valueText")
+        layout.addWidget(recent_title)
+
+        self.cache_operations_label = QLabel("No cache operations recorded yet.")
+        self.cache_operations_label.setObjectName("moduleSubtitle")
+        self.cache_operations_label.setWordWrap(True)
+        self.configure_wrapping_label(self.cache_operations_label)
+        layout.addWidget(self.cache_operations_label)
+
         self.rebuild_cache_source_rows()
+        self.update_cache_recent_operations()
         return card
 
     def rebuild_cache_source_rows(self):
@@ -409,12 +421,24 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         details.setText(
             f"Status: {info.status} | Last Updated: {info.last_updated} | "
             f"Rows Cached: {info.row_count} | Cache Age: {info.age} | "
-            f"Schema: {info.schema_version}"
+            f"Schema: {info.schema_version}\n"
+            f"Last Success: {info.last_success} | Last Failure: {info.last_failure} | "
+            f"Last Operation: {info.last_operation_status} | Last Refresh: {info.last_refresh_duration}"
         )
-        if info.error_message:
-            details.setToolTip(info.error_message)
+        error_text = info.last_error or info.error_message
+        if error_text:
+            details.setToolTip(error_text)
         else:
             details.setToolTip("")
+
+    def update_cache_recent_operations(self):
+        if not hasattr(self, "cache_operations_label"):
+            return
+        summaries = recent_cache_operation_summaries(limit=6)
+        if not summaries:
+            self.cache_operations_label.setText("No cache operations recorded yet.")
+            return
+        self.cache_operations_label.setText("\n".join(f"- {summary}" for summary in summaries))
 
     def refresh_cache_source(self, cache_key):
         if self.cache_action_running:
@@ -446,20 +470,21 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
 
     def on_cache_source_refreshed(self, result):
         self.update_cache_source_rows()
+        self.update_cache_recent_operations()
         self.cache_platform_status_label.setText(result.message)
 
     def on_all_cache_sources_refreshed(self, results):
         self.update_cache_source_rows()
+        self.update_cache_recent_operations()
         failed = [result for result in results if not result.success]
-        if failed:
-            self.cache_platform_status_label.setText(
-                f"Refresh completed with {len(failed)} warning(s). Cached data remains available when present."
-            )
-        else:
-            self.cache_platform_status_label.setText("All cache sources refreshed.")
+        succeeded = len(results) - len(failed)
+        self.cache_platform_status_label.setText(
+            f"Refresh complete: {succeeded} succeeded, {len(failed)} failed."
+        )
 
     def on_cache_action_error(self, exc):
         self.update_cache_source_rows()
+        self.update_cache_recent_operations()
         self.cache_platform_status_label.setText(f"Cache action failed: {exc}")
         QMessageBox.warning(self, "Cache action failed", str(exc))
 
@@ -482,6 +507,7 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
 
         clear_cache_source(cache_key)
         self.update_cache_source_rows()
+        self.update_cache_recent_operations()
         self.cache_platform_status_label.setText("Cached source cleared.")
 
     def confirm_clear_all_cached_data(self):
@@ -499,6 +525,7 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
 
         clear_all_cached_data()
         self.update_cache_source_rows()
+        self.update_cache_recent_operations()
         self.cache_platform_status_label.setText("All cached external reference data cleared.")
 
     def set_cache_action_buttons_enabled(self, enabled):
