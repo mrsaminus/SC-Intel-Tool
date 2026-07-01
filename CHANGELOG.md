@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.8.9.2 - 2026-07-01
+
 ### Local Data
 
 - Introduced a shared SQLite cache metadata layer for local-first data sources.
@@ -237,7 +239,7 @@
 - Added selected-blueprint craftability status with required, owned and missing material quantities.
 - Added `Craftable only` blueprint filter as a first `What Can I Craft?` workflow.
 - Added missing-material Watchlist action from Blueprint Details.
-- Added Event Center events when owned crafting material quantities change.
+- Added Activity Log events when owned crafting material quantities change.
 - Improved quality scaling presentation with grouped readable stat ranges.
 - Added Reward Scanner alpha foundation for local, optional blueprint reward matching.
 - Reward Scanner is off by default, reads only a user-selected region when manually triggered,
@@ -263,7 +265,7 @@
 - Removed `Diamond` from refinery ore buttons.
 - Restored `Aslarite` as a refinery ore option.
 - Ran BP Overview regression coverage for blueprint loading, craftability, Reward Scanner parsing,
-  manual confirmation and Event Center integration.
+  manual confirmation and Activity Log integration.
 - Prepared the app version for the next alpha build.
 
 ## 0.1.0-alpha.8.5 - 2026-06-06
@@ -271,7 +273,7 @@
 ### Release Stabilization
 
 - Prepared the app for a larger public alpha release after Trading, Watchlists,
-  Event Center, Player/org tracking and BP Overview additions.
+  Activity Log, Player/org tracking and BP Overview additions.
 - Audited build hygiene so local `reference_material` data remains excluded from
   public packaged releases.
 - Kept advanced access storage local-only.
@@ -294,20 +296,20 @@
 
 ### Roadmap / Public Scope
 
-- Clarified that public Player Lookup, Search History, Watchlists and Event Center stay neutral.
+- Clarified that public Player Lookup, Search History, Watchlists and Activity Log stay neutral.
 - Clarified that advanced private intel mapping is out of scope for the public app.
 
 ### Stabilization
 
-- Ran a full alpha stabilization and regression pass after the Trading, Watchlists and Event Center additions.
-- Moved the Event Center main tab after Wikelo Items so it sits with the tracking/workflow tools.
+- Ran a full alpha stabilization and regression pass after the Trading, Watchlists and Activity Log additions.
+- Moved the Activity Log main tab after Wikelo Items so it sits with the tracking/workflow tools.
 - No feature behavior changes intended in this pass.
 
-### Event Center / Intel Tracking
+### Activity Log / Intel Tracking
 
-- Added a new Event Center main tab for persistent local app events.
+- Added a new Activity Log main tab for persistent local app events.
 - Added local `notification_events` storage with categories, severity, read state and metadata.
-- Watchlist events now also appear in Event Center.
+- Watchlist events now also appear in Activity Log.
 - Added Player watchlists with manual RSI refresh and snapshot comparison.
 - Added Organization watchlists with manual RSI org-detail refresh where public SID data is available.
 - Added conservative Player/Org change events for redacted visibility changes, org changes,
@@ -316,7 +318,7 @@
 - Added Player Lookup change summary against the previous stored lookup.
 - Added Search History pin/favorite flags, quick re-run lookup and watchlist actions.
 - Added Search History change summaries when a fresh lookup is loaded.
-- Event Center, Player/Org Watchlists and lookup-change tracking are local-only.
+- Activity Log, Player/Org Watchlists and lookup-change tracking are local-only.
 
 ### Watchlists
 
