@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Hauling
+
+- Added the Hauling Operations Center foundation with plain hauling contract
+  models, OCR/manual-text parser groundwork and manifest/capacity helpers.
+
 ### OCR
 
 - Introduced a reusable local-only OCR Foundation with capture, preprocessing,
