@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class UpdateCheckError(Exception):
-    pass
+    suppress_worker_traceback = True
 
 
 @dataclass(frozen=True)

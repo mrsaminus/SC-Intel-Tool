@@ -25,7 +25,11 @@ class FunctionWorker(QRunnable):
         try:
             self.signals.result.emit(self.function(*self.args, **self.kwargs))
         except Exception as exc:
-            logger.warning("Background task failed: %s", exc, exc_info=True)
+            logger.warning(
+                "Background task failed: %s",
+                exc,
+                exc_info=not getattr(exc, "suppress_worker_traceback", False),
+            )
             self.signals.error.emit(exc)
         finally:
             self.signals.finished.emit()

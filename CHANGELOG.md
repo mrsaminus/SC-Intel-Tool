@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.8.9.5 - 2026-07-02
+
+### Release Candidate Audit
+
+- Prepared the whole application as an alpha release candidate with current
+  version metadata, public documentation and tester checklists aligned to the
+  completed Alpha scope.
+- Revalidated grouped navigation, supported themes, Local Data Platform, OCR
+  workflows, Hauling sessions and packaged runtime hygiene.
+
 ### Hauling
 
 - Added the Hauling Operations Center foundation with plain hauling contract
