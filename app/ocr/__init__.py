@@ -3,7 +3,7 @@ from .confidence import clamp_confidence, confidence_label
 from .engine import MissingOCREngineError, OCREngineError, TesseractOCREngine
 from .parser import OCRParser, ParsedOCRResult
 from .regions import OCRRegion
-from .reward_scanner import RewardScannerParser
+from .reward_scanner import RewardScannerParser, reward_scan_result_from_pipeline
 from .results import OCRPipelineResult, OCRResult
 from .service import OCRService
 from .settings import DEFAULT_OCR_SETTINGS, OCRSettings
@@ -26,4 +26,5 @@ __all__ = [
     "clamp_confidence",
     "confidence_label",
     "preprocess_image",
+    "reward_scan_result_from_pipeline",
 ]

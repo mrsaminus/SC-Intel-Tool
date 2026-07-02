@@ -28,6 +28,16 @@ class OCRService:
                 errors=(message,),
             )
 
+        image_error = self.image_validation_error(image)
+        if image_error:
+            result = OCRResult(errors=(image_error,), warnings=("capture_error",))
+            return OCRPipelineResult(
+                status="capture_error",
+                ocr_result=result,
+                message=image_error,
+                errors=(image_error,),
+            )
+
         try:
             result = self.run_ocr(image)
         except MissingOCREngineError as exc:
@@ -80,3 +90,17 @@ class OCRService:
             warnings=result.warnings,
             errors=result.errors,
         )
+
+    @staticmethod
+    def image_validation_error(image):
+        if image is None:
+            return "No image was captured."
+        size = getattr(image, "size", None)
+        if size:
+            try:
+                width, height = size
+            except (TypeError, ValueError):
+                return ""
+            if width <= 0 or height <= 0:
+                return "Captured image is empty."
+        return ""

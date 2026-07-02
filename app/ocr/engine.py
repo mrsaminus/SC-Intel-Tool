@@ -19,10 +19,12 @@ class TesseractOCREngine:
 
     def run(self, image, settings=None):
         settings = settings or DEFAULT_OCR_SETTINGS
-        ocr_function = self.ocr_function or self.default_ocr_function()
         start = time.perf_counter()
         try:
-            text = ocr_function(image)
+            if self.ocr_function:
+                text = self.ocr_function(image)
+            else:
+                text = self.default_ocr_function()(image, settings)
         except MissingOCREngineError:
             raise
         except Exception as exc:
@@ -41,4 +43,9 @@ class TesseractOCREngine:
             import pytesseract
         except ImportError as exc:
             raise MissingOCREngineError("No local OCR engine is available.") from exc
-        return pytesseract.image_to_string
+
+        def run_tesseract(image, settings):
+            options = dict(settings.engine_options or {})
+            return pytesseract.image_to_string(image, lang=settings.language, **options)
+
+        return run_tesseract

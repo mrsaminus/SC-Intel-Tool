@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+import sys
+from types import SimpleNamespace
 
 from PIL import Image
 
@@ -59,6 +61,23 @@ def test_tesseract_engine_uses_injected_ocr_function_without_binary():
     assert result.processing_time >= 0
 
 
+def test_tesseract_engine_default_uses_language_and_options(monkeypatch):
+    captured = {}
+
+    def image_to_string(image, **kwargs):
+        captured["kwargs"] = kwargs
+        return "Configured OCR"
+
+    monkeypatch.setitem(sys.modules, "pytesseract", SimpleNamespace(image_to_string=image_to_string))
+    image = Image.new("RGB", (2, 2))
+    engine = TesseractOCREngine()
+
+    result = engine.run(image, settings=OCRSettings(language="nor", engine_options={"config": "--psm 6"}))
+
+    assert result.text == "Configured OCR"
+    assert captured["kwargs"] == {"lang": "nor", "config": "--psm 6"}
+
+
 def test_ocr_service_runs_capture_engine_and_parser():
     image = Image.new("RGB", (4, 4))
     service = OCRService(engine=TesseractOCREngine(ocr_function=lambda img: "hello"))
@@ -89,6 +108,18 @@ def test_ocr_service_reports_capture_error():
     assert result.ocr_result.warnings == ("capture_error",)
 
 
+def test_ocr_service_reports_empty_capture():
+    service = OCRService(engine=TesseractOCREngine(ocr_function=lambda img: "unused"))
+
+    result = service.scan_region(
+        (1, 2, 3, 4),
+        capture_function=lambda region: None,
+    )
+
+    assert result.status == "capture_error"
+    assert "No image" in result.message
+
+
 def test_ocr_service_reports_missing_engine():
     class MissingEngine:
         def run(self, image, settings=None):
@@ -103,6 +134,39 @@ def test_ocr_service_reports_missing_engine():
 
     assert result.status == "missing_ocr"
     assert "missing local OCR" in result.message
+
+
+def test_ocr_service_reports_unexpected_engine_failure():
+    class BrokenEngine:
+        def run(self, image, settings=None):
+            raise RuntimeError("engine exploded")
+
+    service = OCRService(engine=BrokenEngine())
+
+    result = service.scan_region(
+        (1, 2, 3, 4),
+        capture_function=lambda region: Image.new("RGB", (2, 2)),
+    )
+
+    assert result.status == "ocr_error"
+    assert "engine exploded" in result.message
+
+
+def test_ocr_service_reports_parser_failure():
+    class BrokenParser(OCRParser):
+        def parse(self, result):
+            raise RuntimeError("parser exploded")
+
+    service = OCRService(engine=TesseractOCREngine(ocr_function=lambda img: "text"))
+
+    result = service.scan_region(
+        (1, 2, 3, 4),
+        parser=BrokenParser(),
+        capture_function=lambda region: Image.new("RGB", (2, 2)),
+    )
+
+    assert result.status == "parse_error"
+    assert "parser exploded" in result.message
 
 
 def test_reward_scanner_parser_returns_structured_matches():

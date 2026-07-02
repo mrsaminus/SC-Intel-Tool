@@ -18,6 +18,8 @@ from app.blueprints_client import load_blueprints
 from app.blueprints_storage import get_owned_blueprint_keys, set_blueprint_owned
 from app.database import get_app_setting, set_app_setting
 from app.event_center.service import record_event
+from app.ocr import OCRService
+from app.ocr.reward_scanner import RewardScannerParser, reward_scan_result_from_pipeline
 
 from ..workers import BackgroundTaskMixin
 from .reward_scanner_matching import (
@@ -26,7 +28,6 @@ from .reward_scanner_matching import (
     capture_region_image,
     match_blueprint_text,
     pixmap_from_image,
-    scan_region_for_blueprint_text,
 )
 from .reward_scanner_overlay import RegionSelectionOverlay
 from .shared import ROW_ROLE, create_card, create_table, table_item
@@ -46,6 +47,7 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         self.scan_once_running = False
         self.scan_once_request_id = 0
         self.region_overlay = None
+        self.ocr_service = OCRService()
 
         layout = QVBoxLayout()
         layout.setContentsMargins(12, 12, 12, 12)
@@ -215,13 +217,17 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         self.scan_once_request_id += 1
         request_id = self.scan_once_request_id
         blueprints = tuple(self.blueprints)
+        parser = RewardScannerParser(blueprints)
         self.scan_once_button.setEnabled(False)
         self.scan_once_button.setText("Scanning...")
         self.status_label.setText("Capturing selected region and running local OCR...")
 
         self.start_background_task(
-            lambda: scan_region_for_blueprint_text(region, blueprints),
-            lambda result, current_request=request_id: self.on_scan_once_result(current_request, result),
+            lambda: self.ocr_service.scan_region(region, parser=parser),
+            lambda result, current_request=request_id, count=len(blueprints): self.on_scan_once_result(
+                current_request,
+                reward_scan_result_from_pipeline(result, count),
+            ),
             lambda exc, current_request=request_id: self.on_scan_once_error(current_request, exc),
             lambda current_request=request_id: self.finish_scan_once(current_request),
         )

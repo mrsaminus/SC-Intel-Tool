@@ -103,13 +103,17 @@ def scan_region_for_blueprint_text(region, blueprints, capture_function=None, oc
         capture_function=adapted_capture if capture_function else None,
     )
 
+    return reward_scan_result_from_pipeline(pipeline, len(blueprints))
+
+
+def reward_scan_result_from_pipeline(pipeline, blueprint_count=0):
     if pipeline.status == "capture_error":
         return {
             "status": "capture_error",
             "message": pipeline.message,
             "text": "",
             "matches": [],
-            "blueprint_count": len(blueprints),
+            "blueprint_count": blueprint_count,
         }
     if pipeline.status == "missing_ocr":
         return {
@@ -117,7 +121,7 @@ def scan_region_for_blueprint_text(region, blueprints, capture_function=None, oc
             "message": "",
             "text": "",
             "matches": [],
-            "blueprint_count": len(blueprints),
+            "blueprint_count": blueprint_count,
         }
     if pipeline.status in {"ocr_error", "parse_error"}:
         return {
@@ -125,7 +129,7 @@ def scan_region_for_blueprint_text(region, blueprints, capture_function=None, oc
             "message": pipeline.message,
             "text": "",
             "matches": [],
-            "blueprint_count": len(blueprints),
+            "blueprint_count": blueprint_count,
         }
 
     parsed_data = pipeline.parsed_result.data if pipeline.parsed_result else {}
@@ -134,5 +138,5 @@ def scan_region_for_blueprint_text(region, blueprints, capture_function=None, oc
         "message": "",
         "text": pipeline.ocr_result.text,
         "matches": parsed_data.get("matches", []),
-        "blueprint_count": parsed_data.get("blueprint_count", len(blueprints)),
+        "blueprint_count": parsed_data.get("blueprint_count", blueprint_count),
     }

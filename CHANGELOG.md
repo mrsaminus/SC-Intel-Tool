@@ -8,6 +8,8 @@
   OCR service, parser, confidence, region and worker abstractions.
 - Migrated Reward Scanner capture/OCR matching through the shared OCR service
   while preserving existing scanner behavior.
+- Tightened Reward Scanner OCR integration so the UI calls `OCRService`
+  directly, with improved empty-capture, parser-error and stale-result coverage.
 
 ## 0.1.0-alpha.8.9.2 - 2026-07-01
 
