@@ -9,7 +9,7 @@ bug. The goal is practical tester feedback without sharing private local data.
 - Open each navigation group and tab:
   - Home
   - Intel: Player Lookup, Search History, Watchlists
-  - Industrial: Mining / Salvage, Trading, BP Overview
+  - Industrial: Mining / Salvage, Trading, BP Overview, Hauling
   - Reference: Item Finder, Wikelo Items
   - System: Activity Log, Notes, Settings
 - Confirm your saved local data survives an app restart:
@@ -18,11 +18,13 @@ bug. The goal is practical tester feedback without sharing private local data.
   - Wikelo checklist progress
   - owned blueprints/materials
   - Trading routes/presets
+  - Hauling sessions
   - Watchlists
   - theme/settings
 - Try at least one live lookup or refresh where relevant:
   - RSI Player Lookup
   - UEX Trading refresh
+  - Hauling manual contract parse
   - Wikelo refresh
   - BP Overview data load
 - Try failure paths too:

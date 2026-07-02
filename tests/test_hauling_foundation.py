@@ -92,6 +92,26 @@ def test_parse_multiple_hauling_contracts():
     assert total_scu(contracts) == 44
 
 
+def test_parse_duplicate_hauling_contract_blocks_get_unique_ids():
+    contracts = parse_hauling_contracts(
+        """
+        Pick up: Checkmate
+        Deliver to: Teasa Spaceport
+        Commodity: Construction Materials
+        Quantity: 32 SCU
+
+        Pick up: Checkmate
+        Deliver to: Teasa Spaceport
+        Commodity: Construction Materials
+        Quantity: 32 SCU
+        """
+    )
+
+    assert len(contracts) == 2
+    assert contracts[0].id != contracts[1].id
+    assert [contract.scu for contract in contracts] == [32, 32]
+
+
 def test_parse_missing_pickup_warns_and_keeps_candidate():
     contracts = parse_hauling_contracts(
         """

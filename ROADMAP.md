@@ -3,8 +3,9 @@
 Last updated: 2026-06-21
 
 SC Intel Tool is a Star Citizen desktop companion for player lookup, local
-intel notes, mining and salvage planning, trading, item lookup, Wikelo tracking,
-blueprint/crafting reference, watchlists and local app activity events.
+intel notes, mining and salvage planning, trading, hauling manifests, item
+lookup, Wikelo tracking, blueprint/crafting reference, watchlists and local app
+activity events.
 
 The app is in public alpha. The priority before beta is stability, truthful UI,
 local data safety, release reliability and tester-driven polish.
@@ -80,6 +81,15 @@ local data safety, release reliability and tester-driven polish.
 - Reward Scanner alpha: optional, local-only, region-based and confirmation
   based.
 
+### Hauling Operations Center
+
+- Manual hauling contract text parsing.
+- Local OCR capture through the shared OCR Foundation.
+- Ship capacity integration from Trading cargo metadata.
+- Live cargo operations with Planned, Loaded and Delivered contract states.
+- Local-only manifest sessions with save, load and archive history.
+- Metadata-only Activity Log integration.
+
 ### Watchlists
 
 - Local Watchlists tab for Trading routes/commodities, items/ships, players and
@@ -93,8 +103,8 @@ local data safety, release reliability and tester-driven polish.
 - Persistent local app events.
 - Search, category filter, severity filter and unread-only toggle.
 - Mark read, clear read and copy summaries.
-- Receives events from Watchlists, Player Lookup, Search History, Trading and
-  BP Overview.
+- Receives events from Watchlists, Player Lookup, Search History, Trading,
+  BP Overview and Hauling Operations Center.
 
 ### Notes
 
@@ -122,7 +132,8 @@ local data safety, release reliability and tester-driven polish.
   migration, privacy and runtime asset validation.
 - AppData user data storage and safe migration.
 - Local-only SQLite persistence for notes, history, Wikelo progress, watchlists,
-  trading presets/routes, owned blueprints and owned crafting materials.
+  trading presets/routes, hauling sessions, owned blueprints and owned crafting
+  materials.
 - Windows packaged build pipeline with stable `SC-Intel-Tool.exe` filename.
 - Manual-restart updater flow for PyInstaller OneFile reliability.
 - Home redesign and branding pass.
@@ -178,6 +189,12 @@ local data safety, release reliability and tester-driven polish.
 - Add optional export/import later.
 - Consider OS notifications later, after manual local events are stable.
 - Keep everything local-only by default.
+
+### 7. Hauling Polish
+
+- Keep the Hauling Operations Center focused on local manifest workflows.
+- Improve copy/export formatting only after tester feedback.
+- Consider session search/filtering if saved manifests become busy.
 
 ## Later Backlog
 

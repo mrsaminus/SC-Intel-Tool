@@ -22,7 +22,7 @@ starts cleanly, keeps user data safe, and fails gracefully.
 - Smoke test navigation groups and tabs:
   - Home
   - Intel: Player Lookup, Search History, Watchlists
-  - Industrial: Mining / Salvage, Trading, BP Overview
+  - Industrial: Mining / Salvage, Trading, BP Overview, Hauling
   - Reference: Item Finder, Wikelo Items
   - System: Activity Log, Notes, Settings
 
@@ -62,6 +62,7 @@ starts cleanly, keeps user data safe, and fails gracefully.
   - Wikelo checklist
   - Owned blueprints/materials
   - Trading presets/routes
+  - Hauling sessions
   - Watchlists
   - Activity Log events
   - Theme/settings
@@ -154,6 +155,16 @@ starts cleanly, keeps user data safe, and fails gracefully.
 - Reward Scanner is off by default.
 - Region preview failure is handled without crashing.
 - Pasted text matching works without OCR.
+
+### Hauling Operations Center
+
+- Hauling opens.
+- Manual contract parse works.
+- OCR capture failure paths are inline and do not crash.
+- Ship capacity updates manifest totals.
+- Loaded and Delivered contract states update progress.
+- Save, load and archive session workflows preserve contract state.
+- Activity Log entries do not include raw OCR or contract source text.
 
 ### Wikelo / Watchlists / Activity Log
 

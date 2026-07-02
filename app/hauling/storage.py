@@ -1,6 +1,7 @@
 import hashlib
 import json
 import sqlite3
+from dataclasses import replace
 
 from .manifest import build_manifest
 from .models import (
@@ -142,7 +143,7 @@ def save_session(name, manifest, session_id=None, status=None, notes=""):
 
 def replace_session_contracts(cursor, session_id, contracts):
     cursor.execute("DELETE FROM hauling_contracts WHERE session_id = ?", (session_id,))
-    for contract in contracts or ():
+    for contract in unique_contract_ids(contracts or ()):
         cursor.execute("""
         INSERT INTO hauling_contracts (
             session_id,
@@ -309,6 +310,20 @@ def source_text_hash(text):
     if not text:
         return ""
     return hashlib.sha1(text.encode("utf-8")).hexdigest()
+
+
+def unique_contract_ids(contracts):
+    seen = {}
+    unique = []
+    for index, contract in enumerate(contracts or ()):
+        base_id = contract.id or f"contract-{index + 1}"
+        seen[base_id] = seen.get(base_id, 0) + 1
+        contract_id = base_id if seen[base_id] == 1 else f"{base_id}-{seen[base_id]}"
+        if contract.id == contract_id:
+            unique.append(contract)
+            continue
+        unique.append(replace(contract, id=contract_id))
+    return tuple(unique)
 
 
 def json_loads(value, default):

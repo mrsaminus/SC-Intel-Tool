@@ -494,7 +494,9 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         self.parse_result = None
         self.contracts = session.manifest.contracts
         self.manifest_started_logged = bool(self.contracts)
-        self.manifest_completed_logged = session.status == SESSION_STATUS_COMPLETED
+        self.manifest_completed_logged = bool(
+            self.contracts and session.manifest.delivered_contracts == len(session.manifest.contracts)
+        )
         self.update_manifest()
         self.update_session_status_label()
         self.refresh_session_history(select_session_id=session.id)

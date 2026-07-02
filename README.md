@@ -4,17 +4,17 @@
   <img src="app/assets/SC-Intel-Tool-Logo.png" alt="SC Intel Tool logo" width="160">
 </p>
 
-SC Intel Tool is a Star Citizen desktop utility for player intel, organization context, local activity tracking, mining and salvage planning, item finding, blueprint/crafting reference, Trading, Watchlists, and optional local OCR foundations.
+SC Intel Tool is a Star Citizen desktop utility for player intel, organization context, local activity tracking, mining and salvage planning, hauling manifests, item finding, blueprint/crafting reference, Trading, Watchlists, and optional local OCR foundations.
 
 ## Current Status
 
-The app is in active alpha development. Home, Intel, Industrial, Reference and System navigation groups are usable, including Activity Log, Player Lookup, Search History, Mining / Salvage, Trading, Item Finder, BP Overview, Watchlists, Wikelo Items, Notes, Settings, AppData persistence, and packaged update checks. BP Overview includes an optional local Reward Scanner alpha foundation with manual region selection; full OCR engine packaging remains planned for later.
+The app is in active alpha development. Home, Intel, Industrial, Reference and System navigation groups are usable, including Activity Log, Player Lookup, Search History, Mining / Salvage, Trading, BP Overview, Hauling Operations Center, Item Finder, Watchlists, Wikelo Items, Notes, Settings, AppData persistence, and packaged update checks. BP Overview includes an optional local Reward Scanner alpha foundation with manual region selection; full OCR engine packaging remains planned for later.
 
 Current navigation:
 
 - Home
 - Intel: Player Lookup, Search History, Watchlists
-- Industrial: Mining / Salvage, Trading, BP Overview
+- Industrial: Mining / Salvage, Trading, BP Overview, Hauling
 - Reference: Item Finder, Wikelo Items
 - System: Activity Log, Notes, Settings
 
@@ -61,11 +61,11 @@ executable. When the installer reports success, start `SC-Intel-Tool.exe`
 manually. Source/developer installs should update with git manually using
 `git pull`.
 
-User data is stored outside the install folder by default, so updates should preserve notes, lookup history, Activity Log history, Wikelo checklist state, owned blueprint progress, Trading presets/routes, Watchlists, settings, and future local data.
+User data is stored outside the install folder by default, so updates should preserve notes, lookup history, Activity Log history, Wikelo checklist state, owned blueprint progress, Trading presets/routes, Hauling sessions, Watchlists, settings, and future local data.
 
 ## Privacy
 
-SC Intel Tool has no telemetry, analytics, tracking, or user reporting. Player notes, lookup history, Activity Log events, watchlists, settings, OCR text, screenshots, and local database data are not sent to the developer.
+SC Intel Tool has no telemetry, analytics, tracking, or user reporting. Player notes, lookup history, Activity Log events, watchlists, hauling manifests, settings, OCR text, screenshots, and local database data are not sent to the developer.
 
 The app only makes outbound requests to public Star Citizen-related data sources needed for its features: RSI, UEX, Cornerstone, SC Focus, SC Craft Tools, the public Wikelo Google Sheet, and GitHub Releases for update checking. SCMDB is documented as a secondary BP Overview reference and may be used in a later enrichment pass. All user data remains local unless the user explicitly exports it.
 
@@ -73,7 +73,7 @@ The Reward Scanner is optional and off by default. It can visually select or man
 
 ## User Data
 
-SC Intel Tool stores local user data outside the app install folder by default so updates do not remove notes, lookup history, Activity Log events, Wikelo checklist state, owned blueprint progress, owned crafting materials, Trading presets/routes, Watchlists, settings, or future local data.
+SC Intel Tool stores local user data outside the app install folder by default so updates do not remove notes, lookup history, Activity Log events, Wikelo checklist state, owned blueprint progress, owned crafting materials, Trading presets/routes, Hauling sessions, Watchlists, settings, or future local data.
 
 On Windows, the default user data folder is:
 

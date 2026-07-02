@@ -82,6 +82,23 @@ def test_hauling_session_update_replaces_contract_state(monkeypatch, tmp_path):
     assert len(storage.list_sessions()) == 1
 
 
+def test_hauling_session_save_handles_duplicate_contract_ids(monkeypatch, tmp_path):
+    isolated_database(monkeypatch, tmp_path)
+    storage = reload_module("app.hauling.storage")
+    contracts = (
+        HaulingContract(id="duplicate", pickup="Checkmate", delivery="Lorville", commodity="Gold", scu=12),
+        HaulingContract(id="duplicate", pickup="Checkmate", delivery="Lorville", commodity="Gold", scu=12),
+    )
+
+    saved = storage.save_session("Duplicate IDs", build_manifest(contracts, selected_ship="Railen"))
+    loaded = storage.load_session(saved.id)
+
+    loaded_ids = [contract.id for contract in loaded.manifest.contracts]
+    assert len(loaded_ids) == 2
+    assert len(set(loaded_ids)) == 2
+    assert loaded.manifest.total_scu == 24
+
+
 def test_hauling_session_archive_and_delete_are_local_to_hauling(monkeypatch, tmp_path):
     database, _db_path = isolated_database(monkeypatch, tmp_path)
     storage = reload_module("app.hauling.storage")

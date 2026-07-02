@@ -14,6 +14,8 @@
   delivered tracking, progress summaries and metadata-only Activity Log events.
 - Added local-only Hauling manifest sessions with save/load/archive history and
   persisted contract states for continuing cargo operations after restart.
+- Tightened Hauling release-candidate edge cases around duplicate contract IDs,
+  archived completed-session reloads and public documentation alignment.
 
 ### OCR
 

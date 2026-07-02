@@ -325,6 +325,40 @@ def test_hauling_tab_archive_session_keeps_history_entry(monkeypatch, tmp_path, 
     tab.close()
 
 
+def test_hauling_tab_loading_archived_completed_session_does_not_duplicate_completion_event(
+    monkeypatch,
+    tmp_path,
+    qapp,
+):
+    tab = build_tab(monkeypatch, tmp_path)
+    tab.ship_combo.setCurrentText("Railen")
+    tab.session_name_input.setText("Completed Archive Run")
+    tab.contract_text.setPlainText(sample_contract_text(quantity=8))
+    tab.parse_contracts()
+    select_first_contract(tab)
+    tab.toggle_selected_delivered()
+    qapp.processEvents()
+    tab.save_current_session()
+    qapp.processEvents()
+
+    events = reload_module("app.event_center.storage").list_notification_events(category="Hauling")
+    completed_before = sum(1 for event in events if event.event_type == "hauling_manifest_completed")
+
+    tab.session_history_table.setCurrentCell(0, 0)
+    tab.archive_selected_session(confirm=False)
+    qapp.processEvents()
+    tab.load_selected_session()
+    qapp.processEvents()
+
+    events = reload_module("app.event_center.storage").list_notification_events(category="Hauling")
+    completed_after = sum(1 for event in events if event.event_type == "hauling_manifest_completed")
+
+    assert completed_before == 1
+    assert completed_after == completed_before
+    assert tab.contracts[0].state == CONTRACT_STATE_DELIVERED
+    tab.close()
+
+
 def test_hauling_tab_ocr_capture_updates_manifest(monkeypatch, tmp_path, qapp):
     tab = build_tab(monkeypatch, tmp_path)
     save_hauling_region(tab)

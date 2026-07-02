@@ -1,6 +1,6 @@
 import hashlib
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from .models import HaulingContract
 
@@ -43,7 +43,7 @@ class HaulingContractParser:
             warnings.append("No hauling contract text provided.")
 
         return HaulingParseResult(
-            contracts=tuple(contracts),
+            contracts=unique_contract_ids(contracts),
             source_text=text,
             warnings=tuple(warnings),
         )
@@ -51,6 +51,20 @@ class HaulingContractParser:
 
 def parse_hauling_contracts(text):
     return HaulingContractParser().parse(text).contracts
+
+
+def unique_contract_ids(contracts):
+    seen = {}
+    unique = []
+    for index, contract in enumerate(contracts or ()):
+        base_id = contract.id or f"contract-{index + 1}"
+        seen[base_id] = seen.get(base_id, 0) + 1
+        contract_id = base_id if seen[base_id] == 1 else f"{base_id}-{seen[base_id]}"
+        if contract.id == contract_id:
+            unique.append(contract)
+            continue
+        unique.append(replace(contract, id=contract_id))
+    return tuple(unique)
 
 
 def split_contract_blocks(text):
