@@ -62,3 +62,5 @@ def test_database_initialization_creates_core_tables(monkeypatch, tmp_path):
     assert "app_settings" in tables
     assert "wikelo_checklist_state" in tables
     assert "knowledge_notes" in tables
+    assert "hauling_sessions" in tables
+    assert "hauling_contracts" in tables

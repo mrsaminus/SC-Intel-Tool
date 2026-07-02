@@ -12,6 +12,8 @@
   OCR profile, enabling local region capture into the existing manifest workflow.
 - Added Cargo Operations for Hauling with live manifest state, contract loaded /
   delivered tracking, progress summaries and metadata-only Activity Log events.
+- Added local-only Hauling manifest sessions with save/load/archive history and
+  persisted contract states for continuing cargo operations after restart.
 
 ### OCR
 

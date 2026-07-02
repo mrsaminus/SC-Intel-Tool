@@ -15,6 +15,17 @@ CONTRACT_STATES = (
     CONTRACT_STATE_CANCELLED,
 )
 
+SESSION_STATUS_ACTIVE = "active"
+SESSION_STATUS_COMPLETED = "completed"
+SESSION_STATUS_ARCHIVED = "archived"
+SESSION_STATUS_CANCELLED = "cancelled"
+SESSION_STATUSES = (
+    SESSION_STATUS_ACTIVE,
+    SESSION_STATUS_COMPLETED,
+    SESSION_STATUS_ARCHIVED,
+    SESSION_STATUS_CANCELLED,
+)
+
 
 def utc_timestamp():
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
@@ -72,3 +83,22 @@ class HaulingManifest:
     pickups: tuple[HaulingStop, ...] = field(default_factory=tuple)
     destinations: tuple[HaulingStop, ...] = field(default_factory=tuple)
     warnings: tuple[str, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True)
+class HaulingSession:
+    id: int | None = None
+    name: str = ""
+    status: str = SESSION_STATUS_ACTIVE
+    selected_ship: str = ""
+    ship_capacity_scu: float | None = None
+    created_at: str = ""
+    updated_at: str = ""
+    completed_at: str = ""
+    archived_at: str = ""
+    total_scu: float = 0.0
+    loaded_scu: float = 0.0
+    delivered_scu: float = 0.0
+    completion_percentage: float = 0.0
+    notes: str = ""
+    manifest: HaulingManifest = field(default_factory=HaulingManifest)

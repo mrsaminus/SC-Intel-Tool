@@ -257,6 +257,74 @@ def test_hauling_tab_live_cargo_operations_update_progress_and_events(monkeypatc
     tab.close()
 
 
+def test_hauling_tab_save_load_session_restores_contract_states(monkeypatch, tmp_path, qapp):
+    tab = build_tab(monkeypatch, tmp_path)
+    tab.ship_combo.setCurrentText("Railen")
+    tab.session_name_input.setText("Tester Run")
+    tab.contract_text.setPlainText(sample_contract_text(quantity=32))
+    tab.parse_contracts()
+    select_first_contract(tab)
+    tab.toggle_selected_loaded()
+    select_first_contract(tab)
+    tab.toggle_selected_delivered()
+    qapp.processEvents()
+
+    tab.save_current_session()
+    qapp.processEvents()
+    saved_session_id = tab.current_session_id
+
+    assert saved_session_id
+    assert tab.session_history_table.rowCount() == 1
+    assert tab.session_history_table.item(0, 1).text() == "Tester Run"
+    assert tab.session_history_table.item(0, 4).text() == "100%"
+
+    tab.new_session()
+    qapp.processEvents()
+    assert tab.contracts == ()
+
+    tab.session_history_table.setCurrentCell(0, 0)
+    tab.load_selected_session()
+    qapp.processEvents()
+
+    assert tab.current_session_id == saved_session_id
+    assert tab.session_name_input.text() == "Tester Run"
+    assert tab.manifest.selected_ship == "Railen"
+    assert tab.manifest.delivered_scu == 32
+    assert tab.manifest.completion_percentage == 100
+    assert tab.contracts[0].state == CONTRACT_STATE_DELIVERED
+    assert tab.progress_bar.value() == 100
+
+    events = reload_module("app.event_center.storage").list_notification_events(category="Hauling")
+    event_types = {event.event_type for event in events}
+    assert "hauling_session_saved" in event_types
+    assert "hauling_session_loaded" in event_types
+    assert "hauling_session_completed" in event_types
+    for event in events:
+        assert "Checkmate" not in event.message
+        assert "Checkmate" not in str(event.metadata)
+    tab.close()
+
+
+def test_hauling_tab_archive_session_keeps_history_entry(monkeypatch, tmp_path, qapp):
+    tab = build_tab(monkeypatch, tmp_path)
+    tab.ship_combo.setCurrentText("Railen")
+    tab.session_name_input.setText("Archive Run")
+    tab.contract_text.setPlainText(sample_contract_text(quantity=8))
+    tab.parse_contracts()
+    tab.save_current_session()
+    qapp.processEvents()
+
+    tab.session_history_table.setCurrentCell(0, 0)
+    tab.archive_selected_session(confirm=False)
+    qapp.processEvents()
+
+    assert tab.session_history_table.item(0, 0).text() == "Archived"
+    assert "archived" in tab.session_status_label.text().lower()
+    events = reload_module("app.event_center.storage").list_notification_events(category="Hauling")
+    assert "hauling_session_archived" in {event.event_type for event in events}
+    tab.close()
+
+
 def test_hauling_tab_ocr_capture_updates_manifest(monkeypatch, tmp_path, qapp):
     tab = build_tab(monkeypatch, tmp_path)
     save_hauling_region(tab)

@@ -9,6 +9,8 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
+    QMessageBox,
     QProgressBar,
     QPushButton,
     QTableWidget,
@@ -24,13 +26,19 @@ from app.hauling import (
     CONTRACT_STATE_DELIVERED,
     CONTRACT_STATE_LOADED,
     CONTRACT_STATE_PLANNED,
+    SESSION_STATUS_ARCHIVED,
+    SESSION_STATUS_COMPLETED,
     HaulingContractParser,
+    archive_session,
     build_manifest,
     capacity_status_text,
     group_by_destination,
     group_by_pickup,
     group_by_route,
     group_summary,
+    list_sessions,
+    load_session,
+    save_session,
     toggle_delivered_state,
     toggle_loaded_state,
 )
@@ -56,6 +64,7 @@ HAULING_REGION_NAME = "Hauling Contracts"
 REWARD_SCANNER_REGION_NAME = "Reward Scanner"
 LEGACY_REWARD_REGION_SETTING_KEY = "bp_reward_scanner_region"
 CONTRACT_ID_ROLE = Qt.UserRole + 25
+SESSION_ID_ROLE = Qt.UserRole + 26
 
 
 class HaulingTab(BackgroundTaskMixin, QWidget):
@@ -71,12 +80,15 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         self.ocr_capture_request_id = 0
         self.manifest_started_logged = False
         self.manifest_completed_logged = False
+        self.current_session_id = None
+        self.current_session_status = "unsaved"
 
         layout = QVBoxLayout()
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(12)
         layout.addWidget(self.create_header())
         layout.addWidget(self.create_status_line())
+        layout.addWidget(self.create_session_card())
 
         top_row = QHBoxLayout()
         top_row.setSpacing(12)
@@ -89,6 +101,7 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         self.setLayout(layout)
 
         self.update_manifest()
+        self.refresh_session_history()
 
     def create_header(self):
         header = QFrame()
@@ -112,6 +125,53 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         self.status_label.setObjectName("moduleSubtitle")
         self.status_label.setWordWrap(True)
         return self.status_label
+
+    def create_session_card(self):
+        card = self.create_card("MANIFEST SESSION")
+        layout = card.layout()
+
+        controls = QHBoxLayout()
+        controls.setSpacing(8)
+        name_label = QLabel("Session Name")
+        name_label.setObjectName("labelText")
+        self.session_name_input = QLineEdit()
+        self.session_name_input.setPlaceholderText("Hauling Session")
+        self.session_status_label = QLabel("Current session: Unsaved")
+        self.session_status_label.setObjectName("moduleSubtitle")
+        self.session_status_label.setWordWrap(True)
+        controls.addWidget(name_label)
+        controls.addWidget(self.session_name_input, 2)
+        controls.addWidget(self.session_status_label, 1)
+        layout.addLayout(controls)
+
+        buttons = QHBoxLayout()
+        buttons.setSpacing(8)
+        self.new_session_button = QPushButton("New Session")
+        self.save_session_button = QPushButton("Save Session")
+        self.load_session_button = QPushButton("Load Session")
+        self.archive_session_button = QPushButton("Archive Session")
+        self.new_session_button.clicked.connect(lambda _checked=False: self.new_session())
+        self.save_session_button.clicked.connect(lambda _checked=False: self.save_current_session())
+        self.load_session_button.clicked.connect(lambda _checked=False: self.load_selected_session())
+        self.archive_session_button.clicked.connect(lambda _checked=False: self.archive_selected_session())
+        buttons.addWidget(self.new_session_button)
+        buttons.addWidget(self.save_session_button)
+        buttons.addWidget(self.load_session_button)
+        buttons.addWidget(self.archive_session_button)
+        buttons.addStretch(1)
+        layout.addLayout(buttons)
+
+        self.session_history_table = self.create_table([
+            "Status",
+            "Session",
+            "Ship",
+            "Total SCU",
+            "Progress",
+            "Updated",
+        ])
+        self.session_history_table.setMinimumHeight(120)
+        layout.addWidget(self.session_history_table)
+        return card
 
     def create_manual_input_card(self):
         card = self.create_card("MANUAL CONTRACT TEXT")
@@ -346,6 +406,149 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         self.manifest_completed_logged = False
         self.update_manifest()
         self.status_label.setText("Input cleared. Paste hauling contract text to build a manifest.")
+
+    def new_session(self):
+        self.current_session_id = None
+        self.current_session_status = "unsaved"
+        self.session_name_input.clear()
+        self.contract_text.clear()
+        self.parse_result = None
+        self.contracts = ()
+        self.manifest_started_logged = False
+        self.manifest_completed_logged = False
+        self.update_manifest()
+        self.update_session_status_label()
+        self.status_label.setText("New hauling session started. Parse or capture contracts to begin.")
+
+    def save_current_session(self):
+        if not self.contracts:
+            self.status_label.setText("No hauling contracts to save. Parse or capture contracts first.")
+            return
+        previous_status = self.current_session_status
+        session = save_session(
+            self.session_name_input.text(),
+            self.manifest,
+            session_id=self.current_session_id,
+            notes="",
+        )
+        self.current_session_id = session.id
+        self.current_session_status = session.status
+        self.session_name_input.setText(session.name)
+        self.update_session_status_label()
+        self.refresh_session_history(select_session_id=session.id)
+        self.record_session_event("hauling_session_saved", "Hauling session saved.", session)
+        if session.status == SESSION_STATUS_COMPLETED and previous_status != SESSION_STATUS_COMPLETED:
+            self.record_session_event("hauling_session_completed", "Hauling session completed.", session)
+        self.status_label.setText(f"Session saved locally: {session.name}.")
+
+    def load_selected_session(self):
+        session_id = self.selected_session_id()
+        if not session_id:
+            self.status_label.setText("Select a saved session to load.")
+            return
+        session = load_session(session_id)
+        if not session:
+            self.status_label.setText("Selected session could not be loaded.")
+            self.refresh_session_history()
+            return
+        self.apply_session(session)
+        self.record_session_event("hauling_session_loaded", "Hauling session loaded.", session)
+        self.status_label.setText(f"Loaded hauling session: {session.name}.")
+
+    def archive_selected_session(self, confirm=True):
+        session_id = self.selected_session_id() or self.current_session_id
+        if not session_id:
+            self.status_label.setText("Select a saved session to archive.")
+            return
+        session = load_session(session_id)
+        if not session:
+            self.status_label.setText("Selected session could not be archived.")
+            self.refresh_session_history()
+            return
+        if confirm:
+            response = QMessageBox.question(
+                self,
+                "Archive Hauling Session",
+                f"Archive the hauling session '{session.name}'? It will remain local and can still be loaded.",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if response != QMessageBox.Yes:
+                return
+        archive_session(session_id)
+        archived = load_session(session_id) or session
+        self.record_session_event("hauling_session_archived", "Hauling session archived.", archived)
+        if self.current_session_id == session_id:
+            self.current_session_status = SESSION_STATUS_ARCHIVED
+            self.update_session_status_label()
+        self.refresh_session_history(select_session_id=session_id)
+        self.status_label.setText(f"Session archived locally: {session.name}.")
+
+    def apply_session(self, session):
+        self.current_session_id = session.id
+        self.current_session_status = session.status
+        self.session_name_input.setText(session.name)
+        if session.selected_ship:
+            self.ship_combo.setCurrentText(session.selected_ship)
+        self.contract_text.clear()
+        self.parse_result = None
+        self.contracts = session.manifest.contracts
+        self.manifest_started_logged = bool(self.contracts)
+        self.manifest_completed_logged = session.status == SESSION_STATUS_COMPLETED
+        self.update_manifest()
+        self.update_session_status_label()
+        self.refresh_session_history(select_session_id=session.id)
+
+    def selected_session_id(self):
+        row = self.session_history_table.currentRow()
+        if row < 0:
+            return None
+        item = self.session_history_table.item(row, 0)
+        if not item:
+            return None
+        return item.data(SESSION_ID_ROLE)
+
+    def refresh_session_history(self, select_session_id=None):
+        sessions = list_sessions(include_archived=True)
+        table = self.session_history_table
+        table.setSortingEnabled(False)
+        table.setRowCount(len(sessions))
+        selected_row = -1
+        for row, session in enumerate(sessions):
+            values = [
+                session.status.title(),
+                session.name,
+                session.selected_ship or "N/A",
+                format_number(session.total_scu),
+                f"{format_number(session.completion_percentage)}%",
+                session.updated_at,
+            ]
+            sort_values = [
+                session.status,
+                session.name,
+                session.selected_ship,
+                session.total_scu,
+                session.completion_percentage,
+                session.updated_at,
+            ]
+            for column, value in enumerate(values):
+                item = table_item(value, sort_values[column])
+                item.setData(SESSION_ID_ROLE, session.id)
+                table.setItem(row, column, item)
+            if select_session_id and session.id == select_session_id:
+                selected_row = row
+        table.setSortingEnabled(True)
+        configure_readable_table_columns(table, min_width=100, max_width=300, stretch_last=True)
+        if selected_row >= 0:
+            table.setCurrentCell(selected_row, 0)
+
+    def update_session_status_label(self):
+        if self.current_session_id:
+            self.session_status_label.setText(
+                f"Current session: #{self.current_session_id} / {str(self.current_session_status).title()}"
+            )
+        else:
+            self.session_status_label.setText("Current session: Unsaved")
 
     def on_ship_changed(self):
         self.update_manifest()
@@ -752,6 +955,28 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
             event_type="hauling_manifest_completed",
             message="Hauling manifest completed.",
         )
+
+    def record_session_event(self, event_type, message, session):
+        try:
+            record_event(
+                category="Hauling",
+                source="Hauling Operations Center",
+                entity_name=session.name or "Hauling Session",
+                event_type=event_type,
+                message=message,
+                metadata={
+                    "session_id": session.id,
+                    "session_name": session.name,
+                    "selected_ship": session.selected_ship or "",
+                    "contract_count": len(session.manifest.contracts),
+                    "total_scu": session.manifest.total_scu,
+                    "progress": session.manifest.completion_percentage,
+                },
+                severity="Info",
+                dedupe=False,
+            )
+        except Exception as exc:
+            logger.warning("Failed to record Hauling session event: %s", exc)
 
     def record_hauling_event(self, event_type, message, extra_metadata=None):
         try:

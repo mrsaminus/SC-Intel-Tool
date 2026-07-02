@@ -2,6 +2,7 @@ import sqlite3
 
 from .blueprints_storage import ensure_blueprint_tables
 from .event_center.storage import ensure_event_tables
+from .hauling.storage import ensure_hauling_tables
 from .local_cache import ensure_cache_tables
 from .notes_storage import ensure_notes_tables
 from .paths import get_database_path
@@ -55,6 +56,7 @@ def init_db():
         ensure_trading_tables(cur)
         ensure_watchlist_tables(cur)
         ensure_event_tables(cur)
+        ensure_hauling_tables(cur)
         ensure_cache_tables(cur)
         ensure_notes_tables(cur)
         cur.execute("""
