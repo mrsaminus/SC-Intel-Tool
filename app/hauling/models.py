@@ -2,6 +2,20 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 
+CONTRACT_STATE_PLANNED = "planned"
+CONTRACT_STATE_LOADED = "loaded"
+CONTRACT_STATE_DELIVERED = "delivered"
+CONTRACT_STATE_FAILED = "failed"
+CONTRACT_STATE_CANCELLED = "cancelled"
+CONTRACT_STATES = (
+    CONTRACT_STATE_PLANNED,
+    CONTRACT_STATE_LOADED,
+    CONTRACT_STATE_DELIVERED,
+    CONTRACT_STATE_FAILED,
+    CONTRACT_STATE_CANCELLED,
+)
+
+
 def utc_timestamp():
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
@@ -18,6 +32,7 @@ class HaulingContract:
     source_text: str = ""
     confidence: float = 0.0
     status: str = "needs_review"
+    state: str = CONTRACT_STATE_PLANNED
     created_at: str = field(default_factory=utc_timestamp)
     notes: str = ""
     warnings: tuple[str, ...] = field(default_factory=tuple)
@@ -46,7 +61,14 @@ class HaulingManifest:
     selected_ship: str = ""
     ship_capacity_scu: float | None = None
     total_scu: float = 0.0
+    loaded_scu: float = 0.0
+    delivered_scu: float = 0.0
     remaining_scu: float | None = None
+    total_contracts: int = 0
+    planned_contracts: int = 0
+    loaded_contracts: int = 0
+    delivered_contracts: int = 0
+    completion_percentage: float = 0.0
     pickups: tuple[HaulingStop, ...] = field(default_factory=tuple)
     destinations: tuple[HaulingStop, ...] = field(default_factory=tuple)
     warnings: tuple[str, ...] = field(default_factory=tuple)

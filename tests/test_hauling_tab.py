@@ -3,6 +3,7 @@ import os
 import pytest
 from PySide6.QtWidgets import QApplication
 
+from app.hauling import CONTRACT_STATE_DELIVERED, CONTRACT_STATE_LOADED, CONTRACT_STATE_PLANNED
 from app.ocr.results import OCRPipelineResult, OCRResult
 from conftest import isolated_database, reload_module
 
@@ -81,6 +82,10 @@ def save_hauling_region(tab):
     )
 
 
+def select_first_contract(tab):
+    tab.contracts_table.setCurrentCell(0, 0)
+
+
 def test_hauling_tab_manual_parse_updates_manifest(monkeypatch, tmp_path, qapp):
     tab = build_tab(monkeypatch, tmp_path)
     tab.ship_combo.setCurrentText("Railen")
@@ -93,10 +98,15 @@ def test_hauling_tab_manual_parse_updates_manifest(monkeypatch, tmp_path, qapp):
     assert tab.manifest.selected_ship == "Railen"
     assert tab.manifest.ship_capacity_scu == 640
     assert tab.manifest.total_scu == 32
-    assert tab.manifest.remaining_scu == 608
+    assert tab.manifest.loaded_scu == 0
+    assert tab.manifest.remaining_scu == 640
+    assert tab.manifest.planned_contracts == 1
     assert tab.contracts_table.rowCount() == 1
-    assert tab.contracts_table.item(0, 0).text() == "Checkmate"
-    assert tab.contracts_table.item(0, 1).text() == "Teasa Spaceport"
+    assert tab.contracts_table.item(0, 0).text() == "Planned"
+    assert tab.contracts_table.item(0, 1).text() == "Checkmate"
+    assert tab.contracts_table.item(0, 2).text() == "Teasa Spaceport"
+    assert tab.dashboard_labels["loaded_scu"].text() == "0 SCU"
+    assert tab.dashboard_labels["remaining_capacity"].text() == "640 SCU"
     assert "Parsed 1 contract candidate" in tab.status_label.text()
     tab.close()
 
@@ -108,10 +118,13 @@ def test_hauling_tab_ship_selection_recalculates_remaining_scu(monkeypatch, tmp_
 
     tab.ship_combo.setCurrentText("C2 Hercules")
     tab.on_ship_changed()
+    select_first_contract(tab)
+    tab.toggle_selected_loaded()
     qapp.processEvents()
 
     assert tab.manifest.ship_capacity_scu == 696
     assert tab.manifest.remaining_scu == 196
+    assert tab.manifest.loaded_scu == 500
 
     tab.ship_combo.setCurrentText("Caterpillar")
     tab.on_ship_changed()
@@ -128,6 +141,14 @@ def test_hauling_tab_over_capacity_warning(monkeypatch, tmp_path, qapp):
     tab.contract_text.setPlainText(sample_contract_text(quantity=700))
 
     tab.parse_contracts()
+    qapp.processEvents()
+
+    assert tab.manifest.remaining_scu == 576
+    assert "Planned manifest exceeds capacity" in tab.capacity_warning_label.text()
+    assert "Planned manifest exceeds ship capacity" in tab.warnings_text.toPlainText()
+
+    select_first_contract(tab)
+    tab.toggle_selected_loaded()
     qapp.processEvents()
 
     assert tab.manifest.remaining_scu == -124
@@ -172,11 +193,67 @@ def test_hauling_tab_grouped_views(monkeypatch, tmp_path, qapp):
     assert tab.pickup_table.rowCount() == 1
     assert tab.pickup_table.item(0, 0).text() == "Checkmate"
     assert tab.pickup_table.item(0, 1).text() == "44"
+    assert tab.pickup_table.item(0, 2).text() == "44"
+    assert tab.pickup_table.item(0, 3).text() == "0"
+    assert tab.pickup_table.item(0, 4).text() == "2"
+    assert tab.pickup_table.item(0, 5).text() == "0"
     assert tab.destination_table.rowCount() == 2
     assert tab.route_table.rowCount() == 2
     manifest_text = tab.manifest_text()
     assert "Construction Materials" in manifest_text
     assert "Medical Supplies" in manifest_text
+    tab.close()
+
+
+def test_hauling_tab_live_cargo_operations_update_progress_and_events(monkeypatch, tmp_path, qapp):
+    tab = build_tab(monkeypatch, tmp_path)
+    tab.ship_combo.setCurrentText("Railen")
+    tab.contract_text.setPlainText(sample_contract_text(quantity=32))
+    tab.parse_contracts()
+    qapp.processEvents()
+
+    assert tab.contracts[0].state == CONTRACT_STATE_PLANNED
+    assert tab.progress_bar.value() == 0
+
+    select_first_contract(tab)
+    tab.toggle_selected_loaded()
+    qapp.processEvents()
+
+    assert tab.contracts[0].state == CONTRACT_STATE_LOADED
+    assert tab.manifest.loaded_scu == 32
+    assert tab.manifest.delivered_scu == 0
+    assert tab.manifest.remaining_scu == 608
+    assert tab.dashboard_labels["loaded_contracts"].text() == "1"
+    assert tab.contracts_table.item(0, 0).text() == "Loaded"
+
+    select_first_contract(tab)
+    tab.toggle_selected_delivered()
+    qapp.processEvents()
+
+    assert tab.contracts[0].state == CONTRACT_STATE_DELIVERED
+    assert tab.manifest.loaded_scu == 32
+    assert tab.manifest.delivered_scu == 32
+    assert tab.manifest.remaining_scu == 608
+    assert tab.manifest.completion_percentage == 100
+    assert tab.progress_bar.value() == 100
+    assert "Everything delivered." in tab.warnings_text.toPlainText()
+
+    select_first_contract(tab)
+    tab.toggle_selected_loaded()
+    qapp.processEvents()
+
+    assert tab.contracts[0].state == CONTRACT_STATE_DELIVERED
+    assert "Delivered contracts remain loaded" in tab.status_label.text()
+
+    events = reload_module("app.event_center.storage").list_notification_events(category="Hauling")
+    event_types = [event.event_type for event in events]
+    assert "hauling_manifest_started" in event_types
+    assert "hauling_contract_loaded" in event_types
+    assert "hauling_contract_delivered" in event_types
+    assert "hauling_manifest_completed" in event_types
+    for event in events:
+        assert "Checkmate" not in event.message
+        assert "Checkmate" not in str(event.metadata)
     tab.close()
 
 
@@ -195,7 +272,7 @@ def test_hauling_tab_ocr_capture_updates_manifest(monkeypatch, tmp_path, qapp):
     assert tab.manifest.selected_ship == "Railen"
     assert tab.manifest.ship_capacity_scu == 640
     assert tab.manifest.total_scu == 48
-    assert tab.manifest.remaining_scu == 592
+    assert tab.manifest.remaining_scu == 640
     assert "OCR captured and parsed 1 contract candidate" in tab.status_label.text()
     assert not tab.ocr_capture_running
     assert tab.capture_ocr_button.isEnabled()
@@ -207,11 +284,12 @@ def test_hauling_tab_ocr_capture_updates_manifest(monkeypatch, tmp_path, qapp):
     assert parser.name == "hauling_contracts"
 
     events = reload_module("app.event_center.storage").list_notification_events(category="Hauling")
-    assert len(events) == 1
-    assert events[0].metadata["contract_count"] == 1
-    assert events[0].metadata["total_scu"] == 48
-    assert "Checkmate" not in events[0].message
-    assert "Checkmate" not in str(events[0].metadata)
+    event_types = {event.event_type for event in events}
+    assert "hauling_manifest_started" in event_types
+    assert "hauling_ocr_scan" in event_types
+    for event in events:
+        assert "Checkmate" not in event.message
+        assert "Checkmate" not in str(event.metadata)
     tab.close()
 
 

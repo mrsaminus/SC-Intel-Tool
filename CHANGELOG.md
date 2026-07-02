@@ -10,6 +10,8 @@
   parsing, manifest preview and ship capacity summary.
 - Integrated Hauling with the shared OCR Foundation through the `hauling_contracts`
   OCR profile, enabling local region capture into the existing manifest workflow.
+- Added Cargo Operations for Hauling with live manifest state, contract loaded /
+  delivered tracking, progress summaries and metadata-only Activity Log events.
 
 ### OCR
 

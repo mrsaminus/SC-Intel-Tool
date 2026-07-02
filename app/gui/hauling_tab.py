@@ -1,13 +1,15 @@
 import logging
 
-from PySide6.QtCore import QThreadPool
+from PySide6.QtCore import Qt, QThreadPool
 from PySide6.QtWidgets import (
     QApplication,
     QAbstractItemView,
     QComboBox,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
+    QProgressBar,
     QPushButton,
     QTableWidget,
     QTabWidget,
@@ -19,11 +21,18 @@ from PySide6.QtWidgets import (
 from app.database import get_app_setting
 from app.event_center.service import record_event
 from app.hauling import (
+    CONTRACT_STATE_DELIVERED,
+    CONTRACT_STATE_LOADED,
+    CONTRACT_STATE_PLANNED,
     HaulingContractParser,
     build_manifest,
+    capacity_status_text,
     group_by_destination,
     group_by_pickup,
     group_by_route,
+    group_summary,
+    toggle_delivered_state,
+    toggle_loaded_state,
 )
 from app.ocr import (
     HAULING_CONTRACTS_PROFILE_KEY,
@@ -46,6 +55,7 @@ logger = logging.getLogger(__name__)
 HAULING_REGION_NAME = "Hauling Contracts"
 REWARD_SCANNER_REGION_NAME = "Reward Scanner"
 LEGACY_REWARD_REGION_SETTING_KEY = "bp_reward_scanner_region"
+CONTRACT_ID_ROLE = Qt.UserRole + 25
 
 
 class HaulingTab(BackgroundTaskMixin, QWidget):
@@ -59,6 +69,8 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         self.ocr_service = OCRService(settings=self.current_ocr_profile().to_settings())
         self.ocr_capture_running = False
         self.ocr_capture_request_id = 0
+        self.manifest_started_logged = False
+        self.manifest_completed_logged = False
 
         layout = QVBoxLayout()
         layout.setContentsMargins(12, 12, 12, 12)
@@ -72,6 +84,7 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         top_row.addWidget(self.create_capacity_card(), 2)
         layout.addLayout(top_row)
 
+        layout.addWidget(self.create_operations_dashboard())
         layout.addWidget(self.create_manifest_preview(), 1)
         self.setLayout(layout)
 
@@ -163,12 +176,79 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         layout.addStretch(1)
         return card
 
+    def create_operations_dashboard(self):
+        card = self.create_card("CARGO OPERATIONS")
+        layout = card.layout()
+
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(16)
+        grid.setVerticalSpacing(8)
+
+        self.dashboard_labels = {}
+        rows = [
+            ("selected_ship", "Selected Ship"),
+            ("ship_capacity", "Ship Capacity"),
+            ("loaded_scu", "Current Loaded SCU"),
+            ("remaining_capacity", "Remaining Capacity"),
+            ("total_contracts", "Total Contracts"),
+            ("planned_contracts", "Planned"),
+            ("loaded_contracts", "Loaded"),
+            ("delivered_contracts", "Delivered"),
+            ("capacity_status", "Capacity Status"),
+        ]
+        for index, (key, label) in enumerate(rows):
+            row = index // 3
+            column = (index % 3) * 2
+            label_widget = QLabel(label)
+            label_widget.setObjectName("labelText")
+            label_widget.setWordWrap(True)
+            value_widget = QLabel("N/A")
+            value_widget.setObjectName("valueText")
+            value_widget.setWordWrap(True)
+            grid.addWidget(label_widget, row, column)
+            grid.addWidget(value_widget, row, column + 1)
+            self.dashboard_labels[key] = value_widget
+
+        layout.addLayout(grid)
+
+        progress_row = QHBoxLayout()
+        progress_row.setSpacing(8)
+        progress_label = QLabel("Progress")
+        progress_label.setObjectName("labelText")
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setTextVisible(True)
+        self.progress_detail_label = QLabel("0% complete")
+        self.progress_detail_label.setObjectName("moduleSubtitle")
+        self.progress_detail_label.setWordWrap(True)
+        progress_row.addWidget(progress_label)
+        progress_row.addWidget(self.progress_bar, 1)
+        progress_row.addWidget(self.progress_detail_label)
+        layout.addLayout(progress_row)
+        return card
+
     def create_manifest_preview(self):
         card = self.create_card("MANIFEST PREVIEW")
         layout = card.layout()
 
+        action_row = QHBoxLayout()
+        action_row.setSpacing(8)
+        self.toggle_loaded_button = QPushButton("Toggle Loaded")
+        self.toggle_delivered_button = QPushButton("Toggle Delivered")
+        self.toggle_loaded_button.clicked.connect(self.toggle_selected_loaded)
+        self.toggle_delivered_button.clicked.connect(self.toggle_selected_delivered)
+        action_hint = QLabel("Select a contract row, then update its cargo state.")
+        action_hint.setObjectName("moduleSubtitle")
+        action_hint.setWordWrap(True)
+        action_row.addWidget(self.toggle_loaded_button)
+        action_row.addWidget(self.toggle_delivered_button)
+        action_row.addWidget(action_hint, 1)
+        layout.addLayout(action_row)
+
         self.preview_tabs = QTabWidget()
         self.contracts_table = self.create_table([
+            "Status",
             "Pickup",
             "Delivery",
             "Commodity",
@@ -177,9 +257,33 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
             "Confidence",
             "Warnings",
         ])
-        self.pickup_table = self.create_table(["Pickup", "Total SCU", "Contracts", "Commodities"])
-        self.destination_table = self.create_table(["Destination", "Total SCU", "Contracts", "Commodities"])
-        self.route_table = self.create_table(["Route", "Total SCU", "Contracts", "Commodities"])
+        self.pickup_table = self.create_table([
+            "Pickup",
+            "Total SCU",
+            "Remaining SCU",
+            "Delivered SCU",
+            "Remaining",
+            "Delivered",
+            "Commodities",
+        ])
+        self.destination_table = self.create_table([
+            "Destination",
+            "Total SCU",
+            "Remaining SCU",
+            "Delivered SCU",
+            "Remaining",
+            "Delivered",
+            "Commodities",
+        ])
+        self.route_table = self.create_table([
+            "Route",
+            "Total SCU",
+            "Remaining SCU",
+            "Delivered SCU",
+            "Remaining",
+            "Delivered",
+            "Commodities",
+        ])
         self.warnings_text = QTextEdit()
         self.warnings_text.setReadOnly(True)
         self.warnings_text.setPlaceholderText("Warnings and parser notes will appear here.")
@@ -229,12 +333,17 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
     def apply_parse_result(self, parse_result):
         self.parse_result = parse_result
         self.contracts = self.parse_result.contracts
+        self.manifest_started_logged = False
+        self.manifest_completed_logged = False
         self.update_manifest()
+        self.record_manifest_started()
 
     def clear_input(self):
         self.contract_text.clear()
         self.parse_result = None
         self.contracts = ()
+        self.manifest_started_logged = False
+        self.manifest_completed_logged = False
         self.update_manifest()
         self.status_label.setText("Input cleared. Paste hauling contract text to build a manifest.")
 
@@ -401,7 +510,65 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         self.populate_contracts()
         self.populate_grouped_tables()
         self.update_capacity_summary()
+        self.update_dashboard()
         self.update_warnings()
+        self.update_contract_action_state()
+        self.record_manifest_completed_if_needed()
+
+    def selected_contract_id(self):
+        row = self.contracts_table.currentRow()
+        if row < 0:
+            return ""
+        item = self.contracts_table.item(row, 0)
+        if not item:
+            return ""
+        return item.data(CONTRACT_ID_ROLE) or ""
+
+    def selected_contract(self):
+        contract_id = self.selected_contract_id()
+        for contract in self.contracts:
+            if contract.id == contract_id:
+                return contract
+        return None
+
+    def toggle_selected_loaded(self):
+        contract = self.selected_contract()
+        if not contract:
+            self.status_label.setText("Select a contract row before toggling loaded state.")
+            return
+        updated, changed = toggle_loaded_state(self.contracts, contract.id)
+        if changed is None:
+            self.status_label.setText("Could not update selected contract.")
+            return
+        if changed.state == CONTRACT_STATE_DELIVERED:
+            self.status_label.setText("Delivered contracts remain loaded. Toggle Delivered first if needed.")
+            return
+        self.contracts = updated
+        self.update_manifest()
+        self.record_contract_state_event(changed, "loaded" if changed.state == CONTRACT_STATE_LOADED else "planned")
+        self.status_label.setText(f"Contract marked {state_label(changed.state)}.")
+
+    def toggle_selected_delivered(self):
+        contract = self.selected_contract()
+        if not contract:
+            self.status_label.setText("Select a contract row before toggling delivered state.")
+            return
+        updated, changed = toggle_delivered_state(self.contracts, contract.id)
+        if changed is None:
+            self.status_label.setText("Could not update selected contract.")
+            return
+        self.contracts = updated
+        self.update_manifest()
+        self.record_contract_state_event(
+            changed,
+            "delivered" if changed.state == CONTRACT_STATE_DELIVERED else "loaded",
+        )
+        self.status_label.setText(f"Contract marked {state_label(changed.state)}.")
+
+    def update_contract_action_state(self):
+        has_contracts = bool(self.contracts)
+        self.toggle_loaded_button.setEnabled(has_contracts)
+        self.toggle_delivered_button.setEnabled(has_contracts)
 
     def populate_contracts(self):
         table = self.contracts_table
@@ -409,6 +576,7 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         table.setRowCount(len(self.manifest.contracts))
         for row, contract in enumerate(self.manifest.contracts):
             values = [
+                state_label(contract.state),
                 contract.pickup or "Missing",
                 contract.delivery or "Missing",
                 contract.commodity or "Missing",
@@ -418,6 +586,7 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
                 "; ".join(contract.warnings),
             ]
             sort_values = [
+                state_sort_value(contract.state),
                 contract.pickup,
                 contract.delivery,
                 contract.commodity,
@@ -427,7 +596,9 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
                 "; ".join(contract.warnings),
             ]
             for column, value in enumerate(values):
-                table.setItem(row, column, table_item(value, sort_values[column]))
+                item = table_item(value, sort_values[column])
+                item.setData(CONTRACT_ID_ROLE, contract.id)
+                table.setItem(row, column, item)
         table.setSortingEnabled(True)
         configure_readable_table_columns(table, min_width=110, max_width=380, stretch_last=True)
 
@@ -443,12 +614,15 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         table.setSortingEnabled(False)
         table.setRowCount(len(groups))
         for row, (location, contracts) in enumerate(groups.items()):
-            total = sum(contract.scu for contract in contracts)
+            summary = group_summary(contracts)
             commodities = commodity_summary(contracts)
             table.setItem(row, 0, table_item(location, location))
-            table.setItem(row, 1, table_item(format_number(total), total))
-            table.setItem(row, 2, table_item(str(len(contracts)), len(contracts)))
-            table.setItem(row, 3, table_item(commodities, commodities))
+            table.setItem(row, 1, table_item(format_number(summary["total_scu"]), summary["total_scu"]))
+            table.setItem(row, 2, table_item(format_number(summary["remaining_scu"]), summary["remaining_scu"]))
+            table.setItem(row, 3, table_item(format_number(summary["delivered_scu"]), summary["delivered_scu"]))
+            table.setItem(row, 4, table_item(str(summary["remaining_contracts"]), summary["remaining_contracts"]))
+            table.setItem(row, 5, table_item(str(summary["completed_contracts"]), summary["completed_contracts"]))
+            table.setItem(row, 6, table_item(commodities, commodities))
         table.setSortingEnabled(True)
         configure_readable_table_columns(table, min_width=110, max_width=380, stretch_last=True)
 
@@ -456,13 +630,16 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         self.route_table.setSortingEnabled(False)
         self.route_table.setRowCount(len(groups))
         for row, ((pickup, delivery), contracts) in enumerate(groups.items()):
-            total = sum(contract.scu for contract in contracts)
+            summary = group_summary(contracts)
             route = f"{pickup or 'Missing'} -> {delivery or 'Missing'}"
             commodities = commodity_summary(contracts)
             self.route_table.setItem(row, 0, table_item(route, route))
-            self.route_table.setItem(row, 1, table_item(format_number(total), total))
-            self.route_table.setItem(row, 2, table_item(str(len(contracts)), len(contracts)))
-            self.route_table.setItem(row, 3, table_item(commodities, commodities))
+            self.route_table.setItem(row, 1, table_item(format_number(summary["total_scu"]), summary["total_scu"]))
+            self.route_table.setItem(row, 2, table_item(format_number(summary["remaining_scu"]), summary["remaining_scu"]))
+            self.route_table.setItem(row, 3, table_item(format_number(summary["delivered_scu"]), summary["delivered_scu"]))
+            self.route_table.setItem(row, 4, table_item(str(summary["remaining_contracts"]), summary["remaining_contracts"]))
+            self.route_table.setItem(row, 5, table_item(str(summary["completed_contracts"]), summary["completed_contracts"]))
+            self.route_table.setItem(row, 6, table_item(commodities, commodities))
         self.route_table.setSortingEnabled(True)
         configure_readable_table_columns(self.route_table, min_width=110, max_width=420, stretch_last=True)
 
@@ -483,8 +660,38 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         else:
             self.remaining_scu_label.setText(f"Remaining SCU: {format_number(self.manifest.remaining_scu)}")
 
-        capacity_warnings = [warning for warning in self.manifest.warnings if "capacity" in warning.lower()]
-        self.capacity_warning_label.setText(capacity_warnings[0] if capacity_warnings else "Capacity status: Ready.")
+        self.capacity_warning_label.setText(
+            capacity_status_text(self.manifest.contracts, self.manifest.ship_capacity_scu)
+        )
+
+    def update_dashboard(self):
+        values = {
+            "selected_ship": self.manifest.selected_ship or "Select a ship",
+            "ship_capacity": f"{format_number(self.manifest.ship_capacity_scu)} SCU",
+            "loaded_scu": f"{format_number(self.manifest.loaded_scu)} SCU",
+            "remaining_capacity": (
+                f"{format_number(self.manifest.remaining_scu)} SCU"
+                if self.manifest.remaining_scu is not None
+                else "Select a ship"
+            ),
+            "total_contracts": str(self.manifest.total_contracts),
+            "planned_contracts": str(self.manifest.planned_contracts),
+            "loaded_contracts": str(self.manifest.loaded_contracts),
+            "delivered_contracts": str(self.manifest.delivered_contracts),
+            "capacity_status": capacity_status_text(self.manifest.contracts, self.manifest.ship_capacity_scu).replace(
+                "Capacity status: ",
+                "",
+            ),
+        }
+        for key, value in values.items():
+            self.dashboard_labels[key].setText(value)
+
+        progress = int(round(self.manifest.completion_percentage))
+        self.progress_bar.setValue(progress)
+        self.progress_detail_label.setText(
+            f"{format_number(self.manifest.delivered_scu)} / {format_number(self.manifest.total_scu)} SCU delivered "
+            f"({format_number(self.manifest.completion_percentage)}%)"
+        )
 
     def update_warnings(self):
         warnings = self.all_warnings()
@@ -505,6 +712,69 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         warnings.extend(self.manifest.warnings)
         return tuple(dict.fromkeys(warnings))
 
+    def record_manifest_started(self):
+        if self.manifest_started_logged or not self.contracts:
+            return
+        self.manifest_started_logged = True
+        self.record_hauling_event(
+            event_type="hauling_manifest_started",
+            message=f"Hauling manifest started with {len(self.contracts)} contract candidate"
+            f"{'s' if len(self.contracts) != 1 else ''}.",
+        )
+
+    def record_contract_state_event(self, contract, state_name):
+        if state_name == "loaded":
+            event_type = "hauling_contract_loaded"
+            message = "Hauling contract marked loaded."
+        elif state_name == "delivered":
+            event_type = "hauling_contract_delivered"
+            message = "Hauling contract marked delivered."
+        else:
+            event_type = "hauling_contract_planned"
+            message = "Hauling contract returned to planned."
+        self.record_hauling_event(
+            event_type=event_type,
+            message=message,
+            extra_metadata={
+                "contract_id": contract.id,
+                "contract_scu": contract.scu,
+                "contract_state": contract.state,
+            },
+        )
+
+    def record_manifest_completed_if_needed(self):
+        if self.manifest_completed_logged or not self.contracts:
+            return
+        if self.manifest.delivered_contracts != len(self.contracts):
+            return
+        self.manifest_completed_logged = True
+        self.record_hauling_event(
+            event_type="hauling_manifest_completed",
+            message="Hauling manifest completed.",
+        )
+
+    def record_hauling_event(self, event_type, message, extra_metadata=None):
+        try:
+            metadata = {
+                "ship": self.manifest.selected_ship or "",
+                "contract_count": len(self.contracts),
+                "loaded_scu": self.manifest.loaded_scu,
+                "delivered_scu": self.manifest.delivered_scu,
+            }
+            metadata.update(extra_metadata or {})
+            record_event(
+                category="Hauling",
+                source="Hauling Operations Center",
+                entity_name="Hauling Manifest",
+                event_type=event_type,
+                message=message,
+                metadata=metadata,
+                severity="Info",
+                dedupe=False,
+            )
+        except Exception as exc:
+            logger.warning("Failed to record Hauling event: %s", exc)
+
     def copy_manifest(self):
         QApplication.clipboard().setText(self.manifest_text())
         self.status_label.setText("Manifest copied to clipboard.")
@@ -515,7 +785,10 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
             f"Ship: {self.manifest.selected_ship or 'Not selected'}",
             f"Capacity: {format_number(self.manifest.ship_capacity_scu)} SCU",
             f"Total SCU: {format_number(self.manifest.total_scu)}",
+            f"Loaded SCU: {format_number(self.manifest.loaded_scu)}",
+            f"Delivered SCU: {format_number(self.manifest.delivered_scu)}",
             f"Remaining SCU: {format_number(self.manifest.remaining_scu)}",
+            f"Progress: {format_number(self.manifest.completion_percentage)}%",
             "",
             "Contracts:",
         ]
@@ -523,7 +796,7 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
             lines.append("- None parsed")
         for contract in self.manifest.contracts:
             lines.append(
-                f"- {contract.commodity or 'Missing commodity'}: "
+                f"- [{state_label(contract.state)}] {contract.commodity or 'Missing commodity'}: "
                 f"{contract.pickup or 'Missing pickup'} -> {contract.delivery or 'Missing delivery'} "
                 f"({format_number(contract.scu)} SCU)"
             )
@@ -557,6 +830,26 @@ def format_money(value):
     if value is None:
         return "N/A"
     return f"{format_number(value)} aUEC"
+
+
+def state_label(state):
+    state = str(state or "").lower()
+    labels = {
+        CONTRACT_STATE_PLANNED: "Planned",
+        CONTRACT_STATE_LOADED: "Loaded",
+        CONTRACT_STATE_DELIVERED: "Delivered",
+    }
+    return labels.get(state, state.replace("_", " ").title() or "Planned")
+
+
+def state_sort_value(state):
+    state = str(state or "").lower()
+    order = {
+        CONTRACT_STATE_PLANNED: 0,
+        CONTRACT_STATE_LOADED: 1,
+        CONTRACT_STATE_DELIVERED: 2,
+    }
+    return order.get(state, 99)
 
 
 def commodity_summary(contracts):
