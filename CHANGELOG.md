@@ -6,6 +6,8 @@
 
 - Added the Hauling Operations Center foundation with plain hauling contract
   models, OCR/manual-text parser groundwork and manifest/capacity helpers.
+- Added the first Hauling Operations Center UI shell with manual contract text
+  parsing, manifest preview and ship capacity summary.
 
 ### OCR
 

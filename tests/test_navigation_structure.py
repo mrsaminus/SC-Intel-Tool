@@ -120,7 +120,7 @@ def test_main_navigation_is_grouped_and_reachable(monkeypatch, tmp_path, qapp):
 
     assert tab_labels(window.tabs) == ["Home", "Intel", "Industrial", "Reference", "System"]
     assert tab_labels(window.intel_tabs) == ["Player Lookup", "Search History", "Watchlists"]
-    assert tab_labels(window.industrial_tabs) == ["Mining / Salvage", "Trading", "BP Overview"]
+    assert tab_labels(window.industrial_tabs) == ["Mining / Salvage", "Trading", "BP Overview", "Hauling"]
     assert tab_labels(window.reference_tabs) == ["Item Finder", "Wikelo Items"]
     assert tab_labels(window.system_tabs) == ["Activity Log", "Notes", "Settings"]
 
@@ -140,6 +140,7 @@ def test_main_navigation_is_grouped_and_reachable(monkeypatch, tmp_path, qapp):
         "Mining / Salvage": ("Industrial", window.industrial_tabs, "Mining / Salvage"),
         "Trading": ("Industrial", window.industrial_tabs, "Trading"),
         "BP Overview": ("Industrial", window.industrial_tabs, "BP Overview"),
+        "Hauling": ("Industrial", window.industrial_tabs, "Hauling"),
         "Item Finder": ("Reference", window.reference_tabs, "Item Finder"),
         "Wikelo Items": ("Reference", window.reference_tabs, "Wikelo Items"),
         "Activity Log": ("System", window.system_tabs, "Activity Log"),

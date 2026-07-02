@@ -13,6 +13,7 @@ from app.version import APP_VERSION
 
 from .bp_overview_tab import BPOverviewTab
 from .event_center_tab import EventCenterTab
+from .hauling_tab import HaulingTab
 from .home_tab import HomeTab
 from .item_finder_tab import ItemFinderTab
 from .mining_tab import MiningTab
@@ -64,6 +65,7 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
         self.player_tab = PlayerLookupTab(on_lookup_saved=self.history_tab.refresh_history)
         self.mining_tab = MiningTab()
         self.trading_tab = TradingTab()
+        self.hauling_tab = HaulingTab()
         self.item_finder_tab = ItemFinderTab()
         self.watchlists_tab = WatchlistsTab()
         self.wikelo_tab = WikeloItemsTab()
@@ -85,6 +87,7 @@ class MainWindow(BackgroundTaskMixin, QMainWindow):
         self.industrial_tabs.addTab(self.mining_tab, "Mining / Salvage")
         self.industrial_tabs.addTab(self.trading_tab, "Trading")
         self.industrial_tabs.addTab(self.bp_overview_tab, "BP Overview")
+        self.industrial_tabs.addTab(self.hauling_tab, "Hauling")
 
         self.reference_tabs = self.create_group_tabs("referenceNavigationTabs")
         self.reference_tabs.addTab(self.item_finder_tab, "Item Finder")
