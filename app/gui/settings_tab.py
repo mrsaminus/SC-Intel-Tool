@@ -2,11 +2,13 @@ from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QComboBox,
     QFrame,
     QGridLayout,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QMessageBox,
     QPushButton,
     QScrollArea,
@@ -25,6 +27,7 @@ from app.cache_manager import (
     refresh_cache_source as refresh_cache_source_data,
 )
 from app.diagnostics import safe_diagnostics_text
+from app.ocr import OCRProfileManager
 from app.paths import get_active_data_dir, is_packaged_app
 from app.update_checker import (
     UpdateCheckError,
@@ -61,6 +64,8 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         self.latest_update_info = None
         self.loading_theme_combo = False
         self.loading_text_size_combo = False
+        self.loading_ocr_settings = False
+        self.ocr_profile_manager = OCRProfileManager()
         self.cache_action_running = False
         self.cache_source_rows = {}
         self.cache_action_buttons = []
@@ -86,6 +91,7 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         ))
         layout.addWidget(self.build_about_card())
         layout.addWidget(self.build_appearance_card())
+        layout.addWidget(self.build_ocr_settings_card())
         layout.addWidget(self.build_updates_card())
         layout.addWidget(self.build_data_card())
         layout.addWidget(self.build_local_data_platform_card())
@@ -231,6 +237,150 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         layout.addLayout(grid)
         layout.addWidget(self.theme_status_label)
         return card
+
+    def build_ocr_settings_card(self):
+        card = self.create_card("OCR SETTINGS")
+        layout = card.layout()
+
+        hint = QLabel(
+            "Local OCR profiles are shared by scanner workflows. Settings are stored locally and never uploaded."
+        )
+        hint.setObjectName("moduleSubtitle")
+        hint.setWordWrap(True)
+        self.configure_wrapping_label(hint)
+        layout.addWidget(hint)
+
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(10)
+        grid.setVerticalSpacing(8)
+
+        self.ocr_profile_combo = QComboBox()
+        self.ocr_profile_combo.setMinimumWidth(160)
+        self.ocr_profile_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.ocr_profile_combo.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
+
+        self.ocr_language_input = QLineEdit()
+        self.ocr_language_input.setPlaceholderText("eng")
+        self.ocr_scale_input = QLineEdit()
+        self.ocr_scale_input.setPlaceholderText("1.0")
+        self.ocr_threshold_input = QLineEdit()
+        self.ocr_threshold_input.setPlaceholderText("Auto")
+        self.ocr_preprocessing_checkbox = QCheckBox("Preprocess captured image")
+        self.ocr_grayscale_checkbox = QCheckBox("Grayscale")
+        self.ocr_invert_checkbox = QCheckBox("Invert colors")
+
+        for field in (self.ocr_language_input, self.ocr_scale_input, self.ocr_threshold_input):
+            field.setMinimumWidth(0)
+            field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        self.loading_ocr_settings = True
+        current_key = self.ocr_profile_manager.get_default_profile_key()
+        current_index = 0
+        for index, profile in enumerate(self.ocr_profile_manager.list_profiles()):
+            self.ocr_profile_combo.addItem(profile.name, profile.key)
+            self.ocr_profile_combo.setItemData(index, profile.description, Qt.ToolTipRole)
+            if profile.key == current_key:
+                current_index = index
+        self.ocr_profile_combo.setCurrentIndex(current_index)
+        self.populate_ocr_profile_controls(self.ocr_profile_manager.get_profile(current_key))
+        self.loading_ocr_settings = False
+
+        self.ocr_profile_combo.currentIndexChanged.connect(self.on_ocr_profile_selected)
+
+        profile_label = QLabel("Default Profile")
+        profile_label.setObjectName("labelText")
+        language_label = QLabel("Language")
+        language_label.setObjectName("labelText")
+        scaling_label = QLabel("Scaling")
+        scaling_label.setObjectName("labelText")
+        threshold_label = QLabel("Threshold")
+        threshold_label.setObjectName("labelText")
+
+        grid.addWidget(profile_label, 0, 0)
+        grid.addWidget(self.ocr_profile_combo, 0, 1)
+        grid.addWidget(language_label, 1, 0)
+        grid.addWidget(self.ocr_language_input, 1, 1)
+        grid.addWidget(scaling_label, 2, 0)
+        grid.addWidget(self.ocr_scale_input, 2, 1)
+        grid.addWidget(threshold_label, 3, 0)
+        grid.addWidget(self.ocr_threshold_input, 3, 1)
+        grid.setColumnStretch(1, 1)
+        layout.addLayout(grid)
+
+        layout.addWidget(self.ocr_preprocessing_checkbox)
+        layout.addWidget(self.ocr_grayscale_checkbox)
+        layout.addWidget(self.ocr_invert_checkbox)
+
+        self.save_ocr_settings_button = QPushButton("Save OCR Settings")
+        self.save_ocr_settings_button.clicked.connect(self.save_ocr_settings)
+        layout.addWidget(self.save_ocr_settings_button)
+
+        self.ocr_settings_status_label = QLabel("OCR profile settings are stored locally.")
+        self.ocr_settings_status_label.setObjectName("moduleSubtitle")
+        self.ocr_settings_status_label.setWordWrap(True)
+        self.configure_wrapping_label(self.ocr_settings_status_label)
+        layout.addWidget(self.ocr_settings_status_label)
+        return card
+
+    def populate_ocr_profile_controls(self, profile):
+        self.ocr_language_input.setText(profile.language)
+        self.ocr_scale_input.setText(str(profile.scaling))
+        self.ocr_threshold_input.setText("" if profile.threshold is None else str(profile.threshold))
+        self.ocr_preprocessing_checkbox.setChecked(profile.preprocessing)
+        self.ocr_grayscale_checkbox.setChecked(profile.grayscale)
+        self.ocr_invert_checkbox.setChecked(profile.invert_colors)
+
+    def on_ocr_profile_selected(self):
+        if self.loading_ocr_settings:
+            return
+        profile = self.ocr_profile_manager.get_profile(self.ocr_profile_combo.currentData())
+        self.populate_ocr_profile_controls(profile)
+        self.ocr_settings_status_label.setText(f"Selected OCR profile: {profile.name}.")
+
+    def save_ocr_settings(self):
+        profile = self.ocr_profile_manager.get_profile(self.ocr_profile_combo.currentData())
+        try:
+            threshold = self.parse_optional_threshold(self.ocr_threshold_input.text())
+            scaling = self.parse_positive_float(self.ocr_scale_input.text(), "Scaling")
+        except ValueError as exc:
+            QMessageBox.warning(self, "Invalid OCR setting", str(exc))
+            return
+
+        updated = type(profile)(
+            key=profile.key,
+            name=profile.name,
+            description=profile.description,
+            language=self.ocr_language_input.text().strip() or "eng",
+            preprocessing=self.ocr_preprocessing_checkbox.isChecked(),
+            threshold=threshold,
+            scaling=scaling,
+            invert_colors=self.ocr_invert_checkbox.isChecked(),
+            grayscale=self.ocr_grayscale_checkbox.isChecked(),
+            parser_type=profile.parser_type,
+            enabled=profile.enabled,
+        )
+        self.ocr_profile_manager.save_profile(updated)
+        self.ocr_profile_manager.set_default_profile(updated.key)
+        self.ocr_settings_status_label.setText(f"OCR profile saved locally: {updated.name}.")
+
+    def parse_optional_threshold(self, value):
+        text = str(value or "").strip()
+        if not text:
+            return None
+        try:
+            threshold = int(text)
+        except ValueError as exc:
+            raise ValueError("Threshold must be blank or a number from 0 to 255.") from exc
+        return max(0, min(255, threshold))
+
+    def parse_positive_float(self, value, label):
+        try:
+            parsed = float(str(value or "").strip() or "1.0")
+        except ValueError as exc:
+            raise ValueError(f"{label} must be a positive number.") from exc
+        if parsed <= 0:
+            raise ValueError(f"{label} must be greater than 0.")
+        return parsed
 
     def build_updates_card(self):
         card = self.create_card("UPDATES")

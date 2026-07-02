@@ -10,6 +10,8 @@
   while preserving existing scanner behavior.
 - Tightened Reward Scanner OCR integration so the UI calls `OCRService`
   directly, with improved empty-capture, parser-error and stale-result coverage.
+- Added reusable OCR profiles, region serialization and local OCR settings
+  management for future scanner workflows.
 
 ## 0.1.0-alpha.8.9.2 - 2026-07-01
 

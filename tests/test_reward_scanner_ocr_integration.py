@@ -38,8 +38,8 @@ def test_reward_scanner_uses_ocr_service_pipeline(monkeypatch, tmp_path, qapp):
     calls = []
 
     class FakeOCRService:
-        def scan_region(self, region, parser=None):
-            calls.append((region, parser))
+        def scan_profile_region(self, profile, region, parser=None):
+            calls.append((profile, region, parser))
             ocr_result = OCRResult(text="Reward unlocked: Field Recon Helmet")
             return OCRPipelineResult(
                 status="ok",
@@ -67,8 +67,10 @@ def test_reward_scanner_uses_ocr_service_pipeline(monkeypatch, tmp_path, qapp):
     qapp.processEvents()
 
     assert calls
-    assert calls[0][0] == (10, 20, 300, 120)
-    assert calls[0][1].name == "reward_scanner"
+    assert calls[0][0].key == "reward_scanner"
+    assert calls[0][1].profile == "reward_scanner"
+    assert calls[0][1].to_tuple() == (10, 20, 300, 120)
+    assert calls[0][2].name == "reward_scanner"
     assert tab.ocr_text.toPlainText() == "Reward unlocked: Field Recon Helmet"
     assert tab.matches_table.rowCount() == 1
     assert tab.confirm_button.isEnabled()

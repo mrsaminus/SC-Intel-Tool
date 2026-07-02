@@ -2,6 +2,7 @@ from .capture import ScreenshotService, capture_region_image, preprocess_image
 from .confidence import clamp_confidence, confidence_label
 from .engine import MissingOCREngineError, OCREngineError, TesseractOCREngine
 from .parser import OCRParser, ParsedOCRResult
+from .profiles import OCRProfile, OCRProfileManager, REWARD_SCANNER_PROFILE_KEY
 from .regions import OCRRegion
 from .reward_scanner import RewardScannerParser, reward_scan_result_from_pipeline
 from .results import OCRPipelineResult, OCRResult
@@ -14,11 +15,14 @@ __all__ = [
     "OCREngineError",
     "OCRParser",
     "OCRPipelineResult",
+    "OCRProfile",
+    "OCRProfileManager",
     "OCRRegion",
     "OCRResult",
     "OCRService",
     "OCRSettings",
     "ParsedOCRResult",
+    "REWARD_SCANNER_PROFILE_KEY",
     "RewardScannerParser",
     "ScreenshotService",
     "TesseractOCREngine",

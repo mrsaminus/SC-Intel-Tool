@@ -1,9 +1,9 @@
 import difflib
 import re
 
-from .capture import capture_region_image
 from .engine import TesseractOCREngine
 from .parser import OCRParser, ParsedOCRResult
+from .profiles import OCRProfileManager, REWARD_SCANNER_PROFILE_KEY
 from .regions import OCRRegion
 from .service import OCRService
 
@@ -91,14 +91,16 @@ def token_overlap_score(name, text):
 def scan_region_for_blueprint_text(region, blueprints, capture_function=None, ocr_function=None):
     blueprints = tuple(blueprints or ())
     parser = RewardScannerParser(blueprints)
+    profile = OCRProfileManager().get_profile(REWARD_SCANNER_PROFILE_KEY)
     engine = TesseractOCREngine(ocr_function=ocr_function)
-    service = OCRService(engine=engine)
+    service = OCRService(engine=engine, settings=profile.to_settings())
 
     def adapted_capture(ocr_region):
         return capture_function(ocr_region.to_tuple())
 
-    pipeline = service.scan_region(
-        OCRRegion.from_tuple(region, name="Reward Scanner"),
+    pipeline = service.scan_profile_region(
+        profile,
+        OCRRegion.from_tuple(region, name="Reward Scanner", profile=profile.key),
         parser=parser,
         capture_function=adapted_capture if capture_function else None,
     )

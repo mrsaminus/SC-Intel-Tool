@@ -18,7 +18,7 @@ from app.blueprints_client import load_blueprints
 from app.blueprints_storage import get_owned_blueprint_keys, set_blueprint_owned
 from app.database import get_app_setting, set_app_setting
 from app.event_center.service import record_event
-from app.ocr import OCRService
+from app.ocr import OCRProfileManager, OCRRegion, OCRService, REWARD_SCANNER_PROFILE_KEY
 from app.ocr.reward_scanner import RewardScannerParser, reward_scan_result_from_pipeline
 
 from ..workers import BackgroundTaskMixin
@@ -34,6 +34,7 @@ from .shared import ROW_ROLE, create_card, create_table, table_item
 
 
 REGION_SETTING_KEY = "bp_reward_scanner_region"
+REGION_NAME = "Reward Scanner"
 
 
 class RewardScannerTab(BackgroundTaskMixin, QWidget):
@@ -47,7 +48,8 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         self.scan_once_running = False
         self.scan_once_request_id = 0
         self.region_overlay = None
-        self.ocr_service = OCRService()
+        self.ocr_profile_manager = OCRProfileManager()
+        self.ocr_service = OCRService(settings=self.current_ocr_profile().to_settings())
 
         layout = QVBoxLayout()
         layout.setContentsMargins(12, 12, 12, 12)
@@ -217,13 +219,20 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         self.scan_once_request_id += 1
         request_id = self.scan_once_request_id
         blueprints = tuple(self.blueprints)
+        profile = self.current_ocr_profile()
+        ocr_region = OCRRegion.from_tuple(
+            region,
+            name=REGION_NAME,
+            profile=profile.key,
+            description="BP Overview reward scanner capture region.",
+        )
         parser = RewardScannerParser(blueprints)
         self.scan_once_button.setEnabled(False)
         self.scan_once_button.setText("Scanning...")
         self.status_label.setText("Capturing selected region and running local OCR...")
 
         self.start_background_task(
-            lambda: self.ocr_service.scan_region(region, parser=parser),
+            lambda: self.ocr_service.scan_profile_region(profile, ocr_region, parser=parser),
             lambda result, current_request=request_id, count=len(blueprints): self.on_scan_once_result(
                 current_request,
                 reward_scan_result_from_pipeline(result, count),
@@ -420,7 +429,7 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         self.width_input.setText(str(width))
         self.height_input.setText(str(height))
         if self.remember_region_checkbox.isChecked():
-            set_app_setting(REGION_SETTING_KEY, ",".join(str(value) for value in region))
+            self.save_region_values(region)
         self.status_label.setText(
             f"Selected region {width}x{height} at X{x}, Y{y}. Preview or Scan Once when ready."
         )
@@ -436,7 +445,7 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
             QMessageBox.warning(self, "Region Required", "Enter or select X, Y, Width and Height before Preview Region.")
             return
         try:
-            image = capture_region_image(region)
+            image = capture_region_image(region, settings=self.current_ocr_profile().to_settings())
             pixmap = pixmap_from_image(image)
         except Exception as exc:
             self.status_label.setText(f"Preview capture failed locally: {exc}")
@@ -473,20 +482,48 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         return x, y, width, height
 
     def load_region(self):
+        profile_region = self.ocr_profile_manager.get_region(REWARD_SCANNER_PROFILE_KEY, REGION_NAME)
+        if profile_region and profile_region.is_valid():
+            self.apply_region(profile_region.to_tuple())
+            self.remember_region_checkbox.setChecked(True)
+            return
+
         value = get_app_setting(REGION_SETTING_KEY, "")
         if not value:
             return
         parts = value.split(",")
         if len(parts) != 4:
             return
-        for field, part in zip((self.x_input, self.y_input, self.width_input, self.height_input), parts):
-            field.setText(part.strip())
+        try:
+            region = tuple(int(part.strip()) for part in parts)
+        except ValueError:
+            return
+        self.apply_region(region)
         self.remember_region_checkbox.setChecked(True)
+        self.save_region_values(region)
 
     def save_region(self):
         region = self.region()
         if not region:
             QMessageBox.warning(self, "Invalid Region", "Enter valid X, Y, Width and Height values.")
             return
-        set_app_setting(REGION_SETTING_KEY, ",".join(str(value) for value in region))
+        self.save_region_values(region)
         self.status_label.setText("Reward scanner region saved locally.")
+
+    def current_ocr_profile(self):
+        return self.ocr_profile_manager.get_profile(REWARD_SCANNER_PROFILE_KEY)
+
+    def apply_region(self, region):
+        for field, part in zip((self.x_input, self.y_input, self.width_input, self.height_input), region):
+            field.setText(str(part).strip())
+
+    def save_region_values(self, region):
+        set_app_setting(REGION_SETTING_KEY, ",".join(str(value) for value in region))
+        self.ocr_profile_manager.save_region(
+            OCRRegion.from_tuple(
+                region,
+                name=REGION_NAME,
+                profile=REWARD_SCANNER_PROFILE_KEY,
+                description="BP Overview reward scanner capture region.",
+            )
+        )

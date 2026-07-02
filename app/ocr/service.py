@@ -1,6 +1,7 @@
 from .capture import ScreenshotService, normalize_region
 from .engine import MissingOCREngineError, OCREngineError, TesseractOCREngine
 from .parser import ParsedOCRResult
+from .profiles import normalize_profile
 from .results import OCRPipelineResult, OCRResult
 from .settings import DEFAULT_OCR_SETTINGS
 
@@ -11,13 +12,18 @@ class OCRService:
         self.screenshot_service = screenshot_service or ScreenshotService(settings=self.settings)
         self.engine = engine or TesseractOCREngine()
 
-    def run_ocr(self, image):
-        return self.engine.run(image, settings=self.settings)
+    def run_ocr(self, image, settings=None):
+        return self.engine.run(image, settings=settings or self.settings)
 
-    def scan_region(self, region, parser=None, capture_function=None):
+    def scan_region(self, region, parser=None, capture_function=None, settings=None):
+        settings = settings or self.settings
         region = normalize_region(region)
         try:
-            image = capture_function(region) if capture_function else self.screenshot_service.capture_region(region)
+            image = (
+                capture_function(region)
+                if capture_function
+                else self.screenshot_service.capture_region(region, settings=settings)
+            )
         except Exception as exc:
             message = str(exc)
             result = OCRResult(errors=(message,), warnings=("capture_error",))
@@ -39,7 +45,7 @@ class OCRService:
             )
 
         try:
-            result = self.run_ocr(image)
+            result = self.run_ocr(image, settings=settings)
         except MissingOCREngineError as exc:
             message = str(exc)
             result = OCRResult(image_size=getattr(image, "size", None), warnings=("missing_ocr",), errors=(message,))
@@ -89,6 +95,28 @@ class OCRService:
             parsed_result=parsed,
             warnings=result.warnings,
             errors=result.errors,
+        )
+
+    def scan_profile_region(self, profile, region, parser=None, capture_function=None):
+        profile = normalize_profile(profile)
+        region = normalize_region(region)
+        if not region.profile:
+            region = type(region)(
+                profile=profile.key,
+                name=region.name,
+                x=region.x,
+                y=region.y,
+                width=region.width,
+                height=region.height,
+                monitor=region.monitor,
+                resolution=region.resolution,
+                description=region.description,
+            )
+        return self.scan_region(
+            region,
+            parser=parser,
+            capture_function=capture_function,
+            settings=profile.to_settings(),
         )
 
     @staticmethod

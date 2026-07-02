@@ -38,8 +38,17 @@ def normalize_region(region):
 def preprocess_image(image, settings=None):
     settings = settings or DEFAULT_OCR_SETTINGS
     processed = image
+    if not settings.preprocessing:
+        return processed
     if settings.grayscale:
         processed = processed.convert("L")
+
+    if settings.invert_colors:
+        from PIL import ImageOps
+
+        if processed.mode not in {"L", "RGB"}:
+            processed = processed.convert("RGB")
+        processed = ImageOps.invert(processed)
 
     threshold = settings.normalized_threshold()
     if threshold is not None:

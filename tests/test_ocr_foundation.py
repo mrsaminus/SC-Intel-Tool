@@ -8,6 +8,7 @@ from app.ocr.capture import ScreenshotService, preprocess_image
 from app.ocr.confidence import average_confidence, confidence_label
 from app.ocr.engine import MissingOCREngineError, TesseractOCREngine
 from app.ocr.parser import OCRParser, ParsedOCRResult
+from app.ocr.profiles import OCRProfile
 from app.ocr.regions import OCRRegion
 from app.ocr.results import OCRResult
 from app.ocr.reward_scanner import RewardScannerParser
@@ -47,6 +48,17 @@ def test_preprocess_image_grayscale_threshold_and_scale():
     assert processed.mode == "L"
     assert processed.size == (20, 10)
     assert processed.getpixel((0, 0)) == 255
+
+
+def test_preprocess_image_can_be_disabled():
+    image = Image.new("RGB", (10, 5), color=(120, 120, 120))
+
+    processed = preprocess_image(
+        image,
+        OCRSettings(preprocessing=False, grayscale=True, threshold=100, scale=2.0),
+    )
+
+    assert processed is image
 
 
 def test_tesseract_engine_uses_injected_ocr_function_without_binary():
@@ -191,6 +203,23 @@ def test_ocr_worker_wraps_service_scan():
 
     assert result.status == "ok"
     assert result.parsed_result.data == {"text": "WORKER TEXT"}
+
+
+def test_ocr_worker_wraps_profile_scan():
+    service = OCRService(engine=TesseractOCREngine(ocr_function=lambda img: "profile worker text"))
+    profile = OCRProfile(key="worker", name="Worker", language="eng", parser_type="echo")
+    worker = OCRWorker(
+        service,
+        (1, 2, 3, 4),
+        parser=EchoParser(),
+        capture_function=lambda region: Image.new("RGB", (2, 2)),
+        profile=profile,
+    )
+
+    result = worker.function()
+
+    assert result.status == "ok"
+    assert result.parsed_result.data == {"text": "PROFILE WORKER TEXT"}
 
 
 def test_confidence_helpers():
