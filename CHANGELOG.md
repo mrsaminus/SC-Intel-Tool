@@ -8,6 +8,8 @@
   models, OCR/manual-text parser groundwork and manifest/capacity helpers.
 - Added the first Hauling Operations Center UI shell with manual contract text
   parsing, manifest preview and ship capacity summary.
+- Integrated Hauling with the shared OCR Foundation through the `hauling_contracts`
+  OCR profile, enabling local region capture into the existing manifest workflow.
 
 ### OCR
 

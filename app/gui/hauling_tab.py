@@ -1,4 +1,6 @@
-from PySide6.QtCore import Qt
+import logging
+
+from PySide6.QtCore import QThreadPool
 from PySide6.QtWidgets import (
     QApplication,
     QAbstractItemView,
@@ -14,6 +16,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.database import get_app_setting
+from app.event_center.service import record_event
 from app.hauling import (
     HaulingContractParser,
     build_manifest,
@@ -21,19 +25,40 @@ from app.hauling import (
     group_by_pickup,
     group_by_route,
 )
+from app.ocr import (
+    HAULING_CONTRACTS_PROFILE_KEY,
+    REWARD_SCANNER_PROFILE_KEY,
+    HaulingContractsOCRParser,
+    OCRProfileManager,
+    OCRRegion,
+    OCRService,
+)
+from app.ocr.workers import create_ocr_worker
 
 from .sortable_table_item import SORT_ROLE, SortableTableWidgetItem
 from .table_utils import configure_readable_table_columns
 from .trading.ship_selection import configure_ship_combo, selected_ship_name
+from .workers import BackgroundTaskMixin
 
 
-class HaulingTab(QWidget):
+logger = logging.getLogger(__name__)
+
+HAULING_REGION_NAME = "Hauling Contracts"
+REWARD_SCANNER_REGION_NAME = "Reward Scanner"
+LEGACY_REWARD_REGION_SETTING_KEY = "bp_reward_scanner_region"
+
+
+class HaulingTab(BackgroundTaskMixin, QWidget):
     def __init__(self):
         super().__init__()
         self.parser = HaulingContractParser()
         self.parse_result = None
         self.contracts = ()
         self.manifest = build_manifest(())
+        self.ocr_profile_manager = OCRProfileManager()
+        self.ocr_service = OCRService(settings=self.current_ocr_profile().to_settings())
+        self.ocr_capture_running = False
+        self.ocr_capture_request_id = 0
 
         layout = QVBoxLayout()
         layout.setContentsMargins(12, 12, 12, 12)
@@ -94,12 +119,15 @@ class HaulingTab(QWidget):
         button_row = QHBoxLayout()
         button_row.setSpacing(8)
         self.parse_button = QPushButton("Parse Contracts")
+        self.capture_ocr_button = QPushButton("Capture Contracts (OCR)")
         self.clear_button = QPushButton("Clear Input")
         self.copy_manifest_button = QPushButton("Copy Manifest")
         self.parse_button.clicked.connect(self.parse_contracts)
+        self.capture_ocr_button.clicked.connect(self.capture_contracts_ocr)
         self.clear_button.clicked.connect(self.clear_input)
         self.copy_manifest_button.clicked.connect(self.copy_manifest)
         button_row.addWidget(self.parse_button)
+        button_row.addWidget(self.capture_ocr_button)
         button_row.addWidget(self.clear_button)
         button_row.addWidget(self.copy_manifest_button)
         button_row.addStretch(1)
@@ -189,9 +217,7 @@ class HaulingTab(QWidget):
 
     def parse_contracts(self):
         text = self.contract_text.toPlainText()
-        self.parse_result = self.parser.parse(text)
-        self.contracts = self.parse_result.contracts
-        self.update_manifest()
+        self.apply_parse_result(self.parser.parse(text))
         if self.contracts:
             self.status_label.setText(
                 f"Parsed {len(self.contracts)} contract candidate"
@@ -199,6 +225,11 @@ class HaulingTab(QWidget):
             )
         else:
             self.status_label.setText("No hauling contracts parsed. Check the pasted text and try again.")
+
+    def apply_parse_result(self, parse_result):
+        self.parse_result = parse_result
+        self.contracts = self.parse_result.contracts
+        self.update_manifest()
 
     def clear_input(self):
         self.contract_text.clear()
@@ -209,6 +240,157 @@ class HaulingTab(QWidget):
 
     def on_ship_changed(self):
         self.update_manifest()
+
+    def current_ocr_profile(self):
+        return self.ocr_profile_manager.get_profile(HAULING_CONTRACTS_PROFILE_KEY)
+
+    def ocr_region(self):
+        region = self.ocr_profile_manager.get_region(HAULING_CONTRACTS_PROFILE_KEY, HAULING_REGION_NAME)
+        if region and region.is_valid():
+            return region
+
+        fallback = self.ocr_profile_manager.get_region(REWARD_SCANNER_PROFILE_KEY, REWARD_SCANNER_REGION_NAME)
+        if fallback and fallback.is_valid():
+            return OCRRegion.from_tuple(
+                fallback.to_tuple(),
+                name=HAULING_REGION_NAME,
+                profile=HAULING_CONTRACTS_PROFILE_KEY,
+                monitor=fallback.monitor,
+                resolution=fallback.resolution,
+                description="Hauling contract OCR capture region copied from the saved Reward Scanner region.",
+            )
+
+        legacy_region = legacy_reward_region()
+        if legacy_region:
+            return OCRRegion.from_tuple(
+                legacy_region,
+                name=HAULING_REGION_NAME,
+                profile=HAULING_CONTRACTS_PROFILE_KEY,
+                description="Hauling contract OCR capture region copied from legacy Reward Scanner coordinates.",
+            )
+        return None
+
+    def capture_contracts_ocr(self):
+        if self.ocr_capture_running:
+            self.status_label.setText("OCR capture already running. Wait for the current scan to finish.")
+            return
+
+        region = self.ocr_region()
+        if not region:
+            self.status_label.setText(
+                "No OCR capture region saved. Save a local OCR region first, or paste contract text manually."
+            )
+            return
+
+        self.ocr_capture_running = True
+        self.ocr_capture_request_id += 1
+        request_id = self.ocr_capture_request_id
+        profile = self.current_ocr_profile()
+        parser = HaulingContractsOCRParser(self.parser)
+        worker = create_ocr_worker(
+            self.ocr_service,
+            region,
+            parser=parser,
+            profile=profile,
+        )
+
+        self.capture_ocr_button.setEnabled(False)
+        self.capture_ocr_button.setText("Capturing...")
+        self.status_label.setText("Capturing selected region and running local OCR for hauling contracts...")
+        self.start_ocr_worker(
+            worker,
+            lambda result, current_request=request_id: self.on_ocr_capture_result(current_request, result),
+            lambda exc, current_request=request_id: self.on_ocr_capture_error(current_request, exc),
+            lambda current_request=request_id: self.finish_ocr_capture(current_request),
+        )
+
+    def start_ocr_worker(self, worker, on_result=None, on_error=None, on_finished=None):
+        if not hasattr(self, "_background_workers"):
+            self._background_workers = set()
+        self._background_workers.add(worker)
+        if on_result:
+            worker.signals.result.connect(on_result)
+        if on_error:
+            worker.signals.error.connect(on_error)
+        if on_finished:
+            worker.signals.finished.connect(on_finished)
+        worker.signals.finished.connect(lambda completed=worker: self._background_workers.discard(completed))
+        QThreadPool.globalInstance().start(worker)
+        return worker
+
+    def on_ocr_capture_result(self, request_id, result):
+        if request_id != self.ocr_capture_request_id:
+            return
+
+        status = getattr(result, "status", "")
+        if status == "capture_error":
+            self.status_label.setText(f"OCR capture failed locally: {getattr(result, 'message', '')}")
+            return
+        if status == "missing_ocr":
+            self.status_label.setText(
+                "No local OCR engine is available. Paste hauling contract text manually and click Parse Contracts."
+            )
+            return
+        if status == "ocr_error":
+            self.status_label.setText(f"OCR failed locally: {getattr(result, 'message', '')}")
+            return
+        if status == "parse_error":
+            self.status_label.setText(f"OCR text parsing failed locally: {getattr(result, 'message', '')}")
+            return
+
+        ocr_result = getattr(result, "ocr_result", None)
+        text = getattr(ocr_result, "text", "") if ocr_result else ""
+        self.contract_text.setPlainText(text)
+
+        parsed_result = getattr(result, "parsed_result", None)
+        parse_result = getattr(parsed_result, "data", None)
+        if parse_result is None:
+            parse_result = self.parser.parse(text)
+        self.apply_parse_result(parse_result)
+        self.record_ocr_scan_event(status or "ok")
+
+        if not str(text or "").strip():
+            self.status_label.setText("OCR completed, but no text was detected in the selected region.")
+        elif self.contracts:
+            self.status_label.setText(
+                f"OCR captured and parsed {len(self.contracts)} contract candidate"
+                f"{'s' if len(self.contracts) != 1 else ''} into the manifest."
+            )
+        else:
+            self.status_label.setText("OCR captured text, but no hauling contracts were parsed.")
+
+    def on_ocr_capture_error(self, request_id, exc):
+        if request_id != self.ocr_capture_request_id:
+            return
+        self.status_label.setText(f"OCR capture failed locally: {exc}")
+
+    def finish_ocr_capture(self, request_id):
+        if request_id != self.ocr_capture_request_id:
+            return
+        self.ocr_capture_running = False
+        self.capture_ocr_button.setEnabled(True)
+        self.capture_ocr_button.setText("Capture Contracts (OCR)")
+
+    def record_ocr_scan_event(self, status):
+        try:
+            record_event(
+                category="Hauling",
+                source="Hauling Operations Center",
+                entity_name="Hauling OCR Scan",
+                event_type="hauling_ocr_scan",
+                message=f"Hauling OCR scan parsed {len(self.contracts)} contract candidate"
+                f"{'s' if len(self.contracts) != 1 else ''}.",
+                metadata={
+                    "status": status,
+                    "contract_count": len(self.contracts),
+                    "total_scu": self.manifest.total_scu,
+                    "selected_ship": self.manifest.selected_ship or "",
+                },
+                severity="Info",
+                dedupe=False,
+            )
+        except Exception as exc:
+            logger.warning("Failed to record Hauling OCR scan event: %s", exc)
 
     def selected_ship(self):
         return selected_ship_name(self.ship_combo)
@@ -384,3 +566,19 @@ def commodity_summary(contracts):
         if name not in commodities:
             commodities.append(name)
     return ", ".join(commodities)
+
+
+def legacy_reward_region():
+    value = get_app_setting(LEGACY_REWARD_REGION_SETTING_KEY, "")
+    if not value:
+        return None
+    parts = value.split(",")
+    if len(parts) != 4:
+        return None
+    try:
+        region = tuple(int(part.strip()) for part in parts)
+    except ValueError:
+        return None
+    if region[2] <= 0 or region[3] <= 0:
+        return None
+    return region

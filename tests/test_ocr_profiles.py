@@ -74,6 +74,7 @@ def test_ocr_profile_manager_defaults_and_persistence(monkeypatch, tmp_path):
     profiles = reload_module("app.ocr.profiles")
 
     manager = profiles.OCRProfileManager()
+    profile_keys = {profile.key for profile in manager.list_profiles()}
     default_profile = manager.get_profile()
     updated = profiles.OCRProfile(
         **{
@@ -84,6 +85,8 @@ def test_ocr_profile_manager_defaults_and_persistence(monkeypatch, tmp_path):
         }
     )
 
+    assert profiles.HAULING_CONTRACTS_PROFILE_KEY in profile_keys
+    assert manager.get_profile(profiles.HAULING_CONTRACTS_PROFILE_KEY).parser_type == "hauling_contracts"
     manager.save_profile(updated)
     manager.set_default_profile(updated.key)
     reloaded = profiles.OCRProfileManager()

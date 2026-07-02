@@ -7,6 +7,7 @@ from PIL import Image
 from app.ocr.capture import ScreenshotService, preprocess_image
 from app.ocr.confidence import average_confidence, confidence_label
 from app.ocr.engine import MissingOCREngineError, TesseractOCREngine
+from app.ocr.hauling import HaulingContractsOCRParser
 from app.ocr.parser import OCRParser, ParsedOCRResult
 from app.ocr.profiles import OCRProfile
 from app.ocr.regions import OCRRegion
@@ -188,6 +189,19 @@ def test_reward_scanner_parser_returns_structured_matches():
     assert parsed.ok
     assert parsed.data["blueprint_count"] == 1
     assert parsed.data["matches"][0]["blueprint"].key == "field-recon-helmet"
+
+
+def test_hauling_contracts_ocr_parser_returns_parse_result():
+    parser = HaulingContractsOCRParser()
+
+    parsed = parser.parse(OCRResult(text="Pick up: Checkmate\nDeliver to: Lorville\nCommodity: Gold\nQuantity: 8 SCU"))
+
+    assert parsed.ok
+    assert len(parsed.data.contracts) == 1
+    assert parsed.data.contracts[0].pickup == "Checkmate"
+    assert parsed.data.contracts[0].delivery == "Lorville"
+    assert parsed.data.contracts[0].commodity == "Gold"
+    assert parsed.data.contracts[0].scu == 8
 
 
 def test_ocr_worker_wraps_service_scan():

@@ -6,6 +6,7 @@ from .settings import OCRSettings
 
 
 REWARD_SCANNER_PROFILE_KEY = "reward_scanner"
+HAULING_CONTRACTS_PROFILE_KEY = "hauling_contracts"
 OCR_PROFILES_SETTING_KEY = "ocr.profiles"
 OCR_DEFAULT_PROFILE_SETTING_KEY = "ocr.default_profile"
 OCR_REGIONS_SETTING_KEY = "ocr.regions"
@@ -85,7 +86,20 @@ def built_in_profiles():
             grayscale=True,
             parser_type="reward_scanner",
             enabled=True,
-        )
+        ),
+        HAULING_CONTRACTS_PROFILE_KEY: OCRProfile(
+            key=HAULING_CONTRACTS_PROFILE_KEY,
+            name="Hauling Contracts",
+            description="Default local OCR profile for hauling contract text capture.",
+            language="eng",
+            preprocessing=True,
+            threshold=None,
+            scaling=1.0,
+            invert_colors=False,
+            grayscale=True,
+            parser_type="hauling_contracts",
+            enabled=True,
+        ),
     }
 
 
