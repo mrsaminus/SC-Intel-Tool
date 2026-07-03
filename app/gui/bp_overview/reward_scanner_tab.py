@@ -26,7 +26,7 @@ from app.ocr.blueprint_reward_workflow import (
     detect_blueprint_reward_trigger,
     title_region_from_reward_region,
 )
-from app.ocr.debug_capture import start_ocr_debug_session
+from app.ocr.debug_capture import is_ocr_debug_enabled, start_ocr_debug_session
 from app.ocr.reward_scanner import RewardScannerParser, reward_scan_result_from_pipeline
 
 from ..responsive import install_scroll_area
@@ -164,13 +164,13 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
 
-        self.debug_status_label = QLabel("OCR debug: no capture saved yet.")
+        self.debug_status_label = QLabel(self.default_debug_status_text())
         self.debug_status_label.setObjectName("moduleSubtitle")
         self.debug_status_label.setWordWrap(True)
         layout.addWidget(self.debug_status_label)
 
         self.ocr_text = QTextEdit()
-        self.ocr_text.setPlaceholderText("Paste OCR text here, or use Check Now when a local OCR engine is available...")
+        self.ocr_text.setPlaceholderText("Paste OCR text here, or use Check Now to run the local OCR scanner...")
         self.ocr_text.setMinimumHeight(150)
         layout.addWidget(self.ocr_text)
 
@@ -294,22 +294,9 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
             return
 
         status = pipeline.status
-        if status == "capture_error":
-            self.status_label.setText(f"Trigger capture failed locally: {pipeline.message}")
-            return
-        if status == "missing_ocr":
-            self.status_label.setText(
-                "No local OCR engine is available in this build; paste OCR text manually and click Parse Text."
-            )
-            return
-        if status in {"ocr_error", "parse_error"}:
-            self.status_label.setText(f"Trigger check failed locally: {pipeline.message}")
-            return
-
         text = pipeline.ocr_result.text if pipeline.ocr_result else ""
         state_before = self.reward_workflow.state
         trigger_match = detect_blueprint_reward_trigger(text)
-        should_scan = self.reward_workflow.trigger_seen(text)
         debug_session = self.save_trigger_debug_result(
             pipeline=pipeline,
             text=text,
@@ -317,6 +304,22 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
             state_before=state_before,
             state_after=self.reward_workflow.state,
         )
+        if status == "capture_error":
+            self.status_label.setText(f"Trigger capture failed locally: {pipeline.message}")
+            return
+        if status == "missing_ocr":
+            self.status_label.setText(
+                "Local OCR engine unavailable. Manual paste is available. "
+                "Debug captures are stored locally when capture runs."
+            )
+            return
+        if status in {"ocr_error", "parse_error"}:
+            self.status_label.setText(f"Trigger check failed locally: {pipeline.message}")
+            return
+
+        should_scan = self.reward_workflow.trigger_seen(text)
+        if debug_session:
+            debug_session.update_metadata({"scanner_state_after": self.reward_workflow.state})
         if self.reward_workflow.waiting_for_window_close:
             self.status_label.setText("Received Blueprint already processed. Waiting for the reward window to close.")
             return
@@ -388,7 +391,8 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
             return
         if status == "missing_ocr":
             self.status_label.setText(
-                "Region captured once. No local OCR engine is available in this build; paste OCR text manually and click Parse Text."
+                "Local OCR engine unavailable. Manual paste is available. "
+                "Debug captures are stored locally when capture runs."
             )
             self.reward_workflow.wait_for_window_close()
             return
@@ -423,6 +427,9 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         self.scan_once_button.setText("Check Now")
 
     def save_trigger_debug_result(self, pipeline, text, trigger_match, state_before, state_after):
+        if not is_ocr_debug_enabled():
+            self.debug_status_label.setText(self.default_debug_status_text())
+            return None
         if not trigger_match and not self.should_save_nonmatch_debug_sample():
             return None
 
@@ -450,10 +457,11 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
             },
         )
         if not session:
+            self.debug_status_label.setText(self.default_debug_status_text())
             return None
         session.save_image("trigger.png", getattr(pipeline, "captured_image", None))
         session.save_text("trigger_ocr.txt", text)
-        self.debug_status_label.setText(f"OCR debug saved: {session.path}")
+        self.debug_status_label.setText(f"Last debug capture saved: {session.path}")
         if not trigger_match:
             self.last_nonmatch_debug_saved_at = time.monotonic()
         return session
@@ -480,10 +488,15 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
             "parser_warnings": result.get("parser_warnings", ()),
             "parser_errors": result.get("parser_errors", ()),
         })
-        self.debug_status_label.setText(f"OCR debug saved: {session.path}")
+        self.debug_status_label.setText(f"Last debug capture saved: {session.path}")
 
     def should_save_nonmatch_debug_sample(self):
         return (time.monotonic() - self.last_nonmatch_debug_saved_at) >= NONMATCH_DEBUG_SAMPLE_SECONDS
+
+    def default_debug_status_text(self):
+        if is_ocr_debug_enabled():
+            return "OCR debug: no capture saved yet."
+        return "OCR debug disabled in Settings."
 
     def parse_text(self):
         text = self.ocr_text.toPlainText().strip()

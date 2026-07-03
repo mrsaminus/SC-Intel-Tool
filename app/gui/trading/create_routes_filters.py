@@ -2,6 +2,8 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLineEdit, QWidget
 
+from ..safe_combobox import SafeComboBox as QComboBox
+
 
 class MultiSelectFilter(QWidget):
     changed = Signal()

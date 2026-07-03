@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 from app.blueprints_client import load_blueprints
 from app.blueprints_storage import get_owned_blueprint_keys, get_owned_crafting_materials
 
+from ..safe_combobox import SafeComboBox as QComboBox
 from ..workers import BackgroundTaskMixin
 from ..responsive import ResponsiveStack, install_scroll_area
 from ..table_utils import configure_readable_table_columns

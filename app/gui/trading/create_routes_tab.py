@@ -23,6 +23,7 @@ from app.trading_data import build_trading_opportunities, fetch_trading_opportun
 from app.trading_storage import TradingRouteRecord, add_recent_trading_route, save_trading_route
 from app.watchlists.service import add_trading_route_watch
 
+from ..safe_combobox import SafeComboBox as QComboBox
 from ..sortable_table_item import ROW_ROLE, SORT_ROLE, SortableTableWidgetItem
 from ..responsive import install_scroll_area, stabilize_table
 from ..table_utils import configure_readable_table_columns

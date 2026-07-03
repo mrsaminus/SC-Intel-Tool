@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
 from app.mining_data import load_mining_data
 from app.uex_client import UEXError, fetch_commodity_sell_prices
 
+from ..safe_combobox import SafeComboBox as QComboBox
 from ..constants import (
     GEM_SELLING_MATERIALS,
     REFINERY_METHODS,

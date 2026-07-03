@@ -28,6 +28,7 @@ from app.watchlists.storage import (
     set_watchlist_active,
 )
 
+from .safe_combobox import SafeComboBox as QComboBox
 from .sortable_table_item import ROW_ROLE, SORT_ROLE, SortableTableWidgetItem
 from .responsive import ResponsiveStack, install_scroll_area, stabilize_table
 from .table_utils import configure_readable_table_columns

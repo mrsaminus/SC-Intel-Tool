@@ -38,6 +38,7 @@ from .constants import (
     IMAGE_HEADERS,
     TAG_COLORS,
 )
+from .safe_combobox import SafeComboBox as QComboBox
 from .workers import BackgroundTaskMixin
 
 

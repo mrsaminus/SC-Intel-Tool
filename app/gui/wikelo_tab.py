@@ -33,6 +33,7 @@ from app.local_cache import (
 )
 from app.wikelo_client import WIKELO_SOURCE_URL, fetch_wikelo_items, normalized_key
 
+from .safe_combobox import SafeComboBox as QComboBox
 from .sortable_table_item import SORT_ROLE, SortableTableWidgetItem
 from .responsive import ResponsiveStack, install_scroll_area, stabilize_table
 from .table_utils import configure_readable_table_columns

@@ -53,6 +53,7 @@ from app.ocr import (
 from app.ocr.debug_capture import start_ocr_debug_session
 from app.ocr.workers import create_ocr_worker
 
+from .safe_combobox import SafeComboBox as QComboBox
 from .sortable_table_item import SORT_ROLE, SortableTableWidgetItem
 from .responsive import ResponsiveStack, install_scroll_area, stabilize_card, stabilize_table
 from .table_utils import configure_readable_table_columns

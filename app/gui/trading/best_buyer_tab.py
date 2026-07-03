@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 
 from app.trading_best_buyer import fetch_uex_best_buyers, format_best_buyer_age
 
+from ..safe_combobox import SafeComboBox as QComboBox
 from ..sortable_table_item import ROW_ROLE, SORT_ROLE, SortableTableWidgetItem
 from ..responsive import install_scroll_area, stabilize_table
 from ..table_utils import configure_readable_table_columns

@@ -26,6 +26,7 @@ from app.trading_storage import (
     save_trading_route,
 )
 
+from ..safe_combobox import SafeComboBox as QComboBox
 from ..sortable_table_item import ROW_ROLE, SORT_ROLE, SortableTableWidgetItem
 from ..responsive import install_scroll_area, stabilize_table
 from ..table_utils import configure_readable_table_columns

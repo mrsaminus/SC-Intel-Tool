@@ -39,6 +39,7 @@ from app.rsi_lookup import RSILookupError, lookup_player
 from app.watchlists.service import add_org_watch, add_player_snapshot_watch, add_player_watch
 
 from .constants import IMAGE_HEADERS
+from .safe_combobox import SafeComboBox as QComboBox
 from .search_history_helpers import (
     history_flags_text as history_flags_text_value,
     history_row_has_piracy as history_row_has_piracy_value,

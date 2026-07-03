@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### UX / Reliability
+
+- Prevented accidental combo-box value changes when scrolling through forms and
+  filter panels.
+- Corrected Reward Scanner OCR status wording so missing-engine states are only
+  shown when local OCR is actually unavailable.
+
 ## 0.1.0-alpha.8.9.8 - 2026-07-03
 
 ### OCR Debug Capture

@@ -1,6 +1,8 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QComboBox, QCompleter
 
+from ..safe_combobox import SafeComboBox as QComboBox
+
 
 def configure_searchable_combo(combo, placeholder=None):
     combo.setEditable(True)

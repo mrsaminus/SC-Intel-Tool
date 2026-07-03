@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 from app import notes_storage
 from app.paths import bundled_path
 
+from .safe_combobox import SafeComboBox as QComboBox
 from .sortable_table_item import ROW_ROLE, SORT_ROLE, SortableTableWidgetItem
 from .responsive import ResponsiveSplitter, install_scroll_area, stabilize_table
 from .table_utils import configure_readable_table_columns

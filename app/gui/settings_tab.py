@@ -45,6 +45,7 @@ from app.updater import UpdateInstallError, download_update, start_update_instal
 from app.version import APP_NAME, APP_VERSION, GITHUB_RELEASES_URL, GITHUB_REPOSITORY
 
 from .community_branding import AppLogoLabel, CommunityLogoLabel
+from .safe_combobox import SafeComboBox as QComboBox
 from .themes import (
     available_text_sizes,
     available_themes,
