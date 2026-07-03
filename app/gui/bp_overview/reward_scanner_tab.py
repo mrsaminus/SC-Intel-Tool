@@ -79,7 +79,7 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         card = create_card("REWARD SCANNER ALPHA")
         text = QLabel(
             "Optional and off by default. When enabled, the scanner watches the selected region for the "
-            "\"Blueprint Reward\" title first, then runs full local OCR only when the reward window is visible. "
+            "\"Received Blueprint\" title first, then runs full local OCR only when the reward window is visible. "
             "No screenshots or OCR text are uploaded. Confirm Add is required before ownership changes."
         )
         text.setObjectName("moduleSubtitle")
@@ -153,7 +153,7 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         buttons.addWidget(self.confirm_button)
         layout.addLayout(buttons)
 
-        self.status_label = QLabel("Scanner is off. Enable it to watch for the Blueprint Reward trigger.")
+        self.status_label = QLabel("Scanner is off. Enable it to watch for the Received Blueprint trigger.")
         self.status_label.setObjectName("moduleSubtitle")
         self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
@@ -217,14 +217,14 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
             QMessageBox.information(
                 self,
                 "Scanner Disabled",
-                "Enable the scanner before checking for a Blueprint Reward window. It remains off by default.",
+                "Enable the scanner before checking for a Received Blueprint window. It remains off by default.",
             )
             return
         self.check_reward_trigger(force=True)
 
     def on_scanner_enabled_changed(self, enabled):
         if enabled:
-            self.status_label.setText("Scanner enabled. Watching for the Blueprint Reward trigger.")
+            self.status_label.setText("Scanner enabled. Watching for the Received Blueprint trigger.")
             self.trigger_timer.start()
             self.check_reward_trigger(force=True)
             return
@@ -234,7 +234,7 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         self.scan_once_running = False
         self.scan_once_button.setEnabled(True)
         self.scan_once_button.setText("Check Now")
-        self.status_label.setText("Scanner is off. Enable it to watch for the Blueprint Reward trigger.")
+        self.status_label.setText("Scanner is off. Enable it to watch for the Received Blueprint trigger.")
 
     def check_reward_trigger(self, force=False):
         if not self.enabled_checkbox.isChecked():
@@ -248,7 +248,7 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
             if force:
                 QMessageBox.warning(self, "Region Required", "Enter X, Y, Width and Height before checking.")
             else:
-                self.status_label.setText("Scanner enabled. Select a Blueprint Reward region to begin.")
+                self.status_label.setText("Scanner enabled. Select a Received Blueprint region to begin.")
             return
         if self.remember_region_checkbox.isChecked():
             self.save_region()
@@ -267,9 +267,9 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         self.scan_once_button.setEnabled(False)
         self.scan_once_button.setText("Checking...")
         if self.reward_workflow.waiting_for_window_close:
-            self.status_label.setText("Waiting for the current Blueprint Reward window to close.")
+            self.status_label.setText("Waiting for the current Received Blueprint window to close.")
         else:
-            self.status_label.setText("Checking for Blueprint Reward trigger...")
+            self.status_label.setText("Checking for Received Blueprint trigger...")
 
         self.start_background_task(
             lambda: self.ocr_service.scan_profile_region(profile, trigger_region, parser=None),
@@ -298,13 +298,13 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         text = pipeline.ocr_result.text if pipeline.ocr_result else ""
         should_scan = self.reward_workflow.trigger_seen(text)
         if self.reward_workflow.waiting_for_window_close:
-            self.status_label.setText("Blueprint Reward already processed. Waiting for the reward window to close.")
+            self.status_label.setText("Received Blueprint already processed. Waiting for the reward window to close.")
             return
         if not detect_blueprint_reward_trigger(text):
-            self.status_label.setText("Watching for Blueprint Reward trigger.")
+            self.status_label.setText("Watching for Received Blueprint trigger.")
             return
         if should_scan:
-            self.status_label.setText("Blueprint Reward trigger detected. Running full local OCR.")
+            self.status_label.setText("Received Blueprint trigger detected. Running full local OCR.")
             self.start_full_reward_scan()
 
     def on_trigger_check_error(self, request_id, exc):

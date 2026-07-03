@@ -1,11 +1,14 @@
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 
 from .capture import normalize_region
 from .reward_scanner import normalize_match_text
 from .regions import OCRRegion
 
 
-BLUEPRINT_REWARD_TRIGGER = "Blueprint Reward"
+BLUEPRINT_REWARD_TRIGGER = "Received Blueprint"
+TRIGGER_TOKEN_MATCH_THRESHOLD = 0.82
+TRIGGER_TOKEN_WINDOW = 4
 
 STATE_IDLE = "Idle"
 STATE_TRIGGER_DETECTED = "TriggerDetected"
@@ -14,8 +17,27 @@ STATE_MATCHED = "Matched"
 STATE_WAITING_FOR_WINDOW_CLOSE = "WaitingForWindowClose"
 
 
+def _token_matches(token, expected):
+    if token == expected:
+        return True
+    return SequenceMatcher(None, token, expected).ratio() >= TRIGGER_TOKEN_MATCH_THRESHOLD
+
+
 def detect_blueprint_reward_trigger(text):
-    return normalize_match_text(BLUEPRINT_REWARD_TRIGGER) in normalize_match_text(text)
+    normalized = normalize_match_text(text)
+    if not normalized:
+        return False
+    if normalize_match_text(BLUEPRINT_REWARD_TRIGGER) in normalized:
+        return True
+
+    tokens = normalized.split()
+    for index, token in enumerate(tokens):
+        if not _token_matches(token, "received"):
+            continue
+        for candidate in tokens[index + 1:index + 1 + TRIGGER_TOKEN_WINDOW]:
+            if _token_matches(candidate, "blueprint"):
+                return True
+    return False
 
 
 def title_region_from_reward_region(region, height_ratio=0.28, minimum_height=36):
@@ -31,7 +53,7 @@ def title_region_from_reward_region(region, height_ratio=0.28, minimum_height=36
         height=trigger_height,
         monitor=region.monitor,
         resolution=region.resolution,
-        description="Blueprint Reward title trigger region.",
+        description="Received Blueprint title trigger region.",
     )
 
 

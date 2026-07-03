@@ -52,9 +52,9 @@ def test_reward_scanner_uses_ocr_service_pipeline(monkeypatch, tmp_path, qapp):
             if parser is None:
                 return OCRPipelineResult(
                     status="ok",
-                    ocr_result=OCRResult(text="Blueprint Reward"),
+                    ocr_result=OCRResult(text="Received Blueprint:"),
                 )
-            ocr_result = OCRResult(text="Blueprint Reward\nReward unlocked: Field Recon Helmet")
+            ocr_result = OCRResult(text="Received Blueprint:\nReward unlocked: Field Recon Helmet")
             return OCRPipelineResult(
                 status="ok",
                 ocr_result=ocr_result,
@@ -87,7 +87,7 @@ def test_reward_scanner_uses_ocr_service_pipeline(monkeypatch, tmp_path, qapp):
     assert calls[0][2] is None
     assert calls[1][1].to_tuple() == (10, 20, 300, 120)
     assert calls[1][2].name == "reward_scanner"
-    assert tab.ocr_text.toPlainText() == "Blueprint Reward\nReward unlocked: Field Recon Helmet"
+    assert tab.ocr_text.toPlainText() == "Received Blueprint:\nReward unlocked: Field Recon Helmet"
     assert tab.matches_table.rowCount() == 1
     assert tab.confirm_button.isEnabled()
     assert tab.reward_workflow.state == STATE_WAITING_FOR_WINDOW_CLOSE
@@ -128,7 +128,7 @@ def test_reward_scanner_does_not_run_full_ocr_without_trigger(monkeypatch, tmp_p
     assert calls[0][2] is None
     assert tab.ocr_text.toPlainText() == ""
     assert tab.matches_table.rowCount() == 0
-    assert "Watching for Blueprint Reward trigger" in tab.status_label.text()
+    assert "Watching for Received Blueprint trigger" in tab.status_label.text()
     tab.close()
     tab.deleteLater()
 
@@ -141,7 +141,7 @@ def test_reward_scanner_waiting_state_prevents_duplicate_full_scan(monkeypatch, 
     class FakeOCRService:
         def scan_profile_region(self, profile, region, parser=None):
             calls.append((profile, region, parser))
-            return OCRPipelineResult(status="ok", ocr_result=OCRResult(text="Blueprint Reward"))
+            return OCRPipelineResult(status="ok", ocr_result=OCRResult(text="Received Blueprint:"))
 
     def run_synchronously(function, on_result=None, on_error=None, on_finished=None):
         try:
@@ -188,7 +188,7 @@ def test_reward_scanner_returns_to_idle_when_trigger_disappears(monkeypatch, tmp
     qapp.processEvents()
 
     assert tab.reward_workflow.state == "Idle"
-    assert "Watching for Blueprint Reward trigger" in tab.status_label.text()
+    assert "Watching for Received Blueprint trigger" in tab.status_label.text()
     tab.close()
     tab.deleteLater()
 

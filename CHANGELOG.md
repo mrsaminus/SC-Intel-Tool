@@ -8,9 +8,9 @@
 
 - Redesigned Blueprint Reward Scanner OCR around a workflow state machine:
   Idle, TriggerDetected, Scanning, Matched and WaitingForWindowClose.
-- Added lightweight `Blueprint Reward` trigger detection before full reward
-  OCR so the scanner avoids repeatedly processing the same visible reward
-  window.
+- Added lightweight `Received Blueprint:` trigger detection before full reward
+  OCR so the scanner matches the in-game UI text and avoids repeatedly
+  processing the same visible reward window.
 - Reduced unnecessary Blueprint Reward Scanner OCR work by scanning only the
   reward title area until the trigger appears.
 - Simplified public OCR configuration so Settings now describes OCR workflows
