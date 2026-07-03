@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.8.9.8 - 2026-07-03
+
+### OCR Debug Capture
+
+- Added local OCR debug capture storage under the app data folder so testers can
+  inspect trigger crops, full OCR regions, OCR text and workflow metadata after
+  missed one-time rewards.
+- Added Blueprint Reward Scanner diagnostics for trigger checks and full reward
+  OCR scans.
+- Added Hauling OCR diagnostics for manual OCR contract captures.
+- Added automatic OCR debug retention, keeping the latest 50 sessions per
+  workflow.
+- Added Settings controls to open or clear local OCR debug captures.
+- Improved OCR troubleshooting while keeping debug captures local-only.
+
 ## 0.1.0-alpha.8.9.7 - 2026-07-03
 
 ### OCR
@@ -17,10 +32,6 @@
   instead of exposing language, scaling, threshold, grayscale, invert and
   preprocessing controls.
 - Preserved Hauling OCR behavior as a manual single-capture workflow.
-- Added local OCR debug capture storage under the app data folder so testers can
-  inspect trigger crops, full OCR regions, OCR text and workflow metadata after
-  missed one-time rewards.
-- Added Settings controls to open or clear local OCR debug captures.
 
 ## 0.1.0-alpha.8.9.5 - 2026-07-02
 
