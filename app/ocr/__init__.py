@@ -1,4 +1,10 @@
 from .capture import ScreenshotService, capture_region_image, preprocess_image
+from .blueprint_reward_workflow import (
+    BLUEPRINT_REWARD_TRIGGER,
+    BlueprintRewardWorkflow,
+    detect_blueprint_reward_trigger,
+    title_region_from_reward_region,
+)
 from .confidence import clamp_confidence, confidence_label
 from .engine import MissingOCREngineError, OCREngineError, TesseractOCREngine
 from .hauling import HaulingContractsOCRParser
@@ -17,6 +23,8 @@ from .settings import DEFAULT_OCR_SETTINGS, OCRSettings
 
 __all__ = [
     "DEFAULT_OCR_SETTINGS",
+    "BLUEPRINT_REWARD_TRIGGER",
+    "BlueprintRewardWorkflow",
     "HAULING_CONTRACTS_PROFILE_KEY",
     "HaulingContractsOCRParser",
     "MissingOCREngineError",
@@ -37,6 +45,8 @@ __all__ = [
     "capture_region_image",
     "clamp_confidence",
     "confidence_label",
+    "detect_blueprint_reward_trigger",
     "preprocess_image",
     "reward_scan_result_from_pipeline",
+    "title_region_from_reward_region",
 ]

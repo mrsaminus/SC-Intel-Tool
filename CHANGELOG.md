@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.8.9.7 - 2026-07-03
+
+### OCR
+
+- Redesigned Blueprint Reward Scanner OCR around a workflow state machine:
+  Idle, TriggerDetected, Scanning, Matched and WaitingForWindowClose.
+- Added lightweight `Blueprint Reward` trigger detection before full reward
+  OCR so the scanner avoids repeatedly processing the same visible reward
+  window.
+- Reduced unnecessary Blueprint Reward Scanner OCR work by scanning only the
+  reward title area until the trigger appears.
+- Simplified public OCR configuration so Settings now describes OCR workflows
+  instead of exposing language, scaling, threshold, grayscale, invert and
+  preprocessing controls.
+- Preserved Hauling OCR behavior as a manual single-capture workflow.
+
 ## 0.1.0-alpha.8.9.5 - 2026-07-02
 
 ### Release Candidate Audit

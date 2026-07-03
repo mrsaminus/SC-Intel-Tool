@@ -115,7 +115,11 @@ class OCRProfileManager:
 
     def list_profiles(self, include_disabled=False):
         profiles = dict(self._built_ins)
-        profiles.update(_load_profile_overrides())
+        for key, override in _load_profile_overrides().items():
+            if key in self._built_ins:
+                profiles[key] = replace(self._built_ins[key], enabled=override.enabled)
+            else:
+                profiles[key] = override
         ordered = []
         for key in self._built_ins:
             profile = profiles.pop(key, None)

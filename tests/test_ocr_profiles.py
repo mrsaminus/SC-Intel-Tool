@@ -2,7 +2,7 @@ import os
 
 import pytest
 from PIL import Image
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QLabel
 
 from app.ocr.parser import OCRParser, ParsedOCRResult
 from app.ocr.results import OCRResult
@@ -90,11 +90,12 @@ def test_ocr_profile_manager_defaults_and_persistence(monkeypatch, tmp_path):
     manager.save_profile(updated)
     manager.set_default_profile(updated.key)
     reloaded = profiles.OCRProfileManager()
+    migrated_profile = reloaded.get_profile(profiles.REWARD_SCANNER_PROFILE_KEY)
 
     assert reloaded.get_default_profile_key() == profiles.REWARD_SCANNER_PROFILE_KEY
-    assert reloaded.get_profile(profiles.REWARD_SCANNER_PROFILE_KEY).language == "nor"
-    assert reloaded.get_profile(profiles.REWARD_SCANNER_PROFILE_KEY).threshold == 180
-    assert reloaded.get_profile(profiles.REWARD_SCANNER_PROFILE_KEY).scaling == 2.0
+    assert migrated_profile.language == "eng"
+    assert migrated_profile.threshold is None
+    assert migrated_profile.scaling == 1.0
 
 
 def test_ocr_profile_manager_ignores_corrupt_settings(monkeypatch, tmp_path):
@@ -162,27 +163,21 @@ def test_ocr_service_scan_profile_region_uses_profile_settings():
     assert captured["settings"].invert_colors is True
 
 
-def test_settings_ocr_section_persists_profile(monkeypatch, tmp_path, qapp):
+def test_settings_ocr_section_is_workflow_based(monkeypatch, tmp_path, qapp):
     isolated_database(monkeypatch, tmp_path)
     settings_module = reload_module("app.gui.settings_tab")
-    profiles = reload_module("app.ocr.profiles")
 
     settings = settings_module.SettingsTab()
-    settings.ocr_language_input.setText("nor")
-    settings.ocr_scale_input.setText("1.75")
-    settings.ocr_threshold_input.setText("160")
-    settings.ocr_preprocessing_checkbox.setChecked(True)
-    settings.ocr_grayscale_checkbox.setChecked(False)
-    settings.ocr_invert_checkbox.setChecked(True)
-
-    settings.save_ocr_settings()
     qapp.processEvents()
 
-    profile = profiles.OCRProfileManager().get_profile(profiles.REWARD_SCANNER_PROFILE_KEY)
-    assert profile.language == "nor"
-    assert profile.scaling == 1.75
-    assert profile.threshold == 160
-    assert profile.preprocessing is True
-    assert profile.grayscale is False
-    assert profile.invert_colors is True
+    labels = "\n".join(label.text() for label in settings.findChildren(QLabel))
+    assert "Blueprint Reward Scanner" in labels
+    assert "Hauling OCR" in labels
+    assert "Internal OCR defaults" in labels
+    assert "Language" not in labels
+    assert "Threshold" not in labels
+    assert "Scaling" not in labels
+    assert not hasattr(settings, "ocr_language_input")
+    assert not hasattr(settings, "ocr_threshold_input")
+    assert not hasattr(settings, "save_ocr_settings_button")
     settings.close()

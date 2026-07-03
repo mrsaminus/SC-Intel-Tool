@@ -1,16 +1,23 @@
 from dataclasses import dataclass
 
 import pytest
+from PySide6.QtCore import QThreadPool
 from PySide6.QtWidgets import QApplication
 
+from app.ocr.blueprint_reward_workflow import STATE_WAITING_FOR_WINDOW_CLOSE
 from app.ocr.parser import ParsedOCRResult
 from app.ocr.results import OCRPipelineResult, OCRResult
 from conftest import isolated_database, reload_module
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def qapp():
-    return QApplication.instance() or QApplication([])
+    app = QApplication.instance() or QApplication([])
+    yield app
+    app.closeAllWindows()
+    app.processEvents()
+    QThreadPool.globalInstance().waitForDone(1000)
+    app.processEvents()
 
 
 @dataclass(frozen=True)
@@ -24,11 +31,13 @@ def build_scanner_tab(monkeypatch, tmp_path):
     isolated_database(monkeypatch, tmp_path)
     tab_module = reload_module("app.gui.bp_overview.reward_scanner_tab")
     tab = tab_module.RewardScannerTab()
-    tab.enabled_checkbox.setChecked(True)
     tab.x_input.setText("10")
     tab.y_input.setText("20")
     tab.width_input.setText("300")
     tab.height_input.setText("120")
+    tab.enabled_checkbox.blockSignals(True)
+    tab.enabled_checkbox.setChecked(True)
+    tab.enabled_checkbox.blockSignals(False)
     return tab
 
 
@@ -40,7 +49,12 @@ def test_reward_scanner_uses_ocr_service_pipeline(monkeypatch, tmp_path, qapp):
     class FakeOCRService:
         def scan_profile_region(self, profile, region, parser=None):
             calls.append((profile, region, parser))
-            ocr_result = OCRResult(text="Reward unlocked: Field Recon Helmet")
+            if parser is None:
+                return OCRPipelineResult(
+                    status="ok",
+                    ocr_result=OCRResult(text="Blueprint Reward"),
+                )
+            ocr_result = OCRResult(text="Blueprint Reward\nReward unlocked: Field Recon Helmet")
             return OCRPipelineResult(
                 status="ok",
                 ocr_result=ocr_result,
@@ -66,17 +80,117 @@ def test_reward_scanner_uses_ocr_service_pipeline(monkeypatch, tmp_path, qapp):
     tab.scan_once()
     qapp.processEvents()
 
-    assert calls
+    assert len(calls) == 2
     assert calls[0][0].key == "reward_scanner"
     assert calls[0][1].profile == "reward_scanner"
-    assert calls[0][1].to_tuple() == (10, 20, 300, 120)
-    assert calls[0][2].name == "reward_scanner"
-    assert tab.ocr_text.toPlainText() == "Reward unlocked: Field Recon Helmet"
+    assert calls[0][1].to_tuple() == (10, 20, 300, 36)
+    assert calls[0][2] is None
+    assert calls[1][1].to_tuple() == (10, 20, 300, 120)
+    assert calls[1][2].name == "reward_scanner"
+    assert tab.ocr_text.toPlainText() == "Blueprint Reward\nReward unlocked: Field Recon Helmet"
     assert tab.matches_table.rowCount() == 1
     assert tab.confirm_button.isEnabled()
+    assert tab.reward_workflow.state == STATE_WAITING_FOR_WINDOW_CLOSE
     assert not tab.scan_once_running
     assert tab.scan_once_button.isEnabled()
     tab.close()
+    tab.deleteLater()
+
+
+def test_reward_scanner_does_not_run_full_ocr_without_trigger(monkeypatch, tmp_path, qapp):
+    tab = build_scanner_tab(monkeypatch, tmp_path)
+    tab.set_blueprints([BlueprintStub("field-recon-helmet", "Field Recon Helmet")])
+    calls = []
+
+    class FakeOCRService:
+        def scan_profile_region(self, profile, region, parser=None):
+            calls.append((profile, region, parser))
+            return OCRPipelineResult(status="ok", ocr_result=OCRResult(text="No reward here"))
+
+    def run_synchronously(function, on_result=None, on_error=None, on_finished=None):
+        try:
+            if on_result:
+                on_result(function())
+        except Exception as exc:
+            if on_error:
+                on_error(exc)
+        finally:
+            if on_finished:
+                on_finished()
+
+    tab.ocr_service = FakeOCRService()
+    tab.start_background_task = run_synchronously
+
+    tab.scan_once()
+    qapp.processEvents()
+
+    assert len(calls) == 1
+    assert calls[0][2] is None
+    assert tab.ocr_text.toPlainText() == ""
+    assert tab.matches_table.rowCount() == 0
+    assert "Watching for Blueprint Reward trigger" in tab.status_label.text()
+    tab.close()
+    tab.deleteLater()
+
+
+def test_reward_scanner_waiting_state_prevents_duplicate_full_scan(monkeypatch, tmp_path, qapp):
+    tab = build_scanner_tab(monkeypatch, tmp_path)
+    tab.reward_workflow.wait_for_window_close()
+    calls = []
+
+    class FakeOCRService:
+        def scan_profile_region(self, profile, region, parser=None):
+            calls.append((profile, region, parser))
+            return OCRPipelineResult(status="ok", ocr_result=OCRResult(text="Blueprint Reward"))
+
+    def run_synchronously(function, on_result=None, on_error=None, on_finished=None):
+        try:
+            if on_result:
+                on_result(function())
+        finally:
+            if on_finished:
+                on_finished()
+
+    tab.ocr_service = FakeOCRService()
+    tab.start_background_task = run_synchronously
+
+    tab.scan_once()
+    qapp.processEvents()
+
+    assert len(calls) == 1
+    assert calls[0][2] is None
+    assert tab.reward_workflow.state == STATE_WAITING_FOR_WINDOW_CLOSE
+    assert "Waiting for the reward window to close" in tab.status_label.text()
+    tab.close()
+    tab.deleteLater()
+
+
+def test_reward_scanner_returns_to_idle_when_trigger_disappears(monkeypatch, tmp_path, qapp):
+    tab = build_scanner_tab(monkeypatch, tmp_path)
+    tab.reward_workflow.wait_for_window_close()
+
+    class FakeOCRService:
+        def scan_profile_region(self, profile, region, parser=None):
+            return OCRPipelineResult(status="ok", ocr_result=OCRResult(text=""))
+
+    def run_synchronously(function, on_result=None, on_error=None, on_finished=None):
+        try:
+            if on_result:
+                on_result(function())
+        finally:
+            if on_finished:
+                on_finished()
+
+    tab.ocr_service = FakeOCRService()
+    tab.start_background_task = run_synchronously
+
+    tab.scan_once()
+    qapp.processEvents()
+
+    assert tab.reward_workflow.state == "Idle"
+    assert "Watching for Blueprint Reward trigger" in tab.status_label.text()
+    tab.close()
+    tab.deleteLater()
 
 
 def test_reward_scanner_repeated_scan_is_ignored(monkeypatch, tmp_path, qapp):
@@ -89,8 +203,9 @@ def test_reward_scanner_repeated_scan_is_ignored(monkeypatch, tmp_path, qapp):
     qapp.processEvents()
 
     assert calls == []
-    assert "Scan already running" in tab.status_label.text()
+    assert "already checking" in tab.status_label.text()
     tab.close()
+    tab.deleteLater()
 
 
 def test_reward_scanner_stale_result_is_ignored(monkeypatch, tmp_path, qapp):
@@ -111,6 +226,7 @@ def test_reward_scanner_stale_result_is_ignored(monkeypatch, tmp_path, qapp):
     assert tab.ocr_text.toPlainText() == ""
     assert tab.matches_table.rowCount() == 0
     tab.close()
+    tab.deleteLater()
 
 
 def test_reward_scanner_pipeline_parse_error_shows_scan_failure(monkeypatch, tmp_path, qapp):
@@ -132,4 +248,6 @@ def test_reward_scanner_pipeline_parse_error_shows_scan_failure(monkeypatch, tmp
     qapp.processEvents()
 
     assert "Scan failed locally: parser exploded" in tab.status_label.text()
+    assert tab.reward_workflow.state == STATE_WAITING_FOR_WINDOW_CLOSE
     tab.close()
+    tab.deleteLater()

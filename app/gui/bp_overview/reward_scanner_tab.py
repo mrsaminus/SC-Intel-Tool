@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -19,6 +19,11 @@ from app.blueprints_storage import get_owned_blueprint_keys, set_blueprint_owned
 from app.database import get_app_setting, set_app_setting
 from app.event_center.service import record_event
 from app.ocr import OCRProfileManager, OCRRegion, OCRService, REWARD_SCANNER_PROFILE_KEY
+from app.ocr.blueprint_reward_workflow import (
+    BlueprintRewardWorkflow,
+    detect_blueprint_reward_trigger,
+    title_region_from_reward_region,
+)
 from app.ocr.reward_scanner import RewardScannerParser, reward_scan_result_from_pipeline
 
 from ..responsive import install_scroll_area
@@ -47,10 +52,16 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         self.ownership_changed_callback = ownership_changed_callback
         self.scan_running = False
         self.scan_once_running = False
+        self.trigger_check_running = False
         self.scan_once_request_id = 0
+        self.trigger_request_id = 0
         self.region_overlay = None
         self.ocr_profile_manager = OCRProfileManager()
         self.ocr_service = OCRService(settings=self.current_ocr_profile().to_settings())
+        self.reward_workflow = BlueprintRewardWorkflow()
+        self.trigger_timer = QTimer(self)
+        self.trigger_timer.setInterval(2500)
+        self.trigger_timer.timeout.connect(self.check_reward_trigger)
 
         content_widget = QWidget()
         layout = QVBoxLayout(content_widget)
@@ -67,8 +78,9 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
     def build_privacy_card(self):
         card = create_card("REWARD SCANNER ALPHA")
         text = QLabel(
-            "Optional and off by default. Reads only the selected region when you click Scan Once. "
-            "No screenshots or OCR text are uploaded. No telemetry. Confirm Add is required before ownership changes."
+            "Optional and off by default. When enabled, the scanner watches the selected region for the "
+            "\"Blueprint Reward\" title first, then runs full local OCR only when the reward window is visible. "
+            "No screenshots or OCR text are uploaded. Confirm Add is required before ownership changes."
         )
         text.setObjectName("moduleSubtitle")
         text.setWordWrap(True)
@@ -82,6 +94,7 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         top_controls = QHBoxLayout()
         top_controls.setSpacing(8)
         self.enabled_checkbox = QCheckBox("Enable scanner")
+        self.enabled_checkbox.toggled.connect(self.on_scanner_enabled_changed)
         self.load_blueprints_button = QPushButton("Load Blueprint Names")
         self.load_blueprints_button.clicked.connect(self.refresh_blueprints)
         top_controls.addWidget(self.enabled_checkbox)
@@ -120,7 +133,7 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
 
         buttons = QHBoxLayout()
         buttons.setSpacing(8)
-        self.scan_once_button = QPushButton("Scan Once")
+        self.scan_once_button = QPushButton("Check Now")
         self.preview_region_button = QPushButton("Preview Region")
         self.parse_text_button = QPushButton("Parse Text")
         self.copy_text_button = QPushButton("Copy OCR Text")
@@ -140,13 +153,13 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         buttons.addWidget(self.confirm_button)
         layout.addLayout(buttons)
 
-        self.status_label = QLabel("Scanner is off. Enable it manually before Scan Once.")
+        self.status_label = QLabel("Scanner is off. Enable it to watch for the Blueprint Reward trigger.")
         self.status_label.setObjectName("moduleSubtitle")
         self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
 
         self.ocr_text = QTextEdit()
-        self.ocr_text.setPlaceholderText("Paste OCR text here, or use Scan Once when a local OCR engine is available...")
+        self.ocr_text.setPlaceholderText("Paste OCR text here, or use Check Now when a local OCR engine is available...")
         self.ocr_text.setMinimumHeight(150)
         layout.addWidget(self.ocr_text)
 
@@ -204,19 +217,117 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
             QMessageBox.information(
                 self,
                 "Scanner Disabled",
-                "Enable the scanner manually before scanning. It remains off by default.",
+                "Enable the scanner before checking for a Blueprint Reward window. It remains off by default.",
             )
             return
-        if self.scan_once_running:
-            self.status_label.setText("Scan already running. Wait for the current scan to finish.")
+        self.check_reward_trigger(force=True)
+
+    def on_scanner_enabled_changed(self, enabled):
+        if enabled:
+            self.status_label.setText("Scanner enabled. Watching for the Blueprint Reward trigger.")
+            self.trigger_timer.start()
+            self.check_reward_trigger(force=True)
+            return
+        self.trigger_timer.stop()
+        self.reward_workflow.reset()
+        self.trigger_check_running = False
+        self.scan_once_running = False
+        self.scan_once_button.setEnabled(True)
+        self.scan_once_button.setText("Check Now")
+        self.status_label.setText("Scanner is off. Enable it to watch for the Blueprint Reward trigger.")
+
+    def check_reward_trigger(self, force=False):
+        if not self.enabled_checkbox.isChecked():
+            return
+        if self.trigger_check_running or self.scan_once_running:
+            if force:
+                self.status_label.setText("Scanner is already checking this region.")
             return
         region = self.region()
         if not region:
-            QMessageBox.warning(self, "Region Required", "Enter X, Y, Width and Height before Scan Once.")
+            if force:
+                QMessageBox.warning(self, "Region Required", "Enter X, Y, Width and Height before checking.")
+            else:
+                self.status_label.setText("Scanner enabled. Select a Blueprint Reward region to begin.")
             return
         if self.remember_region_checkbox.isChecked():
             self.save_region()
 
+        profile = self.current_ocr_profile()
+        ocr_region = OCRRegion.from_tuple(
+            region,
+            name=REGION_NAME,
+            profile=profile.key,
+            description="BP Overview reward scanner capture region.",
+        )
+        trigger_region = title_region_from_reward_region(ocr_region)
+        self.trigger_check_running = True
+        self.trigger_request_id += 1
+        request_id = self.trigger_request_id
+        self.scan_once_button.setEnabled(False)
+        self.scan_once_button.setText("Checking...")
+        if self.reward_workflow.waiting_for_window_close:
+            self.status_label.setText("Waiting for the current Blueprint Reward window to close.")
+        else:
+            self.status_label.setText("Checking for Blueprint Reward trigger...")
+
+        self.start_background_task(
+            lambda: self.ocr_service.scan_profile_region(profile, trigger_region, parser=None),
+            lambda result, current_request=request_id: self.on_trigger_check_result(current_request, result),
+            lambda exc, current_request=request_id: self.on_trigger_check_error(current_request, exc),
+            lambda current_request=request_id: self.finish_trigger_check(current_request),
+        )
+
+    def on_trigger_check_result(self, request_id, pipeline):
+        if request_id != self.trigger_request_id:
+            return
+
+        status = pipeline.status
+        if status == "capture_error":
+            self.status_label.setText(f"Trigger capture failed locally: {pipeline.message}")
+            return
+        if status == "missing_ocr":
+            self.status_label.setText(
+                "No local OCR engine is available in this build; paste OCR text manually and click Parse Text."
+            )
+            return
+        if status in {"ocr_error", "parse_error"}:
+            self.status_label.setText(f"Trigger check failed locally: {pipeline.message}")
+            return
+
+        text = pipeline.ocr_result.text if pipeline.ocr_result else ""
+        should_scan = self.reward_workflow.trigger_seen(text)
+        if self.reward_workflow.waiting_for_window_close:
+            self.status_label.setText("Blueprint Reward already processed. Waiting for the reward window to close.")
+            return
+        if not detect_blueprint_reward_trigger(text):
+            self.status_label.setText("Watching for Blueprint Reward trigger.")
+            return
+        if should_scan:
+            self.status_label.setText("Blueprint Reward trigger detected. Running full local OCR.")
+            self.start_full_reward_scan()
+
+    def on_trigger_check_error(self, request_id, exc):
+        if request_id != self.trigger_request_id:
+            return
+        self.status_label.setText(f"Trigger check failed locally: {exc}")
+
+    def finish_trigger_check(self, request_id):
+        if request_id != self.trigger_request_id:
+            return
+        self.trigger_check_running = False
+        if not self.scan_once_running:
+            self.scan_once_button.setEnabled(True)
+            self.scan_once_button.setText("Check Now")
+
+    def start_full_reward_scan(self):
+        if self.scan_once_running:
+            return
+        region = self.region()
+        if not region:
+            self.status_label.setText("Region disappeared before full scan could run.")
+            return
+        self.reward_workflow.start_scanning()
         self.scan_once_running = True
         self.scan_once_request_id += 1
         request_id = self.scan_once_request_id
@@ -231,7 +342,7 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         parser = RewardScannerParser(blueprints)
         self.scan_once_button.setEnabled(False)
         self.scan_once_button.setText("Scanning...")
-        self.status_label.setText("Capturing selected region and running local OCR...")
+        self.status_label.setText("Capturing full reward region and running local OCR...")
 
         self.start_background_task(
             lambda: self.ocr_service.scan_profile_region(profile, ocr_region, parser=parser),
@@ -250,14 +361,17 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         status = result.get("status")
         if status == "capture_error":
             self.status_label.setText(f"Region capture failed locally: {result.get('message', '')}")
+            self.reward_workflow.wait_for_window_close()
             return
         if status == "missing_ocr":
             self.status_label.setText(
                 "Region captured once. No local OCR engine is available in this build; paste OCR text manually and click Parse Text."
             )
+            self.reward_workflow.wait_for_window_close()
             return
         if status == "ocr_error":
             self.status_label.setText(f"Scan failed locally: {result.get('message', '')}")
+            self.reward_workflow.wait_for_window_close()
             return
 
         text = result.get("text", "")
@@ -266,8 +380,11 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
             self.status_label.setText("Load blueprint names before parsing reward text.")
             self.populate_matches([])
             self.update_match_state(None)
+            self.reward_workflow.wait_for_window_close()
             return
         self.apply_matches(text, result.get("matches", []))
+        self.reward_workflow.mark_matched()
+        self.reward_workflow.wait_for_window_close()
 
     def on_scan_once_error(self, request_id, exc):
         if request_id != self.scan_once_request_id:
@@ -279,7 +396,7 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
             return
         self.scan_once_running = False
         self.scan_once_button.setEnabled(True)
-        self.scan_once_button.setText("Scan Once")
+        self.scan_once_button.setText("Check Now")
 
     def parse_text(self):
         text = self.ocr_text.toPlainText().strip()
