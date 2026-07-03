@@ -8,7 +8,7 @@ SC Intel Tool is a Star Citizen desktop utility for player intel, organization c
 
 ## Current Status
 
-The app is in active alpha development. Home, Intel, Industrial, Reference and System navigation groups are usable, including Activity Log, Player Lookup, Search History, Mining / Salvage, Trading, BP Overview, Hauling Operations Center, Item Finder, Watchlists, Wikelo Items, Notes, Settings, AppData persistence, and packaged update checks. BP Overview includes an optional local Reward Scanner alpha foundation with manual region selection; full OCR engine packaging remains planned for later.
+The app is closing the alpha development phase with `0.1.0-alpha.8.9.5`; beta development begins with `0.2.0-beta`. Home, Intel, Industrial, Reference and System navigation groups are usable, including Activity Log, Player Lookup, Search History, Mining / Salvage, Trading, BP Overview, Hauling Operations Center, Item Finder, Watchlists, Wikelo Items, Notes, Settings, AppData persistence, and packaged update checks. BP Overview includes an optional local Reward Scanner alpha foundation with manual region selection; full OCR engine packaging remains planned for later.
 
 Current navigation:
 
