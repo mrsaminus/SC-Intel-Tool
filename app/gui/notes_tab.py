@@ -9,7 +9,6 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
-    QSplitter,
     QTableWidget,
     QTableWidgetItem,
     QTextEdit,
@@ -21,6 +20,7 @@ from app import notes_storage
 from app.paths import bundled_path
 
 from .sortable_table_item import ROW_ROLE, SORT_ROLE, SortableTableWidgetItem
+from .responsive import ResponsiveSplitter, install_scroll_area, stabilize_table
 from .table_utils import configure_readable_table_columns
 
 
@@ -31,7 +31,8 @@ class NotesTab(QWidget):
         self.notes = []
         self.loading_editor = False
 
-        layout = QVBoxLayout()
+        content = QWidget()
+        layout = QVBoxLayout(content)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(12)
 
@@ -41,7 +42,7 @@ class NotesTab(QWidget):
         ))
         layout.addWidget(self.build_notes_workspace(), 1)
         layout.addWidget(self.build_changelog_card())
-        self.setLayout(layout)
+        self.notes_scroll_area = install_scroll_area(self, content)
 
         self.reload_categories()
         self.reload_notes()
@@ -65,7 +66,7 @@ class NotesTab(QWidget):
         return card
 
     def build_notes_workspace(self):
-        splitter = QSplitter(Qt.Horizontal)
+        splitter = ResponsiveSplitter(Qt.Horizontal, breakpoint_width=980)
         splitter.addWidget(self.build_note_list_card())
         splitter.addWidget(self.build_editor_card())
         splitter.setStretchFactor(0, 2)
@@ -94,6 +95,7 @@ class NotesTab(QWidget):
         self.notes_table.setAlternatingRowColors(True)
         self.notes_table.setSortingEnabled(True)
         self.notes_table.itemSelectionChanged.connect(self.on_note_selected)
+        stabilize_table(self.notes_table, minimum_height=220)
         configure_readable_table_columns(self.notes_table, min_width=90, max_width=420, stretch_last=True)
         card.layout().addWidget(self.notes_table, 1)
 

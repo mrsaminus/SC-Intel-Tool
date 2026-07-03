@@ -1,11 +1,17 @@
 from conftest import isolated_database
 import pytest
+from PySide6.QtCore import QThreadPool
 from PySide6.QtWidgets import QApplication
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def qapp():
-    return QApplication.instance() or QApplication([])
+    app = QApplication.instance() or QApplication([])
+    yield app
+    app.closeAllWindows()
+    app.processEvents()
+    QThreadPool.globalInstance().waitForDone(1000)
+    app.processEvents()
 
 
 def test_watchlist_entry_snapshot_and_event_persist(monkeypatch, tmp_path):
@@ -108,3 +114,5 @@ def test_watchlists_tab_source_and_status_filters_smoke(monkeypatch, tmp_path, q
     assert panel.visible_entries[0].name == "Gold"
     assert "Showing 1 watch" in panel.summary_label.text()
     tab.close()
+    tab.deleteLater()
+    qapp.processEvents()

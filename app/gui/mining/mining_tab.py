@@ -59,7 +59,8 @@ class MiningTab(
         self._initial_load_started = False
         self._initial_load_done = False
 
-        layout = QVBoxLayout()
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(12)
 
@@ -80,7 +81,7 @@ class MiningTab(
         self.tabs.addTab(self.build_equipment_tab(), "Equipment")
         layout.addWidget(self.tabs, 1)
 
-        self.setLayout(layout)
+        self.mining_scroll_area = install_scroll_area(self, content_widget)
         self.connect_signals()
         self.mining_status_label.setText("Mining reference tables will populate when opened.")
 

@@ -9,11 +9,15 @@ def configure_readable_table_columns(table, min_width=90, max_width=280, stretch
     table.setProperty("readable_stretch_last", stretch_last)
     table.setWordWrap(False)
     table.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
+    table.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
     table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+    table.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
     header = table.horizontalHeader()
     header.setStretchLastSection(False)
     header.setMinimumSectionSize(28)
+    header.setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+    table.verticalHeader().setDefaultSectionSize(max(24, table.verticalHeader().defaultSectionSize()))
 
     for column in range(table.columnCount()):
         header.setSectionResizeMode(column, QHeaderView.ResizeToContents)

@@ -39,4 +39,5 @@ from ..constants import (
     SHIP_REFINERY_MATERIALS,
 )
 from ..table_utils import configure_readable_table_columns
+from ..responsive import install_scroll_area, stabilize_table
 from ..workers import BackgroundTaskMixin

@@ -3,6 +3,7 @@ from app.update_checker import is_newer_version
 from app.version import APP_VERSION
 
 from .community_branding import AppLogoLabel, CommunityLogoLabel
+from .responsive import ResponsiveStack
 from .themes import get_current_theme
 
 from PySide6.QtCore import Qt
@@ -89,13 +90,11 @@ class HomeTab(QWidget):
         page_layout.addWidget(self.create_hero_panel())
         page_layout.addWidget(self.build_status_strip())
 
-        main_layout = QHBoxLayout()
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(10)
-        main_layout.addWidget(self.build_left_panel(), 3, Qt.AlignTop)
-        main_layout.addWidget(self.build_timer_panel(), 1, Qt.AlignTop)
+        main_layout = ResponsiveStack(breakpoint_width=1020, spacing=10)
+        main_layout.addWidget(self.build_left_panel(), 3)
+        main_layout.addWidget(self.build_timer_panel(), 1)
 
-        page_layout.addLayout(main_layout)
+        page_layout.addWidget(main_layout)
         page_layout.addWidget(self.build_community_footer())
         page.setLayout(page_layout)
         scroll_area.setWidget(page)

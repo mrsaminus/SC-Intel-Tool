@@ -12,7 +12,6 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QScrollArea,
-    QSplitter,
     QHeaderView,
     QSizePolicy,
     QTableWidget,
@@ -47,6 +46,7 @@ from .search_history_helpers import (
     history_sort_key as history_sort_key_value,
 )
 from .table_utils import configure_readable_table_columns
+from .responsive import ResponsiveSplitter, stabilize_table
 from .workers import BackgroundTaskMixin
 
 
@@ -151,6 +151,7 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         self.history_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.history_table.setMinimumWidth(0)
         self.history_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        stabilize_table(self.history_table, minimum_height=220)
         configure_readable_table_columns(self.history_table, min_width=95, max_width=260)
         self.configure_history_table_columns()
         self.history_table.horizontalHeader().setSectionsClickable(True)
@@ -161,7 +162,7 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
 
         detail_scroll = QScrollArea()
         detail_scroll.setWidgetResizable(True)
-        detail_scroll.setMinimumWidth(400)
+        detail_scroll.setMinimumWidth(360)
         detail_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         detail_scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         detail_content = QWidget()
@@ -176,8 +177,7 @@ class SearchHistoryTab(BackgroundTaskMixin, QWidget):
         self.build_history_affiliations_card()
         self.detail_layout.addStretch(1)
 
-        splitter = QSplitter(Qt.Horizontal)
-        splitter.setChildrenCollapsible(False)
+        splitter = ResponsiveSplitter(Qt.Horizontal, breakpoint_width=980)
         splitter.addWidget(list_card)
         splitter.addWidget(detail_scroll)
         splitter.setStretchFactor(0, 11)

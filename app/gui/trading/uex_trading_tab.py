@@ -32,6 +32,7 @@ from app.trading_data import (
 )
 
 from ..sortable_table_item import SORT_ROLE, SortableTableWidgetItem
+from ..responsive import install_scroll_area, stabilize_table
 from ..table_utils import configure_readable_table_columns
 from ..workers import BackgroundTaskMixin
 from .reference_data import get_trading_reference_service
@@ -77,7 +78,8 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
             self.populate_trade_table()
 
     def build_ui(self):
-        layout = QVBoxLayout()
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(12)
 
@@ -103,6 +105,7 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         self.trade_table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.trade_table.setAlternatingRowColors(True)
         self.trade_table.setSortingEnabled(True)
+        stabilize_table(self.trade_table, minimum_height=300)
         configure_readable_table_columns(self.trade_table, min_width=110, max_width=360, stretch_last=True)
         layout.addWidget(self.trade_table, 1)
 
@@ -133,7 +136,7 @@ class UEXTradingTab(BackgroundTaskMixin, QWidget):
         route_button_row.addStretch(1)
         layout.addLayout(route_button_row)
 
-        self.setLayout(layout)
+        self.uex_scroll_area = install_scroll_area(self, content_widget)
 
     def create_header(self):
         header = QFrame()

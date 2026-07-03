@@ -29,6 +29,7 @@ from app.watchlists.storage import (
 )
 
 from .sortable_table_item import ROW_ROLE, SORT_ROLE, SortableTableWidgetItem
+from .responsive import ResponsiveStack, install_scroll_area, stabilize_table
 from .table_utils import configure_readable_table_columns
 from .workers import BackgroundTaskMixin
 
@@ -42,7 +43,8 @@ class WatchlistsTab(BackgroundTaskMixin, QWidget):
         self._initial_load_started = False
         self._initial_load_done = False
 
-        layout = QVBoxLayout()
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(12)
         layout.addWidget(self.create_header())
@@ -89,7 +91,7 @@ class WatchlistsTab(BackgroundTaskMixin, QWidget):
         self.panels.append(self.intel_panel)
         layout.addWidget(self.tabs, 1)
 
-        self.setLayout(layout)
+        self.watchlists_scroll_area = install_scroll_area(self, content_widget)
         self.overview_counts_label.setText("Watchlists will load when opened.")
         self.overview_summary_label.setText("Summary: not loaded yet.")
         self.overview_categories_label.setText("Categories: not loaded yet.")
@@ -168,6 +170,7 @@ class WatchlistsTab(BackgroundTaskMixin, QWidget):
         self.overview_events_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.overview_events_table.setAlternatingRowColors(True)
         self.overview_events_table.setSortingEnabled(True)
+        stabilize_table(self.overview_events_table, minimum_height=240)
         configure_readable_table_columns(self.overview_events_table, min_width=110, max_width=420, stretch_last=True)
         self.overview_empty_label = QLabel("No watchlist events yet.")
         self.overview_empty_label.setObjectName("emptyState")
@@ -290,18 +293,18 @@ class WatchlistPanel(QWidget):
         self.entries = []
         self.visible_entries = []
 
-        layout = QVBoxLayout()
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(12)
         layout.addWidget(self.create_controls(title, subtitle))
 
-        content = QHBoxLayout()
-        content.setSpacing(12)
+        content = ResponsiveStack(breakpoint_width=980, spacing=12)
         content.addWidget(self.create_table_card(), 3)
         content.addWidget(self.create_details_card(), 2)
-        layout.addLayout(content, 1)
+        layout.addWidget(content, 1)
 
-        self.setLayout(layout)
+        self.watchlist_panel_scroll_area = install_scroll_area(self, content_widget)
 
     def create_controls(self, title_text, subtitle_text):
         card = QFrame()
@@ -402,6 +405,7 @@ class WatchlistPanel(QWidget):
         self.table.setAlternatingRowColors(True)
         self.table.setSortingEnabled(True)
         self.table.itemSelectionChanged.connect(self.update_details)
+        stabilize_table(self.table, minimum_height=260)
         configure_readable_table_columns(self.table, min_width=100, max_width=360, stretch_last=True)
         self.empty_label = QLabel(self.empty_text)
         self.empty_label.setObjectName("emptyState")
@@ -432,6 +436,7 @@ class WatchlistPanel(QWidget):
         self.events_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.events_table.setAlternatingRowColors(True)
         self.events_table.setSortingEnabled(True)
+        stabilize_table(self.events_table, minimum_height=200)
         configure_readable_table_columns(self.events_table, min_width=110, max_width=360, stretch_last=True)
         self.events_empty_label = QLabel("No events for this watch.")
         self.events_empty_label.setObjectName("emptyState")

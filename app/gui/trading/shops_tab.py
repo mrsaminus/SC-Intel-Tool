@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ..responsive import ResponsiveStack, install_scroll_area, stabilize_table
 from ..table_utils import configure_readable_table_columns
 from ..workers import BackgroundTaskMixin
 from .reference_data import get_trading_reference_service
@@ -57,19 +58,19 @@ class ShopsTab(BackgroundTaskMixin, QWidget):
             self.on_reference_state_changed("loading")
 
     def build_ui(self):
-        layout = QVBoxLayout()
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(12)
 
         layout.addWidget(self.create_header())
 
-        content = QHBoxLayout()
-        content.setSpacing(12)
+        content = ResponsiveStack(breakpoint_width=980, spacing=12)
         content.addWidget(self.create_browser_panel(), 3)
         content.addWidget(self.create_details_panel(), 2)
-        layout.addLayout(content, 1)
+        layout.addWidget(content, 1)
 
-        self.setLayout(layout)
+        self.shops_scroll_area = install_scroll_area(self, content_widget)
 
     def create_header(self):
         header = QFrame()
@@ -129,6 +130,7 @@ class ShopsTab(BackgroundTaskMixin, QWidget):
         self.shops_table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.shops_table.setAlternatingRowColors(True)
         self.shops_table.setSortingEnabled(True)
+        stabilize_table(self.shops_table, minimum_height=300)
         configure_readable_table_columns(self.shops_table, min_width=120, max_width=420, stretch_last=True)
         layout.addWidget(self.shops_table, 1)
 

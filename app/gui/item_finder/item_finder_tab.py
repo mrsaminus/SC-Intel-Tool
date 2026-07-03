@@ -43,7 +43,8 @@ class ItemFinderTab(
         self.finder_refresh_timer.timeout.connect(lambda: self.refresh_finder_items(silent=True))
         self.item_filter_timer = self.create_debounce_timer(self.populate_item_results)
 
-        layout = QVBoxLayout()
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(12)
 
@@ -52,13 +53,12 @@ class ItemFinderTab(
             "Lookup for equipment, ship sale/rental locations and other SC shopping intel. Source rows are cached locally after first load.",
         ))
 
-        content = QHBoxLayout()
-        content.setSpacing(12)
+        content = ResponsiveStack(breakpoint_width=980, spacing=12)
         content.addWidget(self.build_item_search_panel(), 3)
         content.addWidget(self.build_item_detail_panel(), 2)
-        layout.addLayout(content, 1)
+        layout.addWidget(content, 1)
 
-        self.setLayout(layout)
+        self.item_finder_scroll_area = install_scroll_area(self, content_widget)
         self.connect_signals()
         self.populate_item_results()
         self.update_selected_item_panel()
@@ -106,6 +106,7 @@ class ItemFinderTab(
             "Availability",
             "Summary",
         ])
+        stabilize_table(self.item_results_table, minimum_height=260)
         configure_readable_table_columns(self.item_results_table, min_width=110, max_width=360, stretch_last=True)
         layout.addWidget(self.item_results_table, 1)
         self.item_empty_label = self.create_empty_state("No live item data loaded yet.")
@@ -148,6 +149,7 @@ class ItemFinderTab(
             "Price / Method",
             "Verified",
         ])
+        stabilize_table(self.item_locations_table, minimum_height=220)
         configure_readable_table_columns(self.item_locations_table, min_width=110, max_width=420, stretch_last=True)
         layout.addWidget(self.item_locations_table, 1)
         self.item_location_empty_label = self.create_empty_state(

@@ -21,6 +21,7 @@ from app.event_center.service import record_event
 from app.ocr import OCRProfileManager, OCRRegion, OCRService, REWARD_SCANNER_PROFILE_KEY
 from app.ocr.reward_scanner import RewardScannerParser, reward_scan_result_from_pipeline
 
+from ..responsive import install_scroll_area
 from ..workers import BackgroundTaskMixin
 from .reward_scanner_matching import (
     CONFIRM_THRESHOLD,
@@ -51,13 +52,14 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         self.ocr_profile_manager = OCRProfileManager()
         self.ocr_service = OCRService(settings=self.current_ocr_profile().to_settings())
 
-        layout = QVBoxLayout()
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(12)
 
         layout.addWidget(self.build_privacy_card())
         layout.addWidget(self.build_scanner_card(), 1)
-        self.setLayout(layout)
+        self.reward_scanner_scroll_area = install_scroll_area(self, content_widget)
 
         self.load_region()
         self.update_match_state(None)
@@ -145,7 +147,7 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
 
         self.ocr_text = QTextEdit()
         self.ocr_text.setPlaceholderText("Paste OCR text here, or use Scan Once when a local OCR engine is available...")
-        self.ocr_text.setMinimumHeight(110)
+        self.ocr_text.setMinimumHeight(150)
         layout.addWidget(self.ocr_text)
 
         self.result_label = QLabel("Detected Blueprint: None")

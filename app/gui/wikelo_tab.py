@@ -34,6 +34,7 @@ from app.local_cache import (
 from app.wikelo_client import WIKELO_SOURCE_URL, fetch_wikelo_items, normalized_key
 
 from .sortable_table_item import SORT_ROLE, SortableTableWidgetItem
+from .responsive import ResponsiveStack, install_scroll_area, stabilize_table
 from .table_utils import configure_readable_table_columns
 from .workers import BackgroundTaskMixin
 
@@ -62,7 +63,8 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
         self.initial_refresh_started = False
         self.loading_wikelo_requirements_table = False
 
-        layout = QVBoxLayout()
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(12)
 
@@ -71,13 +73,12 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
             "Wikelo mission, trade-in and reward browser from the public Wikelo spreadsheet, cached locally after first load.",
         ))
 
-        content = QHBoxLayout()
-        content.setSpacing(12)
+        content = ResponsiveStack(breakpoint_width=980, spacing=12)
         content.addWidget(self.build_wikelo_search_panel(), 3)
         content.addWidget(self.build_wikelo_detail_panel(), 2)
-        layout.addLayout(content, 1)
+        layout.addWidget(content, 1)
 
-        self.setLayout(layout)
+        self.wikelo_scroll_area = install_scroll_area(self, content_widget)
         self.connect_signals()
         self.populate_wikelo_results()
         self.update_selected_wikelo_panel()
@@ -116,6 +117,7 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
             "Reward / Method",
             "Required Materials",
         ])
+        stabilize_table(self.wikelo_results_table, minimum_height=260)
         configure_readable_table_columns(self.wikelo_results_table, min_width=120, max_width=360, stretch_last=True)
         layout.addWidget(self.wikelo_results_table, 1)
 
@@ -166,6 +168,7 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
             "Source",
         ])
         self.wikelo_requirements_table.setSortingEnabled(False)
+        stabilize_table(self.wikelo_requirements_table, minimum_height=220)
         configure_readable_table_columns(self.wikelo_requirements_table, min_width=110, max_width=420, stretch_last=True)
         layout.addWidget(self.wikelo_requirements_table, 1)
 

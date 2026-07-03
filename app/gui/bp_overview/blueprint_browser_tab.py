@@ -14,6 +14,7 @@ from app.blueprints_client import load_blueprints
 from app.blueprints_storage import get_owned_blueprint_keys, get_owned_crafting_materials
 
 from ..workers import BackgroundTaskMixin
+from ..responsive import ResponsiveStack, install_scroll_area
 from ..table_utils import configure_readable_table_columns
 from .blueprint_details_panel import BlueprintDetailsPanel
 from .shared import ROW_ROLE, SORT_ROLE, craftability_status, create_card, create_header, create_table, table_item
@@ -43,7 +44,8 @@ class BlueprintBrowserTab(BackgroundTaskMixin, QWidget):
         self.update_details()
 
     def build_ui(self):
-        layout = QVBoxLayout()
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(12)
         layout.addWidget(create_header(
@@ -51,13 +53,12 @@ class BlueprintBrowserTab(BackgroundTaskMixin, QWidget):
             "Browse Star Citizen crafting blueprints, recipes, mission context and local ownership.",
         ))
 
-        content = QHBoxLayout()
-        content.setSpacing(12)
+        content = ResponsiveStack(breakpoint_width=980, spacing=12)
         content.addWidget(self.create_browser_panel(), 3)
         self.details_panel = BlueprintDetailsPanel(self.on_detail_owned_changed)
         content.addWidget(self.details_panel, 2)
-        layout.addLayout(content, 1)
-        self.setLayout(layout)
+        layout.addWidget(content, 1)
+        self.blueprint_browser_scroll_area = install_scroll_area(self, content_widget)
 
     def create_browser_panel(self):
         card = create_card("BLUEPRINTS")

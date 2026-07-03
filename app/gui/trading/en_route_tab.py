@@ -27,6 +27,7 @@ from app.trading_storage import (
 )
 
 from ..sortable_table_item import ROW_ROLE, SORT_ROLE, SortableTableWidgetItem
+from ..responsive import install_scroll_area, stabilize_table
 from ..table_utils import configure_readable_table_columns
 from ..workers import BackgroundTaskMixin
 from .route_quality import calculate_route_quality, copy_to_clipboard
@@ -87,7 +88,8 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
             self.status_label.setText("Loading UEX price data...")
 
     def build_ui(self):
-        layout = QVBoxLayout()
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(12)
 
@@ -116,7 +118,7 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         button_row.addStretch(1)
         layout.addLayout(button_row)
 
-        self.setLayout(layout)
+        self.en_route_scroll_area = install_scroll_area(self, content_widget)
 
     def create_header(self):
         header = QFrame()
@@ -234,6 +236,7 @@ class EnRouteTab(BackgroundTaskMixin, QWidget):
         self.routes_table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.routes_table.setAlternatingRowColors(True)
         self.routes_table.setSortingEnabled(True)
+        stabilize_table(self.routes_table, minimum_height=300)
         configure_readable_table_columns(self.routes_table, min_width=110, max_width=380, stretch_last=True)
         return self.routes_table
 

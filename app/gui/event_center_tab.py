@@ -25,6 +25,7 @@ from app.event_center.storage import (
 )
 
 from .sortable_table_item import ROW_ROLE, SORT_ROLE, SortableTableWidgetItem
+from .responsive import ResponsiveStack, install_scroll_area, stabilize_table
 from .table_utils import configure_readable_table_columns
 
 
@@ -50,18 +51,18 @@ class EventCenterTab(QWidget):
         self.refresh_events()
 
     def build_ui(self):
-        layout = QVBoxLayout()
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(12)
         layout.addWidget(self.create_header())
         layout.addWidget(self.create_controls())
 
-        content = QHBoxLayout()
-        content.setSpacing(12)
+        content = ResponsiveStack(breakpoint_width=980, spacing=12)
         content.addWidget(self.create_table_card(), 3)
         content.addWidget(self.create_details_card(), 2)
-        layout.addLayout(content, 1)
-        self.setLayout(layout)
+        layout.addWidget(content, 1)
+        self.event_center_scroll_area = install_scroll_area(self, content_widget)
 
     def create_header(self):
         header = QFrame()
@@ -170,6 +171,7 @@ class EventCenterTab(QWidget):
         self.events_table.setAlternatingRowColors(True)
         self.events_table.setSortingEnabled(True)
         self.events_table.itemSelectionChanged.connect(self.update_details)
+        stabilize_table(self.events_table, minimum_height=260)
         configure_readable_table_columns(self.events_table, min_width=110, max_width=360, stretch_last=True)
         self.empty_label = QLabel("Nothing new yet.")
         self.empty_label.setObjectName("emptyState")

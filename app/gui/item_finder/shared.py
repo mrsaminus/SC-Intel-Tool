@@ -39,6 +39,7 @@ from app.scfocus_client import (
 )
 from app.ship_metadata import ship_metadata_for
 
+from ..responsive import ResponsiveStack, install_scroll_area, stabilize_table
 from ..table_utils import configure_readable_table_columns
 from ..workers import BackgroundTaskMixin
 

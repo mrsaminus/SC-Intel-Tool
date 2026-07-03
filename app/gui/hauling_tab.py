@@ -53,6 +53,7 @@ from app.ocr import (
 from app.ocr.workers import create_ocr_worker
 
 from .sortable_table_item import SORT_ROLE, SortableTableWidgetItem
+from .responsive import ResponsiveStack, install_scroll_area, stabilize_card, stabilize_table
 from .table_utils import configure_readable_table_columns
 from .trading.ship_selection import configure_ship_combo, selected_ship_name
 from .workers import BackgroundTaskMixin
@@ -83,22 +84,22 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         self.current_session_id = None
         self.current_session_status = "unsaved"
 
-        layout = QVBoxLayout()
+        content = QWidget()
+        layout = QVBoxLayout(content)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(12)
         layout.addWidget(self.create_header())
         layout.addWidget(self.create_status_line())
         layout.addWidget(self.create_session_card())
 
-        top_row = QHBoxLayout()
-        top_row.setSpacing(12)
-        top_row.addWidget(self.create_manual_input_card(), 3)
-        top_row.addWidget(self.create_capacity_card(), 2)
-        layout.addLayout(top_row)
+        self.intake_stack = ResponsiveStack(breakpoint_width=1080, spacing=12)
+        self.intake_stack.addWidget(self.create_manual_input_card(), 3)
+        self.intake_stack.addWidget(self.create_capacity_card(), 2)
+        layout.addWidget(self.intake_stack)
 
         layout.addWidget(self.create_operations_dashboard())
         layout.addWidget(self.create_manifest_preview(), 1)
-        self.setLayout(layout)
+        self.hauling_scroll_area = install_scroll_area(self, content)
 
         self.update_manifest()
         self.refresh_session_history()
@@ -169,7 +170,7 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
             "Progress",
             "Updated",
         ])
-        self.session_history_table.setMinimumHeight(120)
+        self.session_history_table.setMinimumHeight(150)
         layout.addWidget(self.session_history_table)
         return card
 
@@ -186,7 +187,7 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
             "Commodity: Construction Materials\n"
             "Quantity: 32 SCU"
         )
-        self.contract_text.setMinimumHeight(150)
+        self.contract_text.setMinimumHeight(170)
         layout.addWidget(self.contract_text, 1)
 
         button_row = QHBoxLayout()
@@ -238,6 +239,7 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
 
     def create_operations_dashboard(self):
         card = self.create_card("CARGO OPERATIONS")
+        card.setMinimumHeight(180)
         layout = card.layout()
 
         grid = QGridLayout()
@@ -294,8 +296,8 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
 
         action_row = QHBoxLayout()
         action_row.setSpacing(8)
-        self.toggle_loaded_button = QPushButton("Toggle Loaded")
-        self.toggle_delivered_button = QPushButton("Toggle Delivered")
+        self.toggle_loaded_button = QPushButton("Load Cargo")
+        self.toggle_delivered_button = QPushButton("Mark Delivered")
         self.toggle_loaded_button.clicked.connect(self.toggle_selected_loaded)
         self.toggle_delivered_button.clicked.connect(self.toggle_selected_delivered)
         action_hint = QLabel("Select a contract row, then update its cargo state.")
@@ -317,6 +319,7 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
             "Confidence",
             "Warnings",
         ])
+        self.contracts_table.itemSelectionChanged.connect(self.update_contract_action_state)
         self.pickup_table = self.create_table([
             "Pickup",
             "Total SCU",
@@ -346,6 +349,7 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         ])
         self.warnings_text = QTextEdit()
         self.warnings_text.setReadOnly(True)
+        self.warnings_text.setMinimumHeight(180)
         self.warnings_text.setPlaceholderText("Warnings and parser notes will appear here.")
 
         self.preview_tabs.addTab(self.contracts_table, "Contracts")
@@ -353,6 +357,7 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         self.preview_tabs.addTab(self.destination_table, "By Destination")
         self.preview_tabs.addTab(self.route_table, "By Route")
         self.preview_tabs.addTab(self.warnings_text, "Warnings")
+        self.preview_tabs.setMinimumHeight(320)
         layout.addWidget(self.preview_tabs, 1)
         return card
 
@@ -366,7 +371,7 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         title_label.setObjectName("sectionTitle")
         layout.addWidget(title_label)
         card.setLayout(layout)
-        return card
+        return stabilize_card(card)
 
     def create_table(self, headers):
         table = QTableWidget(0, len(headers))
@@ -377,7 +382,7 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         table.setAlternatingRowColors(True)
         table.setSortingEnabled(True)
         configure_readable_table_columns(table, min_width=110, max_width=360, stretch_last=True)
-        return table
+        return stabilize_table(table, minimum_height=190)
 
     def parse_contracts(self):
         text = self.contract_text.toPlainText()
@@ -746,7 +751,7 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
             self.status_label.setText("Could not update selected contract.")
             return
         if changed.state == CONTRACT_STATE_DELIVERED:
-            self.status_label.setText("Delivered contracts remain loaded. Toggle Delivered first if needed.")
+            self.status_label.setText("Delivered contracts remain loaded. Use Undo Delivered first if needed.")
             return
         self.contracts = updated
         self.update_manifest()
@@ -771,9 +776,26 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         self.status_label.setText(f"Contract marked {state_label(changed.state)}.")
 
     def update_contract_action_state(self):
-        has_contracts = bool(self.contracts)
-        self.toggle_loaded_button.setEnabled(has_contracts)
-        self.toggle_delivered_button.setEnabled(has_contracts)
+        contract = self.selected_contract()
+        has_selection = contract is not None
+        state = contract.state if contract else CONTRACT_STATE_PLANNED
+
+        if state == CONTRACT_STATE_DELIVERED:
+            self.toggle_loaded_button.setText("Cargo Delivered")
+            self.toggle_loaded_button.setEnabled(False)
+            self.toggle_delivered_button.setText("Undo Delivered")
+            self.toggle_delivered_button.setEnabled(True)
+            return
+
+        if state == CONTRACT_STATE_LOADED:
+            self.toggle_loaded_button.setText("Unload Cargo")
+            self.toggle_delivered_button.setText("Mark Delivered")
+        else:
+            self.toggle_loaded_button.setText("Load Cargo")
+            self.toggle_delivered_button.setText("Mark Delivered")
+
+        self.toggle_loaded_button.setEnabled(has_selection)
+        self.toggle_delivered_button.setEnabled(has_selection)
 
     def populate_contracts(self):
         table = self.contracts_table

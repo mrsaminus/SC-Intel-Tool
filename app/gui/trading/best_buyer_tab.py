@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 from app.trading_best_buyer import fetch_uex_best_buyers, format_best_buyer_age
 
 from ..sortable_table_item import ROW_ROLE, SORT_ROLE, SortableTableWidgetItem
+from ..responsive import install_scroll_area, stabilize_table
 from ..table_utils import configure_readable_table_columns
 from ..workers import BackgroundTaskMixin
 from .reference_data import get_trading_reference_service
@@ -48,7 +49,8 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
             self.on_reference_state_changed("loading")
 
     def build_ui(self):
-        layout = QVBoxLayout()
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(12)
 
@@ -70,7 +72,7 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
         self.copy_summary_button.setEnabled(False)
         layout.addWidget(self.copy_summary_button)
 
-        self.setLayout(layout)
+        self.best_buyer_scroll_area = install_scroll_area(self, content_widget)
 
     def create_header(self):
         header = QFrame()
@@ -145,6 +147,7 @@ class BestBuyerTab(BackgroundTaskMixin, QWidget):
         self.buyers_table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.buyers_table.setAlternatingRowColors(True)
         self.buyers_table.setSortingEnabled(True)
+        stabilize_table(self.buyers_table, minimum_height=300)
         configure_readable_table_columns(self.buyers_table, min_width=110, max_width=360, stretch_last=True)
         return self.buyers_table
 

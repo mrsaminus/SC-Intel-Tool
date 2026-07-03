@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
 from app.blueprints_storage import normalized_material_key
 
 from ..sortable_table_item import ROW_ROLE, SORT_ROLE, SortableTableWidgetItem
+from ..responsive import stabilize_card, stabilize_table
 from ..table_utils import configure_readable_table_columns
 
 
@@ -22,7 +23,7 @@ def create_card(title):
     title_label.setObjectName("sectionTitle")
     layout.addWidget(title_label)
     card.setLayout(layout)
-    return card
+    return stabilize_card(card)
 
 
 def create_header(title, subtitle):
@@ -50,6 +51,7 @@ def create_table(headers, stretch_last=True):
     table.setSelectionMode(QAbstractItemView.SingleSelection)
     table.setAlternatingRowColors(True)
     table.setSortingEnabled(True)
+    stabilize_table(table, minimum_height=220)
     configure_readable_table_columns(table, min_width=110, max_width=360, stretch_last=stretch_last)
     return table
 

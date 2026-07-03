@@ -20,6 +20,7 @@ from app.trading_storage import (
 from app.watchlists.service import add_trading_route_watch
 
 from ..sortable_table_item import ROW_ROLE, SORT_ROLE, SortableTableWidgetItem
+from ..responsive import ResponsiveStack, install_scroll_area, stabilize_table
 from ..table_utils import configure_readable_table_columns
 from .route_quality import copy_to_clipboard
 from .route_summary import format_auec, format_route_summary, format_scu
@@ -40,18 +41,18 @@ class SavedRoutesTab(QWidget):
         self.refresh_routes()
 
     def build_ui(self):
-        layout = QVBoxLayout()
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(12)
 
         layout.addWidget(self.create_header())
         layout.addWidget(self.create_controls())
 
-        table_row = QHBoxLayout()
-        table_row.setSpacing(12)
+        table_row = ResponsiveStack(breakpoint_width=980, spacing=12)
         table_row.addWidget(self.create_saved_panel(), 1)
         table_row.addWidget(self.create_recent_panel(), 1)
-        layout.addLayout(table_row, 1)
+        layout.addWidget(table_row, 1)
 
         self.detail_label = QLabel("Select a saved or recent route to see details.")
         self.detail_label.setObjectName("valueText")
@@ -79,7 +80,7 @@ class SavedRoutesTab(QWidget):
         self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
 
-        self.setLayout(layout)
+        self.saved_routes_scroll_area = install_scroll_area(self, content_widget)
 
     def create_header(self):
         header = QFrame()
@@ -177,6 +178,7 @@ class SavedRoutesTab(QWidget):
         table.setSelectionMode(QAbstractItemView.SingleSelection)
         table.setAlternatingRowColors(True)
         table.setSortingEnabled(True)
+        stabilize_table(table, minimum_height=260)
         configure_readable_table_columns(table, min_width=110, max_width=360, stretch_last=True)
         return table
 

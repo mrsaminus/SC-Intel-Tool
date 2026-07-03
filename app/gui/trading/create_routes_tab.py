@@ -24,6 +24,7 @@ from app.trading_storage import TradingRouteRecord, add_recent_trading_route, sa
 from app.watchlists.service import add_trading_route_watch
 
 from ..sortable_table_item import ROW_ROLE, SORT_ROLE, SortableTableWidgetItem
+from ..responsive import install_scroll_area, stabilize_table
 from ..table_utils import configure_readable_table_columns
 from ..workers import BackgroundTaskMixin
 from .create_routes_engine import (
@@ -104,7 +105,8 @@ class CreateRoutesTab(BackgroundTaskMixin, QWidget):
             )
 
     def build_ui(self):
-        layout = QVBoxLayout()
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(12)
 
@@ -136,7 +138,7 @@ class CreateRoutesTab(BackgroundTaskMixin, QWidget):
         button_row.addStretch(1)
         layout.addLayout(button_row)
 
-        self.setLayout(layout)
+        self.create_routes_scroll_area = install_scroll_area(self, content_widget)
 
     def create_header(self):
         header = QFrame()
@@ -311,6 +313,7 @@ class CreateRoutesTab(BackgroundTaskMixin, QWidget):
         self.routes_table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.routes_table.setAlternatingRowColors(True)
         self.routes_table.setSortingEnabled(True)
+        stabilize_table(self.routes_table, minimum_height=300)
         configure_readable_table_columns(self.routes_table, min_width=95, max_width=390, stretch_last=True)
         return self.routes_table
 

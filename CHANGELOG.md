@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### UX / Layout
+
+- Improved responsive layout behavior across major modules so reduced windows
+  scroll or stack panels instead of compressing content into unreadable states.
+- Added shared responsive layout helpers for scroll containment, responsive
+  panel stacking and safer card/table minimum sizing.
+- Improved Hauling Operations Center reduced-window behavior and replaced
+  generic cargo toggles with contextual action wording.
+
 ## 0.1.0-alpha.8.9.5 - 2026-07-02
 
 ### Release Candidate Audit
