@@ -17,6 +17,10 @@
   instead of exposing language, scaling, threshold, grayscale, invert and
   preprocessing controls.
 - Preserved Hauling OCR behavior as a manual single-capture workflow.
+- Added local OCR debug capture storage under the app data folder so testers can
+  inspect trigger crops, full OCR regions, OCR text and workflow metadata after
+  missed one-time rewards.
+- Added Settings controls to open or clear local OCR debug captures.
 
 ## 0.1.0-alpha.8.9.5 - 2026-07-02
 

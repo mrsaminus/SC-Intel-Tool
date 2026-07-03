@@ -116,6 +116,9 @@ def reward_scan_result_from_pipeline(pipeline, blueprint_count=0):
             "text": "",
             "matches": [],
             "blueprint_count": blueprint_count,
+            "captured_image": pipeline.captured_image,
+            "warnings": pipeline.warnings,
+            "errors": pipeline.errors,
         }
     if pipeline.status == "missing_ocr":
         return {
@@ -124,6 +127,9 @@ def reward_scan_result_from_pipeline(pipeline, blueprint_count=0):
             "text": "",
             "matches": [],
             "blueprint_count": blueprint_count,
+            "captured_image": pipeline.captured_image,
+            "warnings": pipeline.warnings,
+            "errors": pipeline.errors,
         }
     if pipeline.status in {"ocr_error", "parse_error"}:
         return {
@@ -132,6 +138,11 @@ def reward_scan_result_from_pipeline(pipeline, blueprint_count=0):
             "text": "",
             "matches": [],
             "blueprint_count": blueprint_count,
+            "captured_image": pipeline.captured_image,
+            "warnings": pipeline.warnings,
+            "errors": pipeline.errors,
+            "parser_warnings": tuple(getattr(pipeline.parsed_result, "warnings", ()) or ()),
+            "parser_errors": tuple(getattr(pipeline.parsed_result, "errors", ()) or ()),
         }
 
     parsed_data = pipeline.parsed_result.data if pipeline.parsed_result else {}
@@ -141,4 +152,9 @@ def reward_scan_result_from_pipeline(pipeline, blueprint_count=0):
         "text": pipeline.ocr_result.text,
         "matches": parsed_data.get("matches", []),
         "blueprint_count": parsed_data.get("blueprint_count", blueprint_count),
+        "captured_image": pipeline.captured_image,
+        "warnings": pipeline.warnings,
+        "errors": pipeline.errors,
+        "parser_warnings": tuple(getattr(pipeline.parsed_result, "warnings", ()) or ()),
+        "parser_errors": tuple(getattr(pipeline.parsed_result, "errors", ()) or ()),
     }

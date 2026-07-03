@@ -25,6 +25,7 @@ class OCRPipelineResult:
     message: str = ""
     warnings: tuple[str, ...] = field(default_factory=tuple)
     errors: tuple[str, ...] = field(default_factory=tuple)
+    captured_image: Any = None
 
     @property
     def ok(self):

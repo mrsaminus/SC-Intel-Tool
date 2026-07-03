@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import pytest
 from PySide6.QtCore import QThreadPool
 from PySide6.QtWidgets import QApplication
+from PIL import Image
 
 from app.ocr.blueprint_reward_workflow import STATE_WAITING_FOR_WINDOW_CLOSE
 from app.ocr.parser import ParsedOCRResult
@@ -49,16 +50,19 @@ def test_reward_scanner_uses_ocr_service_pipeline(monkeypatch, tmp_path, qapp):
     class FakeOCRService:
         def scan_profile_region(self, profile, region, parser=None):
             calls.append((profile, region, parser))
+            image = Image.new("RGB", (8, 4), color=(20, 40, 60))
             if parser is None:
                 return OCRPipelineResult(
                     status="ok",
                     ocr_result=OCRResult(text="Received Blueprint:"),
+                    captured_image=image,
                 )
             ocr_result = OCRResult(text="Received Blueprint:\nReward unlocked: Field Recon Helmet")
             return OCRPipelineResult(
                 status="ok",
                 ocr_result=ocr_result,
                 parsed_result=parser.parse(ocr_result),
+                captured_image=image,
             )
 
     def run_synchronously(function, on_result=None, on_error=None, on_finished=None):
@@ -93,6 +97,15 @@ def test_reward_scanner_uses_ocr_service_pipeline(monkeypatch, tmp_path, qapp):
     assert tab.reward_workflow.state == STATE_WAITING_FOR_WINDOW_CLOSE
     assert not tab.scan_once_running
     assert tab.scan_once_button.isEnabled()
+    debug_sessions = list((tmp_path / "SC-Intel-Tool" / "ocr_debug" / "blueprint_reward").iterdir())
+    assert len(debug_sessions) == 1
+    debug_session = debug_sessions[0]
+    assert (debug_session / "trigger.png").exists()
+    assert (debug_session / "full_region.png").exists()
+    assert (debug_session / "trigger_ocr.txt").read_text(encoding="utf-8") == "Received Blueprint:"
+    assert (debug_session / "full_ocr.txt").read_text(encoding="utf-8") == (
+        "Received Blueprint:\nReward unlocked: Field Recon Helmet"
+    )
     tab.close()
     tab.deleteLater()
 

@@ -6,6 +6,16 @@ from .blueprint_reward_workflow import (
     title_region_from_reward_region,
 )
 from .confidence import clamp_confidence, confidence_label
+from .debug_capture import (
+    OCR_DEBUG_ENABLED_SETTING_KEY,
+    clear_ocr_debug_captures,
+    format_debug_size,
+    get_ocr_debug_root,
+    get_ocr_debug_summary,
+    is_ocr_debug_enabled,
+    set_ocr_debug_enabled,
+    start_ocr_debug_session,
+)
 from .engine import MissingOCREngineError, OCREngineError, TesseractOCREngine
 from .hauling import HaulingContractsOCRParser
 from .parser import OCRParser, ParsedOCRResult
@@ -31,6 +41,7 @@ __all__ = [
     "OCREngineError",
     "OCRParser",
     "OCRPipelineResult",
+    "OCR_DEBUG_ENABLED_SETTING_KEY",
     "OCRProfile",
     "OCRProfileManager",
     "OCRRegion",
@@ -43,10 +54,17 @@ __all__ = [
     "ScreenshotService",
     "TesseractOCREngine",
     "capture_region_image",
+    "clear_ocr_debug_captures",
     "clamp_confidence",
     "confidence_label",
     "detect_blueprint_reward_trigger",
+    "format_debug_size",
+    "get_ocr_debug_root",
+    "get_ocr_debug_summary",
+    "is_ocr_debug_enabled",
     "preprocess_image",
     "reward_scan_result_from_pipeline",
+    "set_ocr_debug_enabled",
+    "start_ocr_debug_session",
     "title_region_from_reward_region",
 ]

@@ -42,6 +42,7 @@ class OCRService:
                 ocr_result=result,
                 message=image_error,
                 errors=(image_error,),
+                captured_image=image,
             )
 
         try:
@@ -54,6 +55,7 @@ class OCRService:
                 ocr_result=result,
                 message=message,
                 errors=(message,),
+                captured_image=image,
             )
         except OCREngineError as exc:
             message = str(exc)
@@ -63,6 +65,7 @@ class OCRService:
                 ocr_result=result,
                 message=message,
                 errors=(message,),
+                captured_image=image,
             )
         except Exception as exc:
             message = str(exc)
@@ -72,6 +75,7 @@ class OCRService:
                 ocr_result=result,
                 message=message,
                 errors=(message,),
+                captured_image=image,
             )
 
         parsed = None
@@ -87,6 +91,7 @@ class OCRService:
                     parsed_result=parsed,
                     message=message,
                     errors=(message,),
+                    captured_image=image,
                 )
 
         return OCRPipelineResult(
@@ -95,6 +100,7 @@ class OCRService:
             parsed_result=parsed,
             warnings=result.warnings,
             errors=result.errors,
+            captured_image=image,
         )
 
     def scan_profile_region(self, profile, region, parser=None, capture_function=None):

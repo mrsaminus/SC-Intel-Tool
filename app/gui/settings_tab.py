@@ -2,6 +2,7 @@ from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QComboBox,
     QFrame,
     QGridLayout,
@@ -26,6 +27,14 @@ from app.cache_manager import (
     refresh_cache_source as refresh_cache_source_data,
 )
 from app.diagnostics import safe_diagnostics_text
+from app.ocr.debug_capture import (
+    clear_ocr_debug_captures,
+    format_debug_size,
+    get_ocr_debug_root,
+    get_ocr_debug_summary,
+    is_ocr_debug_enabled,
+    set_ocr_debug_enabled,
+)
 from app.paths import get_active_data_dir, is_packaged_app
 from app.update_checker import (
     UpdateCheckError,
@@ -88,6 +97,7 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         layout.addWidget(self.build_about_card())
         layout.addWidget(self.build_appearance_card())
         layout.addWidget(self.build_ocr_settings_card())
+        layout.addWidget(self.build_ocr_debug_card())
         layout.addWidget(self.build_updates_card())
         layout.addWidget(self.build_data_card())
         layout.addWidget(self.build_local_data_platform_card())
@@ -274,6 +284,72 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         self.ocr_settings_status_label.setWordWrap(True)
         self.configure_wrapping_label(self.ocr_settings_status_label)
         layout.addWidget(self.ocr_settings_status_label)
+        return card
+
+    def build_ocr_debug_card(self):
+        card = self.create_card("OCR DEBUG")
+        layout = card.layout()
+
+        warning = QLabel(
+            "OCR debug captures are stored locally and may contain screen content from selected OCR regions. "
+            "They are never uploaded and are not included in diagnostics unless you explicitly share them."
+        )
+        warning.setObjectName("moduleSubtitle")
+        warning.setWordWrap(True)
+        self.configure_wrapping_label(warning)
+        layout.addWidget(warning)
+
+        self.ocr_debug_enabled_checkbox = QCheckBox("Save OCR debug captures")
+        self.ocr_debug_enabled_checkbox.setChecked(is_ocr_debug_enabled())
+        self.ocr_debug_enabled_checkbox.toggled.connect(self.on_ocr_debug_enabled_changed)
+        layout.addWidget(self.ocr_debug_enabled_checkbox)
+
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(18)
+        grid.setVerticalSpacing(8)
+        grid.setColumnStretch(1, 1)
+        grid.setColumnMinimumWidth(1, 0)
+        self.ocr_debug_path_label = QLabel("")
+        self.ocr_debug_path_label.setObjectName("valueText")
+        self.ocr_debug_path_label.setWordWrap(True)
+        self.ocr_debug_path_label.setTextInteractionFlags(
+            self.ocr_debug_path_label.textInteractionFlags() | Qt.TextSelectableByMouse
+        )
+        self.configure_wrapping_label(self.ocr_debug_path_label)
+        self.ocr_debug_count_label = QLabel("")
+        self.ocr_debug_count_label.setObjectName("valueText")
+        self.configure_wrapping_label(self.ocr_debug_count_label)
+
+        path_title = QLabel("DEBUG FOLDER")
+        path_title.setObjectName("labelText")
+        count_title = QLabel("CAPTURES / DISK")
+        count_title.setObjectName("labelText")
+        grid.addWidget(path_title, 0, 0)
+        grid.addWidget(self.ocr_debug_path_label, 0, 1)
+        grid.addWidget(count_title, 1, 0)
+        grid.addWidget(self.ocr_debug_count_label, 1, 1)
+        layout.addLayout(grid)
+
+        button_row = QVBoxLayout()
+        button_row.setSpacing(8)
+        self.open_ocr_debug_folder_button = QPushButton("Open OCR Debug Folder")
+        self.clear_ocr_debug_button = QPushButton("Clear OCR Debug Captures")
+        self.open_ocr_debug_folder_button.clicked.connect(self.open_ocr_debug_folder)
+        self.clear_ocr_debug_button.clicked.connect(self.confirm_clear_ocr_debug_captures)
+        for button in (self.open_ocr_debug_folder_button, self.clear_ocr_debug_button):
+            button.setMinimumWidth(0)
+            button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        button_row.addWidget(self.open_ocr_debug_folder_button)
+        button_row.addWidget(self.clear_ocr_debug_button)
+        layout.addLayout(button_row)
+
+        self.ocr_debug_status_label = QLabel("")
+        self.ocr_debug_status_label.setObjectName("moduleSubtitle")
+        self.ocr_debug_status_label.setWordWrap(True)
+        self.configure_wrapping_label(self.ocr_debug_status_label)
+        layout.addWidget(self.ocr_debug_status_label)
+
+        self.refresh_ocr_debug_status()
         return card
 
     def build_updates_card(self):
@@ -744,6 +820,45 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
 
     def open_data_folder(self):
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(get_active_data_dir())))
+
+    def refresh_ocr_debug_status(self):
+        if not hasattr(self, "ocr_debug_path_label"):
+            return
+        summary = get_ocr_debug_summary()
+        debug_path = summary["path"]
+        self.ocr_debug_path_label.setText(self.wrap_fact_value(debug_path))
+        self.ocr_debug_path_label.setToolTip(str(debug_path))
+        self.ocr_debug_count_label.setText(
+            f"{summary['capture_count']} sessions | {format_debug_size(summary['disk_bytes'])}"
+        )
+        enabled_text = "enabled" if is_ocr_debug_enabled() else "disabled"
+        self.ocr_debug_status_label.setText(
+            f"OCR debug capture saving is {enabled_text}. Retention keeps the latest 50 sessions per workflow."
+        )
+
+    def on_ocr_debug_enabled_changed(self, enabled):
+        set_ocr_debug_enabled(enabled)
+        self.refresh_ocr_debug_status()
+
+    def open_ocr_debug_folder(self):
+        debug_path = get_ocr_debug_root(create=True)
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(debug_path)))
+        self.refresh_ocr_debug_status()
+
+    def confirm_clear_ocr_debug_captures(self):
+        answer = QMessageBox.question(
+            self,
+            "Clear OCR Debug Captures",
+            "Clear all local OCR debug captures?\n\n"
+            "This deletes saved OCR region screenshots and OCR text samples only. "
+            "It does not delete notes, history, watchlists or cached reference data.",
+        )
+        if answer != QMessageBox.Yes:
+            return
+
+        removed = clear_ocr_debug_captures()
+        self.refresh_ocr_debug_status()
+        self.ocr_debug_status_label.setText(f"Cleared {removed} OCR debug capture session{'s' if removed != 1 else ''}.")
 
     def create_module_header(self, title, subtitle):
         card = QFrame()

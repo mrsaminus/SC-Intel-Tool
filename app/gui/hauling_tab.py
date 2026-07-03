@@ -50,6 +50,7 @@ from app.ocr import (
     OCRRegion,
     OCRService,
 )
+from app.ocr.debug_capture import start_ocr_debug_session
 from app.ocr.workers import create_ocr_worker
 
 from .sortable_table_item import SORT_ROLE, SortableTableWidgetItem
@@ -79,6 +80,7 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         self.ocr_service = OCRService(settings=self.current_ocr_profile().to_settings())
         self.ocr_capture_running = False
         self.ocr_capture_request_id = 0
+        self.ocr_debug_sessions = {}
         self.manifest_started_logged = False
         self.manifest_completed_logged = False
         self.current_session_id = None
@@ -616,6 +618,17 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         self.capture_ocr_button.setEnabled(False)
         self.capture_ocr_button.setText("Capturing...")
         self.status_label.setText("Capturing selected region and running local OCR for hauling contracts...")
+        debug_session = start_ocr_debug_session(
+            "hauling_contracts",
+            metadata={
+                "workflow_name": "Hauling OCR",
+                "phase": "full_scan",
+                "region": region.to_dict(),
+                "selected_ship": self.selected_ship() or "",
+            },
+        )
+        if debug_session:
+            self.ocr_debug_sessions[request_id] = debug_session
         self.start_ocr_worker(
             worker,
             lambda result, current_request=request_id: self.on_ocr_capture_result(current_request, result),
@@ -641,6 +654,7 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         if request_id != self.ocr_capture_request_id:
             return
 
+        self.save_hauling_ocr_debug_result(request_id, result)
         status = getattr(result, "status", "")
         if status == "capture_error":
             self.status_label.setText(f"OCR capture failed locally: {getattr(result, 'message', '')}")
@@ -686,9 +700,33 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
     def finish_ocr_capture(self, request_id):
         if request_id != self.ocr_capture_request_id:
             return
+        self.ocr_debug_sessions.pop(request_id, None)
         self.ocr_capture_running = False
         self.capture_ocr_button.setEnabled(True)
         self.capture_ocr_button.setText("Capture Contracts (OCR)")
+
+    def save_hauling_ocr_debug_result(self, request_id, result):
+        session = self.ocr_debug_sessions.get(request_id)
+        if not session:
+            return
+        ocr_result = getattr(result, "ocr_result", None)
+        text = getattr(ocr_result, "text", "") if ocr_result else ""
+        parsed_result = getattr(result, "parsed_result", None)
+        parse_result = getattr(parsed_result, "data", None)
+        contracts = getattr(parse_result, "contracts", ()) if parse_result else ()
+        warnings = getattr(parse_result, "warnings", ()) if parse_result else ()
+        session.save_image("full_region.png", getattr(result, "captured_image", None))
+        session.save_text("full_ocr.txt", text)
+        session.update_metadata({
+            "status": getattr(result, "status", ""),
+            "message": getattr(result, "message", ""),
+            "contract_count": len(contracts or ()),
+            "total_scu": sum(getattr(contract, "scu", 0) for contract in (contracts or ())),
+            "parser_warnings": warnings,
+            "parser_errors": getattr(parsed_result, "errors", ()) if parsed_result else (),
+            "warnings": getattr(result, "warnings", ()),
+            "errors": getattr(result, "errors", ()),
+        })
 
     def record_ocr_scan_event(self, status):
         try:

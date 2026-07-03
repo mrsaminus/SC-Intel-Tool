@@ -2,6 +2,7 @@ import os
 
 import pytest
 from PySide6.QtWidgets import QApplication
+from PIL import Image
 
 from app.hauling import CONTRACT_STATE_DELIVERED, CONTRACT_STATE_LOADED, CONTRACT_STATE_PLANNED
 from app.ocr.results import OCRPipelineResult, OCRResult
@@ -44,18 +45,21 @@ class FakeOCRService:
 
     def scan_profile_region(self, profile, region, parser=None, capture_function=None):
         self.calls.append((profile, region, parser))
+        image = Image.new("RGB", (8, 4), color=(40, 60, 80))
         if self.status != "ok":
             return OCRPipelineResult(
                 status=self.status,
                 ocr_result=OCRResult(text=self.text),
                 message=self.message,
                 errors=(self.message,) if self.message else (),
+                captured_image=image,
             )
         ocr_result = OCRResult(text=self.text)
         return OCRPipelineResult(
             status="ok",
             ocr_result=ocr_result,
             parsed_result=parser.parse(ocr_result) if parser else None,
+            captured_image=image,
         )
 
 
@@ -384,6 +388,12 @@ def test_hauling_tab_ocr_capture_updates_manifest(monkeypatch, tmp_path, qapp):
     assert region.profile == "hauling_contracts"
     assert region.to_tuple() == (10, 20, 300, 120)
     assert parser.name == "hauling_contracts"
+
+    debug_sessions = list((tmp_path / "SC-Intel-Tool" / "ocr_debug" / "hauling_contracts").iterdir())
+    assert len(debug_sessions) == 1
+    debug_session = debug_sessions[0]
+    assert (debug_session / "full_region.png").exists()
+    assert (debug_session / "full_ocr.txt").read_text(encoding="utf-8") == sample_contract_text(quantity=48)
 
     events = reload_module("app.event_center.storage").list_notification_events(category="Hauling")
     event_types = {event.event_type for event in events}

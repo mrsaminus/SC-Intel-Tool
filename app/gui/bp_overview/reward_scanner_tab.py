@@ -1,3 +1,5 @@
+import time
+
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QApplication,
@@ -24,6 +26,7 @@ from app.ocr.blueprint_reward_workflow import (
     detect_blueprint_reward_trigger,
     title_region_from_reward_region,
 )
+from app.ocr.debug_capture import start_ocr_debug_session
 from app.ocr.reward_scanner import RewardScannerParser, reward_scan_result_from_pipeline
 
 from ..responsive import install_scroll_area
@@ -41,6 +44,7 @@ from .shared import ROW_ROLE, create_card, create_table, table_item
 
 REGION_SETTING_KEY = "bp_reward_scanner_region"
 REGION_NAME = "Reward Scanner"
+NONMATCH_DEBUG_SAMPLE_SECONDS = 30
 
 
 class RewardScannerTab(BackgroundTaskMixin, QWidget):
@@ -55,6 +59,8 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         self.trigger_check_running = False
         self.scan_once_request_id = 0
         self.trigger_request_id = 0
+        self.last_nonmatch_debug_saved_at = 0.0
+        self.full_scan_debug_sessions = {}
         self.region_overlay = None
         self.ocr_profile_manager = OCRProfileManager()
         self.ocr_service = OCRService(settings=self.current_ocr_profile().to_settings())
@@ -157,6 +163,11 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         self.status_label.setObjectName("moduleSubtitle")
         self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
+
+        self.debug_status_label = QLabel("OCR debug: no capture saved yet.")
+        self.debug_status_label.setObjectName("moduleSubtitle")
+        self.debug_status_label.setWordWrap(True)
+        layout.addWidget(self.debug_status_label)
 
         self.ocr_text = QTextEdit()
         self.ocr_text.setPlaceholderText("Paste OCR text here, or use Check Now when a local OCR engine is available...")
@@ -296,16 +307,25 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
             return
 
         text = pipeline.ocr_result.text if pipeline.ocr_result else ""
+        state_before = self.reward_workflow.state
+        trigger_match = detect_blueprint_reward_trigger(text)
         should_scan = self.reward_workflow.trigger_seen(text)
+        debug_session = self.save_trigger_debug_result(
+            pipeline=pipeline,
+            text=text,
+            trigger_match=trigger_match,
+            state_before=state_before,
+            state_after=self.reward_workflow.state,
+        )
         if self.reward_workflow.waiting_for_window_close:
             self.status_label.setText("Received Blueprint already processed. Waiting for the reward window to close.")
             return
-        if not detect_blueprint_reward_trigger(text):
+        if not trigger_match:
             self.status_label.setText("Watching for Received Blueprint trigger.")
             return
         if should_scan:
             self.status_label.setText("Received Blueprint trigger detected. Running full local OCR.")
-            self.start_full_reward_scan()
+            self.start_full_reward_scan(debug_session=debug_session)
 
     def on_trigger_check_error(self, request_id, exc):
         if request_id != self.trigger_request_id:
@@ -320,7 +340,7 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
             self.scan_once_button.setEnabled(True)
             self.scan_once_button.setText("Check Now")
 
-    def start_full_reward_scan(self):
+    def start_full_reward_scan(self, debug_session=None):
         if self.scan_once_running:
             return
         region = self.region()
@@ -343,6 +363,8 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         self.scan_once_button.setEnabled(False)
         self.scan_once_button.setText("Scanning...")
         self.status_label.setText("Capturing full reward region and running local OCR...")
+        if debug_session:
+            self.full_scan_debug_sessions[request_id] = debug_session
 
         self.start_background_task(
             lambda: self.ocr_service.scan_profile_region(profile, ocr_region, parser=parser),
@@ -358,6 +380,7 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         if request_id != self.scan_once_request_id:
             return
 
+        self.save_full_debug_result(request_id, result)
         status = result.get("status")
         if status == "capture_error":
             self.status_label.setText(f"Region capture failed locally: {result.get('message', '')}")
@@ -394,9 +417,73 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
     def finish_scan_once(self, request_id):
         if request_id != self.scan_once_request_id:
             return
+        self.full_scan_debug_sessions.pop(request_id, None)
         self.scan_once_running = False
         self.scan_once_button.setEnabled(True)
         self.scan_once_button.setText("Check Now")
+
+    def save_trigger_debug_result(self, pipeline, text, trigger_match, state_before, state_after):
+        if not trigger_match and not self.should_save_nonmatch_debug_sample():
+            return None
+
+        region = self.region()
+        trigger_region = None
+        if region:
+            profile = self.current_ocr_profile()
+            trigger_region = title_region_from_reward_region(
+                OCRRegion.from_tuple(region, name=REGION_NAME, profile=profile.key)
+            )
+        session = start_ocr_debug_session(
+            "blueprint_reward",
+            metadata={
+                "workflow_name": "Blueprint Reward Scanner",
+                "phase": "trigger",
+                "scanner_state_before": state_before,
+                "scanner_state_after": state_after,
+                "trigger_match": trigger_match,
+                "status": getattr(pipeline, "status", ""),
+                "message": getattr(pipeline, "message", ""),
+                "region": trigger_region.to_dict() if trigger_region else None,
+                "warnings": getattr(pipeline, "warnings", ()),
+                "errors": getattr(pipeline, "errors", ()),
+                "sample_policy": "trigger_match" if trigger_match else "throttled_nonmatch",
+            },
+        )
+        if not session:
+            return None
+        session.save_image("trigger.png", getattr(pipeline, "captured_image", None))
+        session.save_text("trigger_ocr.txt", text)
+        self.debug_status_label.setText(f"OCR debug saved: {session.path}")
+        if not trigger_match:
+            self.last_nonmatch_debug_saved_at = time.monotonic()
+        return session
+
+    def save_full_debug_result(self, request_id, result):
+        session = self.full_scan_debug_sessions.get(request_id)
+        if not session:
+            return
+        region = self.region()
+        profile = self.current_ocr_profile()
+        ocr_region = OCRRegion.from_tuple(region, name=REGION_NAME, profile=profile.key) if region else None
+        session.save_image("full_region.png", result.get("captured_image"))
+        session.save_text("full_ocr.txt", result.get("text", ""))
+        session.update_metadata({
+            "phase": "full_scan",
+            "scanner_state": self.reward_workflow.state,
+            "full_scan_status": result.get("status", ""),
+            "full_scan_message": result.get("message", ""),
+            "full_region": ocr_region.to_dict() if ocr_region else None,
+            "blueprint_count": result.get("blueprint_count", 0),
+            "match_count": len(result.get("matches") or []),
+            "warnings": result.get("warnings", ()),
+            "errors": result.get("errors", ()),
+            "parser_warnings": result.get("parser_warnings", ()),
+            "parser_errors": result.get("parser_errors", ()),
+        })
+        self.debug_status_label.setText(f"OCR debug saved: {session.path}")
+
+    def should_save_nonmatch_debug_sample(self):
+        return (time.monotonic() - self.last_nonmatch_debug_saved_at) >= NONMATCH_DEBUG_SAMPLE_SECONDS
 
     def parse_text(self):
         text = self.ocr_text.toPlainText().strip()

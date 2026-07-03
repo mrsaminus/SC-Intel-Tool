@@ -21,6 +21,8 @@ logs/
 exports/
 backups/
 temp/
+ocr_debug/
+**/ocr_debug/
 
 # Local project context
 PROJECT_CONTEXT.md
