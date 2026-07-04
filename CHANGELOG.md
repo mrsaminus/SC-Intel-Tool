@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Updater Reliability
+
+- Fixed update checker release selection so multi-digit alpha versions such as
+  `0.1.0-alpha.8.9.10` sort newer than `0.1.0-alpha.8.9.9`.
+
 ## 0.1.0-alpha.8.9.10 - 2026-07-04
 
 ### OCR

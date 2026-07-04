@@ -51,7 +51,7 @@ def check_for_updates(timeout=10):
     if not isinstance(payload, list):
         raise UpdateCheckError("GitHub Releases response was not a release list.")
 
-    release = next((item for item in payload if not item.get("draft")), None)
+    release = select_latest_release(payload)
     if not release:
         raise UpdateCheckError("No GitHub Release has been published yet.")
 
@@ -105,6 +105,23 @@ def find_windows_asset(release):
             return asset
 
     return executable_assets[0] if executable_assets else None
+
+
+def select_latest_release(releases):
+    candidates = [
+        release
+        for release in releases
+        if isinstance(release, dict) and not release.get("draft")
+    ]
+    if not candidates:
+        return None
+
+    return max(candidates, key=release_sort_key)
+
+
+def release_sort_key(release):
+    version = str(release.get("tag_name") or release.get("name") or "").strip()
+    return (version_key(version), str(release.get("published_at") or ""))
 
 
 def update_error_from_response(response):
