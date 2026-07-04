@@ -7,9 +7,12 @@ class RegionSelectionOverlay(QWidget):
     region_selected = Signal(tuple)
     region_cancelled = Signal()
 
-    def __init__(self, screen=None):
+    def __init__(self, screen=None, instruction_text=None):
         super().__init__(None)
         self.screen = screen or QApplication.primaryScreen()
+        self.instruction_text = instruction_text or (
+            "Drag to select reward popup region. Release to confirm. ESC cancels."
+        )
         self.start_pos = None
         self.current_pos = None
         self.selection_rect = QRect()
@@ -35,7 +38,7 @@ class RegionSelectionOverlay(QWidget):
         painter.drawText(
             24,
             32,
-            "Drag to select reward popup region. Release to confirm. ESC cancels.",
+            self.instruction_text,
         )
 
     def mousePressEvent(self, event):

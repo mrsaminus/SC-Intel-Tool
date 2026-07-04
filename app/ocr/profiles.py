@@ -208,6 +208,14 @@ class OCRProfileManager:
         _set_json_setting(OCR_REGIONS_SETTING_KEY, [item.to_dict() for item in regions])
         return region
 
+    def clear_region(self, profile_key, name):
+        regions = [
+            existing
+            for existing in self.list_regions()
+            if not (existing.profile == profile_key and existing.name == name)
+        ]
+        _set_json_setting(OCR_REGIONS_SETTING_KEY, [item.to_dict() for item in regions])
+
 
 def _load_profile_overrides():
     payload = _load_json_setting(OCR_PROFILES_SETTING_KEY, {})

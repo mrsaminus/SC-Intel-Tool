@@ -1,10 +1,12 @@
 import logging
 
 from PySide6.QtCore import Qt, QThreadPool
+from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QAbstractItemView,
     QComboBox,
+    QDialog,
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -20,7 +22,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.database import get_app_setting
 from app.event_center.service import record_event
 from app.hauling import (
     CONTRACT_STATE_DELIVERED,
@@ -44,7 +45,6 @@ from app.hauling import (
 )
 from app.ocr import (
     HAULING_CONTRACTS_PROFILE_KEY,
-    REWARD_SCANNER_PROFILE_KEY,
     HaulingContractsOCRParser,
     OCRProfileManager,
     OCRRegion,
@@ -53,6 +53,8 @@ from app.ocr import (
 from app.ocr.debug_capture import start_ocr_debug_session
 from app.ocr.workers import create_ocr_worker
 
+from .bp_overview.reward_scanner_matching import capture_region_image, pixmap_from_image
+from .bp_overview.reward_scanner_overlay import RegionSelectionOverlay
 from .safe_combobox import SafeComboBox as QComboBox
 from .sortable_table_item import SORT_ROLE, SortableTableWidgetItem
 from .responsive import ResponsiveStack, install_scroll_area, stabilize_card, stabilize_table
@@ -64,8 +66,6 @@ from .workers import BackgroundTaskMixin
 logger = logging.getLogger(__name__)
 
 HAULING_REGION_NAME = "Hauling Contracts"
-REWARD_SCANNER_REGION_NAME = "Reward Scanner"
-LEGACY_REWARD_REGION_SETTING_KEY = "bp_reward_scanner_region"
 CONTRACT_ID_ROLE = Qt.UserRole + 25
 SESSION_ID_ROLE = Qt.UserRole + 26
 
@@ -82,6 +82,7 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         self.ocr_capture_running = False
         self.ocr_capture_request_id = 0
         self.ocr_debug_sessions = {}
+        self.region_overlay = None
         self.manifest_started_logged = False
         self.manifest_completed_logged = False
         self.current_session_id = None
@@ -100,10 +101,15 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         self.intake_stack.addWidget(self.create_capacity_card(), 2)
         layout.addWidget(self.intake_stack)
 
+        layout.addWidget(self.create_ocr_card())
         layout.addWidget(self.create_operations_dashboard())
         layout.addWidget(self.create_manifest_preview(), 1)
         self.hauling_scroll_area = install_scroll_area(self, content)
 
+        self.hauling_ocr_shortcut = QShortcut(QKeySequence("Ctrl+Shift+H"), self)
+        self.hauling_ocr_shortcut.setContext(Qt.ApplicationShortcut)
+        self.hauling_ocr_shortcut.activated.connect(self.trigger_hauling_ocr_hotkey)
+        self.update_ocr_region_state()
         self.update_manifest()
         self.refresh_session_history()
 
@@ -196,15 +202,12 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         button_row = QHBoxLayout()
         button_row.setSpacing(8)
         self.parse_button = QPushButton("Parse Contracts")
-        self.capture_ocr_button = QPushButton("Capture Contracts (OCR)")
         self.clear_button = QPushButton("Clear Input")
         self.copy_manifest_button = QPushButton("Copy Manifest")
         self.parse_button.clicked.connect(self.parse_contracts)
-        self.capture_ocr_button.clicked.connect(self.capture_contracts_ocr)
         self.clear_button.clicked.connect(self.clear_input)
         self.copy_manifest_button.clicked.connect(self.copy_manifest)
         button_row.addWidget(self.parse_button)
-        button_row.addWidget(self.capture_ocr_button)
         button_row.addWidget(self.clear_button)
         button_row.addWidget(self.copy_manifest_button)
         button_row.addStretch(1)
@@ -238,6 +241,40 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         layout.addWidget(self.remaining_scu_label)
         layout.addWidget(self.capacity_warning_label)
         layout.addStretch(1)
+        return card
+
+    def create_ocr_card(self):
+        card = self.create_card("HAULING OCR")
+        layout = card.layout()
+
+        hint = QLabel(
+            "Capture contract text from a saved Hauling OCR region. Hotkey: Ctrl+Shift+H."
+        )
+        hint.setObjectName("moduleSubtitle")
+        hint.setWordWrap(True)
+        layout.addWidget(hint)
+
+        self.ocr_region_status_label = QLabel("")
+        self.ocr_region_status_label.setObjectName("valueText")
+        self.ocr_region_status_label.setWordWrap(True)
+        layout.addWidget(self.ocr_region_status_label)
+
+        button_row = QHBoxLayout()
+        button_row.setSpacing(8)
+        self.select_ocr_region_button = QPushButton("Select OCR Region")
+        self.preview_ocr_region_button = QPushButton("Preview OCR Region")
+        self.clear_ocr_region_button = QPushButton("Clear OCR Region")
+        self.capture_ocr_button = QPushButton("Capture Contracts (OCR)")
+        self.select_ocr_region_button.clicked.connect(self.select_ocr_region)
+        self.preview_ocr_region_button.clicked.connect(self.preview_ocr_region)
+        self.clear_ocr_region_button.clicked.connect(self.clear_ocr_region)
+        self.capture_ocr_button.clicked.connect(self.capture_contracts_ocr)
+        button_row.addWidget(self.select_ocr_region_button)
+        button_row.addWidget(self.preview_ocr_region_button)
+        button_row.addWidget(self.clear_ocr_region_button)
+        button_row.addWidget(self.capture_ocr_button)
+        button_row.addStretch(1)
+        layout.addLayout(button_row)
         return card
 
     def create_operations_dashboard(self):
@@ -570,27 +607,114 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         region = self.ocr_profile_manager.get_region(HAULING_CONTRACTS_PROFILE_KEY, HAULING_REGION_NAME)
         if region and region.is_valid():
             return region
-
-        fallback = self.ocr_profile_manager.get_region(REWARD_SCANNER_PROFILE_KEY, REWARD_SCANNER_REGION_NAME)
-        if fallback and fallback.is_valid():
-            return OCRRegion.from_tuple(
-                fallback.to_tuple(),
-                name=HAULING_REGION_NAME,
-                profile=HAULING_CONTRACTS_PROFILE_KEY,
-                monitor=fallback.monitor,
-                resolution=fallback.resolution,
-                description="Hauling contract OCR capture region copied from the saved Reward Scanner region.",
-            )
-
-        legacy_region = legacy_reward_region()
-        if legacy_region:
-            return OCRRegion.from_tuple(
-                legacy_region,
-                name=HAULING_REGION_NAME,
-                profile=HAULING_CONTRACTS_PROFILE_KEY,
-                description="Hauling contract OCR capture region copied from legacy Reward Scanner coordinates.",
-            )
         return None
+
+    def update_ocr_region_state(self):
+        region = self.ocr_region()
+        has_region = region is not None
+        if has_region:
+            self.ocr_region_status_label.setText(self.format_ocr_region_status(region))
+        else:
+            self.ocr_region_status_label.setText(
+                "No Hauling OCR region selected. Select a Hauling OCR region first."
+            )
+        self.preview_ocr_region_button.setEnabled(has_region)
+        self.clear_ocr_region_button.setEnabled(has_region)
+        self.capture_ocr_button.setEnabled(has_region and not self.ocr_capture_running)
+
+    def format_ocr_region_status(self, region):
+        parts = [
+            f"x={region.x}",
+            f"y={region.y}",
+            f"width={region.width}",
+            f"height={region.height}",
+        ]
+        if region.monitor is not None:
+            parts.append(f"monitor={region.monitor}")
+        if region.resolution:
+            parts.append(f"resolution={region.resolution}")
+        return "Hauling OCR region: " + " | ".join(parts)
+
+    def select_ocr_region(self):
+        screen = QApplication.primaryScreen()
+        if not screen:
+            QMessageBox.warning(self, "No Screen Found", "Could not find a primary screen for region selection.")
+            return
+        self.status_label.setText("Select the hauling contract list area. Press ESC to cancel.")
+        self.region_overlay = RegionSelectionOverlay(
+            screen,
+            instruction_text="Drag to select hauling contract OCR region. Release to confirm. ESC cancels.",
+        )
+        self.region_overlay.region_selected.connect(self.on_ocr_region_selected)
+        self.region_overlay.region_cancelled.connect(self.on_ocr_region_cancelled)
+        self.region_overlay.show()
+        self.region_overlay.raise_()
+        self.region_overlay.activateWindow()
+
+    def on_ocr_region_selected(self, region):
+        self.save_ocr_region_values(region)
+        self.region_overlay = None
+        self.update_ocr_region_state()
+        x, y, width, height = region
+        self.status_label.setText(
+            f"Hauling OCR region saved: {width}x{height} at X{x}, Y{y}. Preview or capture when ready."
+        )
+
+    def on_ocr_region_cancelled(self):
+        self.region_overlay = None
+        self.status_label.setText("Hauling OCR region selection cancelled.")
+
+    def save_ocr_region_values(self, region):
+        self.ocr_profile_manager.save_region(
+            OCRRegion.from_tuple(
+                region,
+                name=HAULING_REGION_NAME,
+                profile=HAULING_CONTRACTS_PROFILE_KEY,
+                description="Hauling contract OCR capture region.",
+            )
+        )
+
+    def clear_ocr_region(self):
+        self.ocr_profile_manager.clear_region(HAULING_CONTRACTS_PROFILE_KEY, HAULING_REGION_NAME)
+        self.update_ocr_region_state()
+        self.status_label.setText("Hauling OCR region cleared. Select a Hauling OCR region before capture.")
+
+    def preview_ocr_region(self):
+        region = self.ocr_region()
+        if not region:
+            self.status_label.setText("Select a Hauling OCR region first.")
+            return
+        try:
+            image = capture_region_image(region, settings=self.current_ocr_profile().to_settings())
+            pixmap = pixmap_from_image(image)
+        except Exception as exc:
+            self.status_label.setText(f"Preview capture failed locally: {exc}")
+            QMessageBox.warning(self, "Preview Failed", f"Could not capture the selected region:\n\n{exc}")
+            return
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Hauling OCR Region Preview")
+        layout = QVBoxLayout(dialog)
+        label = QLabel()
+        label.setAlignment(Qt.AlignCenter)
+        label.setPixmap(pixmap.scaled(720, 420, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        info = QLabel("Captured once locally. No OCR was run and nothing was uploaded.")
+        info.setObjectName("moduleSubtitle")
+        info.setWordWrap(True)
+        close_button = QPushButton("Close")
+        close_button.clicked.connect(dialog.accept)
+        layout.addWidget(label)
+        layout.addWidget(info)
+        layout.addWidget(close_button)
+        dialog.resize(760, 520)
+        dialog.exec()
+
+    def trigger_hauling_ocr_hotkey(self):
+        if not self.ocr_region():
+            self.status_label.setText("Select a Hauling OCR region first. Hotkey: Ctrl+Shift+H.")
+            self.update_ocr_region_state()
+            return
+        self.capture_contracts_ocr()
 
     def capture_contracts_ocr(self):
         if self.ocr_capture_running:
@@ -599,9 +723,8 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
 
         region = self.ocr_region()
         if not region:
-            self.status_label.setText(
-                "No OCR capture region saved. Save a local OCR region first, or paste contract text manually."
-            )
+            self.status_label.setText("Select a Hauling OCR region first.")
+            self.update_ocr_region_state()
             return
 
         self.ocr_capture_running = True
@@ -622,7 +745,8 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         debug_session = start_ocr_debug_session(
             "hauling_contracts",
             metadata={
-                "workflow_name": "Hauling OCR",
+                "workflow_name": "hauling_contracts",
+                "workflow_label": "Hauling OCR",
                 "phase": "full_scan",
                 "region": region.to_dict(),
                 "selected_ship": self.selected_ship() or "",
@@ -705,6 +829,7 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
         self.ocr_capture_running = False
         self.capture_ocr_button.setEnabled(True)
         self.capture_ocr_button.setText("Capture Contracts (OCR)")
+        self.update_ocr_region_state()
 
     def save_hauling_ocr_debug_result(self, request_id, result):
         session = self.ocr_debug_sessions.get(request_id)
@@ -1147,19 +1272,3 @@ def commodity_summary(contracts):
         if name not in commodities:
             commodities.append(name)
     return ", ".join(commodities)
-
-
-def legacy_reward_region():
-    value = get_app_setting(LEGACY_REWARD_REGION_SETTING_KEY, "")
-    if not value:
-        return None
-    parts = value.split(",")
-    if len(parts) != 4:
-        return None
-    try:
-        region = tuple(int(part.strip()) for part in parts)
-    except ValueError:
-        return None
-    if region[2] <= 0 or region[3] <= 0:
-        return None
-    return region

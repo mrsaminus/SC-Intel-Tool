@@ -265,7 +265,7 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
             ),
             (
                 "Hauling OCR",
-                "Capture a selected contract region from the Hauling Operations Center when needed.",
+                "Capture a selected contract region from the Hauling Operations Center when needed. Hotkey: Ctrl+Shift+H.",
             ),
         ]
         for title, description in workflows:

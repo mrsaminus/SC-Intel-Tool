@@ -1,4 +1,5 @@
 import os
+import json
 
 import pytest
 from PySide6.QtWidgets import QApplication
@@ -84,6 +85,7 @@ def save_hauling_region(tab):
             name=module.HAULING_REGION_NAME,
         )
     )
+    tab.update_ocr_region_state()
 
 
 def select_first_contract(tab):
@@ -394,6 +396,14 @@ def test_hauling_tab_ocr_capture_updates_manifest(monkeypatch, tmp_path, qapp):
     debug_session = debug_sessions[0]
     assert (debug_session / "full_region.png").exists()
     assert (debug_session / "full_ocr.txt").read_text(encoding="utf-8") == sample_contract_text(quantity=48)
+    metadata = json.loads((debug_session / "metadata.json").read_text(encoding="utf-8"))
+    assert metadata["workflow"] == "hauling_contracts"
+    assert metadata["workflow_name"] == "hauling_contracts"
+    assert metadata["region"]["profile"] == "hauling_contracts"
+    assert metadata["region"]["x"] == 10
+    assert metadata["region"]["y"] == 20
+    assert metadata["region"]["width"] == 300
+    assert metadata["region"]["height"] == 120
 
     events = reload_module("app.event_center.storage").list_notification_events(category="Hauling")
     event_types = {event.event_type for event in events}
@@ -440,11 +450,68 @@ def test_hauling_tab_ocr_missing_region_is_inline_status(monkeypatch, tmp_path, 
     tab.ocr_service = FakeOCRService(sample_contract_text())
     tab.start_ocr_worker = run_ocr_synchronously
 
+    assert not tab.capture_ocr_button.isEnabled()
     tab.capture_contracts_ocr()
     qapp.processEvents()
 
     assert tab.ocr_service.calls == []
-    assert "No OCR capture region saved" in tab.status_label.text()
+    assert "Select a Hauling OCR region first" in tab.status_label.text()
+    tab.close()
+
+
+def test_hauling_tab_region_controls_save_clear_and_update_state(monkeypatch, tmp_path, qapp):
+    tab = build_tab(monkeypatch, tmp_path)
+
+    assert not tab.capture_ocr_button.isEnabled()
+    assert "No Hauling OCR region selected" in tab.ocr_region_status_label.text()
+
+    tab.on_ocr_region_selected((12, 34, 320, 180))
+    qapp.processEvents()
+
+    assert tab.capture_ocr_button.isEnabled()
+    assert tab.preview_ocr_region_button.isEnabled()
+    assert tab.clear_ocr_region_button.isEnabled()
+    assert tab.ocr_region().profile == "hauling_contracts"
+    assert tab.ocr_region().to_tuple() == (12, 34, 320, 180)
+    assert "x=12" in tab.ocr_region_status_label.text()
+    assert "width=320" in tab.ocr_region_status_label.text()
+
+    tab.clear_ocr_region()
+    qapp.processEvents()
+
+    assert tab.ocr_region() is None
+    assert not tab.capture_ocr_button.isEnabled()
+    assert not tab.preview_ocr_region_button.isEnabled()
+    assert "No Hauling OCR region selected" in tab.ocr_region_status_label.text()
+    tab.close()
+
+
+def test_hauling_tab_hotkey_triggers_same_ocr_path(monkeypatch, tmp_path, qapp):
+    tab = build_tab(monkeypatch, tmp_path)
+    save_hauling_region(tab)
+    tab.ocr_service = FakeOCRService(sample_contract_text(quantity=24))
+    tab.start_ocr_worker = run_ocr_synchronously
+
+    tab.hauling_ocr_shortcut.activated.emit()
+    qapp.processEvents()
+
+    assert len(tab.ocr_service.calls) == 1
+    assert len(tab.contracts) == 1
+    assert tab.manifest.total_scu == 24
+    assert "OCR captured and parsed" in tab.status_label.text()
+    tab.close()
+
+
+def test_hauling_tab_hotkey_warns_without_region(monkeypatch, tmp_path, qapp):
+    tab = build_tab(monkeypatch, tmp_path)
+    tab.ocr_service = FakeOCRService(sample_contract_text())
+    tab.start_ocr_worker = run_ocr_synchronously
+
+    tab.hauling_ocr_shortcut.activated.emit()
+    qapp.processEvents()
+
+    assert tab.ocr_service.calls == []
+    assert "Select a Hauling OCR region first" in tab.status_label.text()
     tab.close()
 
 
@@ -483,7 +550,7 @@ def test_hauling_tab_ocr_stale_result_is_ignored(monkeypatch, tmp_path, qapp):
     tab.close()
 
 
-def test_hauling_tab_ocr_falls_back_to_reward_scanner_region(monkeypatch, tmp_path, qapp):
+def test_hauling_tab_ocr_does_not_use_reward_scanner_region(monkeypatch, tmp_path, qapp):
     tab = build_tab(monkeypatch, tmp_path)
     profiles = reload_module("app.ocr.profiles")
     regions = reload_module("app.ocr.regions")
@@ -495,8 +562,12 @@ def test_hauling_tab_ocr_falls_back_to_reward_scanner_region(monkeypatch, tmp_pa
         )
     )
 
-    region = tab.ocr_region()
+    tab.ocr_service = FakeOCRService(sample_contract_text())
+    tab.start_ocr_worker = run_ocr_synchronously
+    tab.capture_contracts_ocr()
+    qapp.processEvents()
 
-    assert region.profile == profiles.HAULING_CONTRACTS_PROFILE_KEY
-    assert region.to_tuple() == (1, 2, 30, 40)
+    assert tab.ocr_region() is None
+    assert tab.ocr_service.calls == []
+    assert "Select a Hauling OCR region first" in tab.status_label.text()
     tab.close()

@@ -8,6 +8,10 @@
   filter panels.
 - Corrected Reward Scanner OCR status wording so missing-engine states are only
   shown when local OCR is actually unavailable.
+- Added Hauling OCR region selection, preview and clear controls.
+- Added the focused-app Hauling OCR hotkey `Ctrl+Shift+H`.
+- Hauling OCR now uses its own saved `hauling_contracts` region instead of
+  sharing Blueprint Reward Scanner coordinates.
 
 ## 0.1.0-alpha.8.9.8 - 2026-07-03
 
