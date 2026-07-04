@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.8.9.9 - 2026-07-04
+
 ### UX / Reliability
 
 - Prevented accidental combo-box value changes when scrolling through forms and
