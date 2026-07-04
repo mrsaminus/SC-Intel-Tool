@@ -37,6 +37,10 @@ def detect_blueprint_reward_trigger(text):
         for candidate in tokens[index + 1:index + 1 + TRIGGER_TOKEN_WINDOW]:
             if _token_matches(candidate, "blueprint"):
                 return True
+        candidate_tokens = tokens[index + 1:index + 1 + TRIGGER_TOKEN_WINDOW]
+        for left, right in zip(candidate_tokens, candidate_tokens[1:]):
+            if _token_matches(f"{left}{right}", "blueprint"):
+                return True
     return False
 
 

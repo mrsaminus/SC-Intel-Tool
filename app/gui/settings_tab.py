@@ -27,6 +27,7 @@ from app.cache_manager import (
     refresh_cache_source as refresh_cache_source_data,
 )
 from app.diagnostics import safe_diagnostics_text
+from app.ocr import check_ocr_engine_availability
 from app.ocr.debug_capture import (
     clear_ocr_debug_captures,
     format_debug_size,
@@ -75,6 +76,7 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         self.cache_action_running = False
         self.cache_source_rows = {}
         self.cache_action_buttons = []
+        self.ocr_engine_check_started = False
 
         outer_layout = QVBoxLayout()
         outer_layout.setContentsMargins(0, 0, 0, 0)
@@ -110,6 +112,11 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
         self.settings_scroll_area = scroll_area
         self.settings_content = content
         self.setLayout(outer_layout)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if not self.ocr_engine_check_started:
+            self.refresh_ocr_engine_status()
 
     def build_about_card(self):
         card = self.create_card("ABOUT SC INTEL TOOL")
@@ -279,13 +286,43 @@ class SettingsTab(BackgroundTaskMixin, QWidget):
             layout.addWidget(description_label)
 
         self.ocr_settings_status_label = QLabel(
-            "Internal OCR defaults: English text, automatic preprocessing, automatic thresholding and workflow-specific regions."
+            "OCR engine status will be checked when Settings opens. "
+            f"{self.ocr_defaults_status_text()}"
         )
         self.ocr_settings_status_label.setObjectName("moduleSubtitle")
         self.ocr_settings_status_label.setWordWrap(True)
         self.configure_wrapping_label(self.ocr_settings_status_label)
         layout.addWidget(self.ocr_settings_status_label)
         return card
+
+    @staticmethod
+    def ocr_defaults_status_text():
+        return (
+            "Internal OCR defaults: English text, automatic preprocessing, automatic thresholding "
+            "and workflow-specific regions."
+        )
+
+    def refresh_ocr_engine_status(self):
+        self.ocr_engine_check_started = True
+        try:
+            availability = check_ocr_engine_availability()
+        except Exception as exc:
+            self.apply_ocr_engine_error(exc)
+            return
+
+        if availability.available:
+            self.ocr_settings_status_label.setText(
+                f"OCR engine ready: {availability.engine_name}. {self.ocr_defaults_status_text()}"
+            )
+        else:
+            self.ocr_settings_status_label.setText(
+                f"OCR engine unavailable: {availability.message}. {self.ocr_defaults_status_text()}"
+            )
+
+    def apply_ocr_engine_error(self, exc):
+        self.ocr_settings_status_label.setText(
+            f"OCR engine check failed: {exc}. {self.ocr_defaults_status_text()}"
+        )
 
     def build_ocr_debug_card(self):
         card = self.create_card("OCR DEBUG")

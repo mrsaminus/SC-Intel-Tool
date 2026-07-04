@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### OCR
+
+- Added/configured a bundled RapidOCR runtime so local OCR works without a
+  separate Tesseract install.
+- Kept Tesseract as an optional fallback OCR engine when available.
+- Improved OCR engine availability detection for missing Python packages,
+  missing OCR binaries and broken runtime paths.
+- Hardened Blueprint Reward trigger detection for OCR word-split variants such
+  as `Received Blue print`.
+
 ## 0.1.0-alpha.8.9.9 - 2026-07-04
 
 ### UX / Reliability

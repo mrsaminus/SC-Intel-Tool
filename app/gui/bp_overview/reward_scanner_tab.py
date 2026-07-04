@@ -309,7 +309,7 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
             return
         if status == "missing_ocr":
             self.status_label.setText(
-                "Local OCR engine unavailable. Manual paste is available. "
+                f"Local OCR engine unavailable: {pipeline.message}. Manual paste is available. "
                 "Debug captures are stored locally when capture runs."
             )
             return
@@ -391,7 +391,7 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
             return
         if status == "missing_ocr":
             self.status_label.setText(
-                "Local OCR engine unavailable. Manual paste is available. "
+                f"Local OCR engine unavailable: {pipeline.message}. Manual paste is available. "
                 "Debug captures are stored locally when capture runs."
             )
             self.reward_workflow.wait_for_window_close()

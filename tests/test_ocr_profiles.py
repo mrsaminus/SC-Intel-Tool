@@ -1,4 +1,5 @@
 import os
+from types import SimpleNamespace
 
 import pytest
 from PIL import Image
@@ -95,7 +96,8 @@ def test_ocr_profile_manager_defaults_and_persistence(monkeypatch, tmp_path):
     assert reloaded.get_default_profile_key() == profiles.REWARD_SCANNER_PROFILE_KEY
     assert migrated_profile.language == "eng"
     assert migrated_profile.threshold is None
-    assert migrated_profile.scaling == 1.0
+    assert migrated_profile.scaling == 2.0
+    assert migrated_profile.invert_colors is True
 
 
 def test_ocr_profile_manager_ignores_corrupt_settings(monkeypatch, tmp_path):
@@ -166,6 +168,16 @@ def test_ocr_service_scan_profile_region_uses_profile_settings():
 def test_settings_ocr_section_is_workflow_based(monkeypatch, tmp_path, qapp):
     isolated_database(monkeypatch, tmp_path)
     settings_module = reload_module("app.gui.settings_tab")
+    monkeypatch.setattr(
+        settings_module,
+        "check_ocr_engine_availability",
+        lambda: SimpleNamespace(
+            available=True,
+            engine_name="RapidOCR",
+            message="OCR engine ready.",
+            status="ready",
+        ),
+    )
 
     settings = settings_module.SettingsTab()
     qapp.processEvents()

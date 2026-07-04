@@ -1,5 +1,5 @@
 from .capture import ScreenshotService, normalize_region
-from .engine import MissingOCREngineError, OCREngineError, TesseractOCREngine
+from .engine import LocalOCREngine, MissingOCREngineError, OCREngineError
 from .parser import ParsedOCRResult
 from .profiles import normalize_profile
 from .results import OCRPipelineResult, OCRResult
@@ -10,7 +10,7 @@ class OCRService:
     def __init__(self, screenshot_service=None, engine=None, settings=None):
         self.settings = settings or DEFAULT_OCR_SETTINGS
         self.screenshot_service = screenshot_service or ScreenshotService(settings=self.settings)
-        self.engine = engine or TesseractOCREngine()
+        self.engine = engine or LocalOCREngine()
 
     def run_ocr(self, image, settings=None):
         return self.engine.run(image, settings=settings or self.settings)

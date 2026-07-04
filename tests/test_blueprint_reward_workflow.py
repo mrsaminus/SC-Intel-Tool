@@ -13,6 +13,7 @@ def test_blueprint_reward_trigger_detection_is_case_and_noise_tolerant():
     assert detect_blueprint_reward_trigger("Received Blueprint:")
     assert detect_blueprint_reward_trigger("Received Blueprint")
     assert detect_blueprint_reward_trigger("received blueprint")
+    assert detect_blueprint_reward_trigger("Received Blue print")
     assert detect_blueprint_reward_trigger("  RECEIVED   BLUEPRINT  \nField Recon Helmet")
     assert not detect_blueprint_reward_trigger("Mission reward available")
     assert not detect_blueprint_reward_trigger("Blueprint Reward")

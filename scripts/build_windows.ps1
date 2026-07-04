@@ -157,6 +157,13 @@ try {
         $PyInstallerArgs += @("--add-data", "$((Resolve-Path $MiningPublicDataPath).Path);app/assets/mining_public")
     }
 
+    & $Python -c "import importlib.util, sys; sys.exit(0 if importlib.util.find_spec('rapidocr_onnxruntime') else 1)"
+    if ($LASTEXITCODE -eq 0) {
+        $PyInstallerArgs += @("--collect-all", "rapidocr_onnxruntime")
+    } else {
+        Write-Warning "rapidocr_onnxruntime was not found. OCR runtime will not be bundled."
+    }
+
     if ($Package -eq "OneFile") {
         $PyInstallerArgs += @("--onefile", "--runtime-tmpdir", ".")
     }

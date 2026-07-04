@@ -16,7 +16,15 @@ from .debug_capture import (
     set_ocr_debug_enabled,
     start_ocr_debug_session,
 )
-from .engine import MissingOCREngineError, OCREngineError, TesseractOCREngine
+from .engine import (
+    LocalOCREngine,
+    MissingOCREngineError,
+    OCREngineAvailability,
+    OCREngineError,
+    RapidOCREngine,
+    TesseractOCREngine,
+    check_ocr_engine_availability,
+)
 from .hauling import HaulingContractsOCRParser
 from .parser import OCRParser, ParsedOCRResult
 from .profiles import (
@@ -37,7 +45,9 @@ __all__ = [
     "BlueprintRewardWorkflow",
     "HAULING_CONTRACTS_PROFILE_KEY",
     "HaulingContractsOCRParser",
+    "LocalOCREngine",
     "MissingOCREngineError",
+    "OCREngineAvailability",
     "OCREngineError",
     "OCRParser",
     "OCRPipelineResult",
@@ -50,10 +60,12 @@ __all__ = [
     "OCRSettings",
     "ParsedOCRResult",
     "REWARD_SCANNER_PROFILE_KEY",
+    "RapidOCREngine",
     "RewardScannerParser",
     "ScreenshotService",
     "TesseractOCREngine",
     "capture_region_image",
+    "check_ocr_engine_availability",
     "clear_ocr_debug_captures",
     "clamp_confidence",
     "confidence_label",

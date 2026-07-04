@@ -1,7 +1,7 @@
 import difflib
 import re
 
-from .engine import TesseractOCREngine
+from .engine import LocalOCREngine, TesseractOCREngine
 from .parser import OCRParser, ParsedOCRResult
 from .profiles import OCRProfileManager, REWARD_SCANNER_PROFILE_KEY
 from .regions import OCRRegion
@@ -92,7 +92,7 @@ def scan_region_for_blueprint_text(region, blueprints, capture_function=None, oc
     blueprints = tuple(blueprints or ())
     parser = RewardScannerParser(blueprints)
     profile = OCRProfileManager().get_profile(REWARD_SCANNER_PROFILE_KEY)
-    engine = TesseractOCREngine(ocr_function=ocr_function)
+    engine = TesseractOCREngine(ocr_function=ocr_function) if ocr_function else LocalOCREngine()
     service = OCRService(engine=engine, settings=profile.to_settings())
 
     def adapted_capture(ocr_region):
@@ -123,7 +123,7 @@ def reward_scan_result_from_pipeline(pipeline, blueprint_count=0):
     if pipeline.status == "missing_ocr":
         return {
             "status": "missing_ocr",
-            "message": "",
+            "message": pipeline.message,
             "text": "",
             "matches": [],
             "blueprint_count": blueprint_count,

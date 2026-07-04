@@ -2,11 +2,19 @@ from dataclasses import dataclass
 import sys
 from types import SimpleNamespace
 
+import pytest
 from PIL import Image
 
 from app.ocr.capture import ScreenshotService, preprocess_image
 from app.ocr.confidence import average_confidence, confidence_label
-from app.ocr.engine import MissingOCREngineError, TesseractOCREngine
+from app.ocr.engine import (
+    LocalOCREngine,
+    MissingOCREngineError,
+    OCREngineError,
+    RapidOCREngine,
+    TesseractOCREngine,
+    check_ocr_engine_availability,
+)
 from app.ocr.hauling import HaulingContractsOCRParser
 from app.ocr.parser import OCRParser, ParsedOCRResult
 from app.ocr.profiles import OCRProfile
@@ -89,6 +97,132 @@ def test_tesseract_engine_default_uses_language_and_options(monkeypatch):
 
     assert result.text == "Configured OCR"
     assert captured["kwargs"] == {"lang": "nor", "config": "--psm 6"}
+
+
+def test_tesseract_engine_reports_missing_binary(monkeypatch):
+    class TesseractNotFoundError(Exception):
+        pass
+
+    def image_to_string(_image, **_kwargs):
+        raise TesseractNotFoundError("tesseract is not installed")
+
+    monkeypatch.setitem(sys.modules, "pytesseract", SimpleNamespace(image_to_string=image_to_string))
+    image = Image.new("RGB", (2, 2))
+
+    with pytest.raises(MissingOCREngineError, match="Tesseract executable"):
+        TesseractOCREngine().run(image)
+
+
+def test_rapidocr_engine_uses_injected_runtime(monkeypatch):
+    class FakeNumpy:
+        @staticmethod
+        def array(_image):
+            return "fake-array"
+
+    def fake_reader(array):
+        assert array == "fake-array"
+        return (
+            [
+                ([[0, 0], [32, 0], [32, 10], [0, 10]], "Received", 0.95),
+                ([[36, 0], [90, 0], [90, 10], [36, 10]], "Blueprint", 0.90),
+            ],
+            0.01,
+        )
+
+    monkeypatch.setattr(
+        RapidOCREngine,
+        "load_runtime",
+        classmethod(lambda cls: (FakeNumpy, fake_reader)),
+    )
+
+    result = RapidOCREngine().run(Image.new("RGB", (2, 2)))
+
+    assert result.ok
+    assert result.text == "Received Blueprint"
+    assert result.confidence == pytest.approx(0.925)
+
+
+def test_rapidocr_engine_reports_missing_runtime(monkeypatch):
+    def missing_runtime(cls):
+        raise MissingOCREngineError("RapidOCR runtime is not installed")
+
+    monkeypatch.setattr(RapidOCREngine, "load_runtime", classmethod(missing_runtime))
+
+    with pytest.raises(MissingOCREngineError, match="RapidOCR runtime"):
+        RapidOCREngine().run(Image.new("RGB", (2, 2)))
+
+
+def test_local_ocr_engine_uses_first_available_engine():
+    class MissingEngine:
+        name = "Missing"
+
+        def run(self, _image, settings=None):
+            raise MissingOCREngineError("missing")
+
+    class ReadyEngine:
+        name = "Ready"
+
+        def run(self, _image, settings=None):
+            return OCRResult(text="ready text")
+
+    engine = LocalOCREngine(engines=(MissingEngine(), ReadyEngine()))
+    result = engine.run(Image.new("RGB", (2, 2)))
+
+    assert result.text == "ready text"
+    assert engine.last_engine_name == "Ready"
+
+
+def test_local_ocr_engine_reports_all_missing_engines():
+    class MissingEngine:
+        name = "Missing"
+
+        def run(self, _image, settings=None):
+            raise MissingOCREngineError("missing runtime")
+
+    with pytest.raises(MissingOCREngineError, match="Missing: missing runtime"):
+        LocalOCREngine(engines=(MissingEngine(),)).run(Image.new("RGB", (2, 2)))
+
+
+def test_check_ocr_engine_availability_success():
+    class ReadyEngine:
+        name = "Ready OCR"
+
+        def run(self, _image, settings=None):
+            return OCRResult(text="OCR ready")
+
+    availability = check_ocr_engine_availability(ReadyEngine())
+
+    assert availability.available is True
+    assert availability.engine_name == "Ready OCR"
+    assert availability.status == "ready"
+
+
+def test_check_ocr_engine_availability_missing():
+    class MissingEngine:
+        name = "Missing OCR"
+
+        def run(self, _image, settings=None):
+            raise MissingOCREngineError("dependency missing")
+
+    availability = check_ocr_engine_availability(MissingEngine())
+
+    assert availability.available is False
+    assert availability.status == "missing"
+    assert "dependency missing" in availability.message
+
+
+def test_check_ocr_engine_availability_broken():
+    class BrokenEngine:
+        name = "Broken OCR"
+
+        def run(self, _image, settings=None):
+            raise OCREngineError("runtime crashed")
+
+    availability = check_ocr_engine_availability(BrokenEngine())
+
+    assert availability.available is False
+    assert availability.status == "broken"
+    assert "runtime crashed" in availability.message
 
 
 def test_ocr_service_runs_capture_engine_and_parser():

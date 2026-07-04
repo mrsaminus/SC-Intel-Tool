@@ -785,8 +785,10 @@ class HaulingTab(BackgroundTaskMixin, QWidget):
             self.status_label.setText(f"OCR capture failed locally: {getattr(result, 'message', '')}")
             return
         if status == "missing_ocr":
+            message = getattr(result, "message", "")
             self.status_label.setText(
-                "No local OCR engine is available. Paste hauling contract text manually and click Parse Contracts."
+                f"Local OCR engine unavailable: {message}. "
+                "Paste hauling contract text manually and click Parse Contracts."
             )
             return
         if status == "ocr_error":
