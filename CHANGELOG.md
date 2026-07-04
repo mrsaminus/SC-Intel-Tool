@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.8.10.0 - 2026-07-04
+
+### Version
+
+- Version consistency fix.
+- All UI now reads the version from the canonical version source.
+
 ## 0.1.0-alpha.8.9.11 - 2026-07-04
 
 ### Updater Reliability
