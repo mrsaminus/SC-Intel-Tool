@@ -2,10 +2,16 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.8.9.11 - 2026-07-04
+
 ### Updater Reliability
 
-- Fixed update checker release selection so multi-digit alpha versions such as
-  `0.1.0-alpha.8.9.10` sort newer than `0.1.0-alpha.8.9.9`.
+- Fixed update checker selecting an older release when GitHub returns releases
+  out of version order.
+- Numeric version sorting now correctly handles multi-digit alpha versions such
+  as `0.1.0-alpha.8.9.10` sorting newer than `0.1.0-alpha.8.9.9`.
+- Pre-releases remain included in update checks while draft releases are
+  ignored.
 
 ## 0.1.0-alpha.8.9.10 - 2026-07-04
 
