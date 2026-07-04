@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.8.9.10 - 2026-07-04
+
 ### OCR
 
 - Added/configured a bundled RapidOCR runtime so local OCR works without a
