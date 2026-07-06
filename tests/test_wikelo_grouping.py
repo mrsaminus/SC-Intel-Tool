@@ -1,7 +1,13 @@
 from types import SimpleNamespace
 
+from PySide6.QtWidgets import QApplication, QPushButton
+
 from conftest import isolated_database, reload_module
 from app.wikelo_client import WikeloItem, WikeloRequirement
+
+
+def qapp():
+    return QApplication.instance() or QApplication([])
 
 
 def bind_wikelo_logic(tab_class):
@@ -76,3 +82,29 @@ def test_wikelo_requirement_rows_keep_materials_under_one_option(monkeypatch, tm
     assert rows[0]["label"].startswith("Option 1 - Build a Mod Zeus")
     assert rows[1]["name"] == "Wikelo Favor"
     assert rows[2]["source"] == "Salvage"
+
+
+def test_wikelo_ui_search_finds_capital_ships_and_hides_source_buttons(monkeypatch, tmp_path):
+    isolated_database(monkeypatch, tmp_path)
+    app = qapp()
+    wikelo_tab = reload_module("app.gui.wikelo_tab")
+    tab = wikelo_tab.WikeloItemsTab()
+    tab.wikelo_items = [
+        wikelo_item("Idris-P", "Very Best Customer (999 Reputation)", [WikeloRequirement("Wikelo Favor", "50x")]),
+        wikelo_item("Polaris", "Now make Polaris. Short Time Deal.", [WikeloRequirement("Polaris Bits", "15x")]),
+    ]
+    tab.refresh_category_filter()
+
+    button_texts = [button.text() for button in tab.findChildren(QPushButton)]
+    assert "Open Wikelo Source" not in button_texts
+    assert "Open Selected Item Source" not in button_texts
+
+    tab.wikelo_search_input.setText("idris")
+    app.processEvents()
+    assert [item.item_name for item in tab.visible_wikelo_items] == ["Idris-P"]
+
+    tab.wikelo_search_input.setText("polaris")
+    app.processEvents()
+    assert [item.item_name for item in tab.visible_wikelo_items] == ["Polaris"]
+
+    tab.close()

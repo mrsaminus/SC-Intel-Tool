@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Wikelo
+
+- Fixed incomplete Wikelo data import for split-layout ship reward rows.
+- Added missing capital ship rewards including Idris-P and Polaris.
+- Removed external Open Source buttons from the Wikelo UI.
+- Improved Wikelo data completeness validation and cache schema handling.
+
 ## 0.1.0-alpha.8.10.0 - 2026-07-04
 
 ### Version

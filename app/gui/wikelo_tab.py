@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QColor, QDesktopServices
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -31,7 +31,7 @@ from app.local_cache import (
     mark_cache_error,
     save_wikelo_cache,
 )
-from app.wikelo_client import WIKELO_SOURCE_URL, fetch_wikelo_items, normalized_key
+from app.wikelo_client import fetch_wikelo_items, normalized_key
 
 from .safe_combobox import SafeComboBox as QComboBox
 from .sortable_table_item import SORT_ROLE, SortableTableWidgetItem
@@ -101,9 +101,7 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
 
         button_row = QHBoxLayout()
         self.refresh_wikelo_button = QPushButton("Refresh Wikelo Data")
-        self.open_wikelo_source_button = QPushButton("Open Wikelo Source")
         button_row.addWidget(self.refresh_wikelo_button)
-        button_row.addWidget(self.open_wikelo_source_button)
         layout.addLayout(button_row)
 
         self.wikelo_status_label = QLabel("Wikelo data will load when this tab is opened or Refresh Wikelo Data is clicked.")
@@ -151,13 +149,10 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
         layout.addWidget(self.selected_wikelo_location_label)
 
         button_row = QHBoxLayout()
-        self.open_selected_wikelo_source_button = QPushButton("Open Selected Item Source")
         self.reset_selected_wikelo_button = QPushButton("Reset Selected Reward")
         self.reset_all_wikelo_button = QPushButton("Reset All Wikelo Progress")
-        self.open_selected_wikelo_source_button.clicked.connect(self.open_selected_wikelo_source)
         self.reset_selected_wikelo_button.clicked.connect(self.reset_selected_wikelo_reward)
         self.reset_all_wikelo_button.clicked.connect(self.reset_all_wikelo_progress)
-        button_row.addWidget(self.open_selected_wikelo_source_button)
         button_row.addWidget(self.reset_selected_wikelo_button)
         button_row.addWidget(self.reset_all_wikelo_button)
         layout.addLayout(button_row)
@@ -184,7 +179,6 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
         self.wikelo_category_filter.currentTextChanged.connect(self.populate_wikelo_results)
         self.show_retired_checkbox.stateChanged.connect(self.populate_wikelo_results)
         self.refresh_wikelo_button.clicked.connect(self.refresh_wikelo_items)
-        self.open_wikelo_source_button.clicked.connect(self.open_wikelo_source)
         self.wikelo_results_table.itemSelectionChanged.connect(self.update_selected_wikelo_panel)
         self.wikelo_requirements_table.itemChanged.connect(self.on_wikelo_requirement_item_changed)
 
@@ -405,7 +399,6 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
 
     def update_selected_wikelo_panel(self):
         item = self.selected_wikelo_item()
-        self.open_selected_wikelo_source_button.setEnabled(item is not None)
         self.reset_selected_wikelo_button.setEnabled(item is not None)
         if not item:
             self.selected_wikelo_name_label.setText("No Wikelo item selected")
@@ -610,13 +603,6 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
             return None
 
         return self.visible_wikelo_items[index]
-
-    def open_wikelo_source(self):
-        QDesktopServices.openUrl(QUrl(WIKELO_SOURCE_URL))
-
-    def open_selected_wikelo_source(self):
-        item = self.selected_wikelo_item()
-        QDesktopServices.openUrl(QUrl(item.source_url if item else WIKELO_SOURCE_URL))
 
     def reset_selected_wikelo_reward(self):
         item = self.selected_wikelo_item()

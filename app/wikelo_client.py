@@ -145,7 +145,98 @@ def parse_wikelo_sheet(tab_name, rows):
     items.extend(parse_favor_exchange(tab_name, rows, title, updated, notes))
     items.extend(parse_inline_mission_costs(tab_name, rows, title, updated, notes))
     items.extend(parse_cost_reward_blocks(tab_name, rows, title, updated, notes))
+    items.extend(parse_special_ship_project_blocks(tab_name, rows, updated, notes))
     return items
+
+
+def parse_special_ship_project_blocks(tab_name, rows, updated, notes):
+    if "ships" not in str(tab_name or "").lower():
+        return []
+
+    items = []
+    idris_item = parse_idris_project(tab_name, rows, updated, notes)
+    if idris_item:
+        items.append(idris_item)
+
+    polaris_item = parse_polaris_project(tab_name, rows, updated, notes)
+    if polaris_item:
+        items.append(polaris_item)
+
+    return items
+
+
+def parse_idris_project(tab_name, rows, updated, notes):
+    location = find_cell(rows, "idris-p")
+    if not location:
+        return None
+
+    row_index, column_index = location
+    requirements = []
+    for offset in range(0, 9):
+        requirements.extend(parse_cost_requirements(cell_at(rows, row_index + offset, column_index)))
+    requirements.extend(parse_requirements(cell_at(rows, row_index + 1, column_index + 7)))
+    requirements = tuple(unique_requirements(requirements))
+    if not requirements:
+        return None
+
+    mission = "Very Best Customer (999 Reputation)"
+    nearby_text = " ".join(
+        cell_at(rows, current_row, current_column)
+        for current_row in range(row_index, min(len(rows), row_index + 9))
+        for current_column in range(max(0, column_index - 1), min(max_row_width(rows), column_index + 8))
+    )
+    reputation_match = re.search(r"Reputation:\s*(.*?)(?:\s+Cost:|\nCost:|$)", nearby_text, re.IGNORECASE | re.DOTALL)
+    if reputation_match:
+        mission = clean_text(reputation_match.group(1))
+
+    return build_wikelo_item(
+        tab_name,
+        "Idris-P",
+        mission,
+        requirements,
+        tab_name,
+        updated,
+        append_note(notes, "Special Ships 4.7 split-layout project parsed from the public Wikelo sheet."),
+        row_metadata=nearby_text,
+    )
+
+
+def parse_polaris_project(tab_name, rows, updated, notes):
+    mission_location = find_cell_contains(rows, "now make polaris")
+    materials_location = find_cell_contains(rows, "mission turn-in materials")
+    if not mission_location or not materials_location:
+        return None
+
+    mission_row, mission_column = mission_location
+    materials_row, _materials_column = materials_location
+    requirements = []
+    for row_index in range(materials_row + 1, min(len(rows), materials_row + 20)):
+        row_text = " ".join(cell for cell in rows[row_index] if cell)
+        if "where to source" in row_text.lower():
+            break
+        for cell in rows[row_index]:
+            requirements.extend(parse_requirements(cell))
+    requirements = tuple(unique_requirements(requirements))
+    if not requirements:
+        return None
+
+    mission = extract_inline_mission_name(cell_at(rows, mission_row, mission_column)) or "Now make Polaris. Short Time Deal."
+    special_notes = []
+    for row_index in range(mission_row + 1, min(len(rows), mission_row + 4)):
+        row_text = clean_text(" ".join(cell for cell in rows[row_index] if cell))
+        if row_text and not row_text.lower().startswith("image credit"):
+            special_notes.append(row_text)
+
+    return build_wikelo_item(
+        tab_name,
+        "Polaris",
+        mission,
+        requirements,
+        tab_name,
+        updated,
+        append_note(notes, " ".join(special_notes)),
+        row_metadata=" ".join((mission, " ".join(special_notes))),
+    )
 
 
 def parse_inline_mission_costs(tab_name, rows, title, updated, notes):
@@ -364,6 +455,15 @@ def parse_requirements(text):
     return requirements
 
 
+def parse_cost_requirements(text):
+    text = str(text or "")
+    if "cost" not in text.lower():
+        return []
+    cost_text = re.sub(r"^.*?\bCost:\s*", "", text, flags=re.IGNORECASE | re.DOTALL)
+    cost_text = re.sub(r"\bContinued\s*.*$", "", cost_text, flags=re.IGNORECASE | re.DOTALL)
+    return parse_requirements(cost_text)
+
+
 def requirement_parts(text):
     normalized = str(text or "").replace("\r", "\n")
     normalized = re.sub(r"\s+\+\s+", "\n", normalized)
@@ -374,6 +474,18 @@ def requirement_parts(text):
             continue
         parts.extend(part.strip() for part in re.split(r",|;|\band\b", line) if part.strip())
     return parts
+
+
+def unique_requirements(requirements):
+    unique = []
+    seen = set()
+    for requirement in requirements:
+        key = (requirement.name.strip().lower(), requirement.quantity.strip().lower())
+        if not requirement.name or key in seen:
+            continue
+        seen.add(key)
+        unique.append(requirement)
+    return unique
 
 
 def clean_requirement_name(text):
@@ -491,6 +603,15 @@ def sheet_title(tab_name, rows):
 def sheet_updated(rows):
     for row in rows[:10]:
         row_text = " ".join(row)
+        date_match = re.search(
+            r"(Updated|Created):\s*(\d{4}-\d{2}-\d{2})(?:\s*:\s*([0-9.]+))?",
+            row_text,
+            re.IGNORECASE,
+        )
+        if date_match:
+            date_text = date_match.group(2)
+            version_text = date_match.group(3)
+            return f"{date_text} / {version_text}" if version_text else date_text
         match = re.search(r"(Updated|Created):\s*([^:\n]+?)(?:\s{2,}|$)", row_text, re.IGNORECASE)
         if match:
             return clean_text(match.group(2))
@@ -524,6 +645,38 @@ def clean_text(text):
         for line in str(text or "").replace("\r", "\n").splitlines()
     ]
     return "\n".join(line for line in lines if line).strip()
+
+
+def extract_inline_mission_name(text):
+    match = re.search(r"Mission:\s*(.+)$", str(text or ""), re.IGNORECASE | re.DOTALL)
+    return clean_text(match.group(1)) if match else ""
+
+
+def append_note(*parts):
+    notes = [clean_text(part) for part in parts if clean_text(part)]
+    return clean_text(" ".join(notes))
+
+
+def find_cell(rows, value):
+    expected = clean_text(value).lower()
+    for row_index, row in enumerate(rows):
+        for column_index, cell in enumerate(row):
+            if clean_text(cell).lower() == expected:
+                return row_index, column_index
+    return None
+
+
+def find_cell_contains(rows, value):
+    expected = clean_text(value).lower()
+    for row_index, row in enumerate(rows):
+        for column_index, cell in enumerate(row):
+            if expected in clean_text(cell).lower():
+                return row_index, column_index
+    return None
+
+
+def max_row_width(rows):
+    return max((len(row) for row in rows), default=0)
 
 
 def cell_at(rows, row_index, column_index):

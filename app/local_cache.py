@@ -9,9 +9,16 @@ WIKELO_CACHE_KEY = "wikelo.items"
 UEX_PRICES_CACHE_KEY = "uex_prices"
 BLUEPRINT_CACHE_KEY = "bp_overview.blueprints"
 ITEM_FINDER_SCHEMA_VERSION = "1"
-WIKELO_SCHEMA_VERSION = "1"
+WIKELO_SCHEMA_VERSION = "2"
 UEX_PRICES_SCHEMA_VERSION = "1"
 BLUEPRINT_SCHEMA_VERSION = "1"
+
+EXPECTED_SCHEMA_VERSIONS = {
+    ITEM_FINDER_CACHE_KEY: ITEM_FINDER_SCHEMA_VERSION,
+    WIKELO_CACHE_KEY: WIKELO_SCHEMA_VERSION,
+    UEX_PRICES_CACHE_KEY: UEX_PRICES_SCHEMA_VERSION,
+    BLUEPRINT_CACHE_KEY: BLUEPRINT_SCHEMA_VERSION,
+}
 
 
 @dataclass(frozen=True)
@@ -279,12 +286,19 @@ def get_cache_metadata(cache_key):
 
 def cache_exists(cache_key):
     metadata = get_cache_metadata(cache_key)
-    return bool(metadata and metadata.status in {"ready", "stale", "error"} and metadata.row_count > 0)
+    return bool(
+        metadata
+        and cache_schema_matches(cache_key, metadata)
+        and metadata.status in {"ready", "stale", "error"}
+        and metadata.row_count > 0
+    )
 
 
 def cache_is_fresh(cache_key, now=None):
     metadata = get_cache_metadata(cache_key)
     if not metadata or metadata.status != "ready" or metadata.row_count <= 0:
+        return False
+    if not cache_schema_matches(cache_key, metadata):
         return False
 
     expires_at = metadata.expires_at_datetime
@@ -298,11 +312,21 @@ def cache_status(cache_key, now=None):
     metadata = get_cache_metadata(cache_key)
     if not metadata or metadata.row_count <= 0:
         return "missing"
+    if not cache_schema_matches(cache_key, metadata):
+        return "stale"
     if metadata.status == "error":
         return "error"
     if cache_is_fresh(cache_key, now=now):
         return "fresh"
     return "stale"
+
+
+def cache_schema_matches(cache_key, metadata=None):
+    metadata = metadata or get_cache_metadata(cache_key)
+    expected = EXPECTED_SCHEMA_VERSIONS.get(cache_key)
+    if not expected or not metadata:
+        return True
+    return str(metadata.schema_version) == str(expected)
 
 
 def update_cache_metadata(
@@ -774,6 +798,10 @@ def save_wikelo_cache(items, warnings=None):
 
 def load_wikelo_cache():
     from app.wikelo_client import WikeloItem, WikeloRequirement
+
+    metadata = get_cache_metadata(WIKELO_CACHE_KEY)
+    if metadata and not cache_schema_matches(WIKELO_CACHE_KEY, metadata):
+        return [], metadata
 
     with _connect() as conn:
         cur = conn.cursor()

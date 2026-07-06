@@ -235,6 +235,43 @@ def test_wikelo_cache_round_trip(monkeypatch, tmp_path):
     assert [requirement.name for requirement in items[0].requirements] == ["Wikelo Favor", "Comp-Board"]
 
 
+def test_wikelo_cache_preserves_capital_ship_rewards(monkeypatch, tmp_path):
+    isolated_database(monkeypatch, tmp_path)
+    cache = reload_module("app.local_cache")
+
+    from app.wikelo_client import parse_wikelo_sheet
+    from test_wikelo_client import ships_47_special_rows
+
+    cache.save_wikelo_cache(parse_wikelo_sheet("Ships 4.7", ships_47_special_rows()))
+    items, metadata = cache.load_wikelo_cache()
+
+    assert metadata.row_count == 2
+    by_name = {item.item_name: item for item in items}
+    assert "Idris-P" in by_name
+    assert "Polaris" in by_name
+    assert by_name["Polaris"].mission_name == "Now make Polaris. Short Time Deal."
+
+
+def test_wikelo_old_schema_cache_is_not_reused_as_fresh(monkeypatch, tmp_path):
+    isolated_database(monkeypatch, tmp_path)
+    cache = reload_module("app.local_cache")
+
+    cache.save_wikelo_cache([sample_wikelo_item()])
+    cache.update_cache_metadata(
+        cache.WIKELO_CACHE_KEY,
+        "Public Wikelo spreadsheet",
+        "1",
+        row_count=1,
+    )
+
+    items, metadata = cache.load_wikelo_cache()
+
+    assert items == []
+    assert metadata.schema_version == "1"
+    assert cache.cache_status(cache.WIKELO_CACHE_KEY) == "stale"
+    assert not cache.cache_is_fresh(cache.WIKELO_CACHE_KEY)
+
+
 def test_wikelo_uses_cache_before_live_refresh(monkeypatch, tmp_path, qapp):
     isolated_database(monkeypatch, tmp_path)
     cache = reload_module("app.local_cache")
