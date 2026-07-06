@@ -6,6 +6,8 @@
 
 - Blueprint Reward Scanner now checks for the visual Star Citizen notification
   toast before running OCR.
+- Blueprint Reward Scanner now treats the notification toast box as the primary
+  trigger; OCR text alone no longer triggers without the visual toast.
 - Rate-limited Blueprint scanner checks to one scan per second.
 - Stopped saving OCR debug captures for unrelated no-toast frames.
 - Blueprint scanner now OCRs the notification toast only after the toast is

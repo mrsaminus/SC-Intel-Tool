@@ -37,7 +37,9 @@ class ToastDetection:
         return {
             "detected": self.detected,
             "crop_box": list(self.crop_box) if self.crop_box else None,
+            "crop_rect": list(self.crop_box) if self.crop_box else None,
             "confidence": self.confidence,
+            "score": self.confidence,
             "reason": self.reason,
         }
 
@@ -227,12 +229,15 @@ class BlueprintRewardWorkflow:
         self.state = STATE_TRIGGER_DETECTED
         return True
 
-    def trigger_seen(self, text):
+    def trigger_seen(self, text, visual_toast_detected=False):
         trigger_found = detect_blueprint_reward_trigger(text)
         if self.state == STATE_WAITING_FOR_WINDOW_CLOSE:
             if trigger_found:
                 return False
             self.state = STATE_IDLE
+            return False
+
+        if not visual_toast_detected:
             return False
 
         if not trigger_found:

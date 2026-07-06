@@ -321,6 +321,9 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
                 "scan_interval_ms": BLUEPRINT_SCAN_INTERVAL_MS,
                 "region": ocr_region.to_dict(),
                 "toast_crop_box": None,
+                "toast_crop_rect": None,
+                "visual_toast_confidence": 0.0,
+                "reason_skipped": "capture_error",
                 "toast_detection": None,
                 "text": "",
                 "matches": [],
@@ -340,6 +343,9 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
                 "scan_interval_ms": BLUEPRINT_SCAN_INTERVAL_MS,
                 "region": ocr_region.to_dict(),
                 "toast_crop_box": None,
+                "toast_crop_rect": None,
+                "visual_toast_confidence": detection.confidence,
+                "reason_skipped": detection.reason or "no_toast",
                 "toast_detection": detection.to_dict(),
                 "text": "",
                 "matches": [],
@@ -359,6 +365,9 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
                 "scan_interval_ms": BLUEPRINT_SCAN_INTERVAL_MS,
                 "region": ocr_region.to_dict(),
                 "toast_crop_box": detection.crop_box,
+                "toast_crop_rect": detection.crop_box,
+                "visual_toast_confidence": detection.confidence,
+                "reason_skipped": "",
                 "toast_detection": detection.to_dict(),
                 "captured_image": region_image,
                 "toast_image": toast_image,
@@ -404,6 +413,9 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
                     "scan_interval_ms": BLUEPRINT_SCAN_INTERVAL_MS,
                     "region": ocr_region.to_dict(),
                     "toast_crop_box": detection.crop_box,
+                    "toast_crop_rect": detection.crop_box,
+                    "visual_toast_confidence": detection.confidence,
+                    "reason_skipped": "",
                     "toast_detection": detection.to_dict(),
                     "captured_image": region_image,
                     "toast_image": toast_image,
@@ -425,6 +437,9 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
             "scan_interval_ms": BLUEPRINT_SCAN_INTERVAL_MS,
             "region": ocr_region.to_dict(),
             "toast_crop_box": detection.crop_box,
+            "toast_crop_rect": detection.crop_box,
+            "visual_toast_confidence": detection.confidence,
+            "reason_skipped": "",
             "toast_detection": detection.to_dict(),
             "captured_image": region_image,
             "toast_image": toast_image,
@@ -476,7 +491,7 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
 
         trigger_match = bool(result.get("text_trigger_detected"))
         should_scan = (
-            self.reward_workflow.trigger_seen(text)
+            self.reward_workflow.trigger_seen(text, visual_toast_detected=bool(result.get("visual_toast_detected")))
             if trigger_match
             else self.reward_workflow.visual_toast_seen()
         )
@@ -628,6 +643,7 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
                 "scanner_state_after": state_after,
                 "workflow_state": state_before,
                 "visual_toast_detected": bool(result.get("visual_toast_detected")),
+                "visual_toast_confidence": result.get("visual_toast_confidence", 0.0),
                 "text_trigger_detected": bool(result.get("text_trigger_detected")),
                 "name_candidate_present": bool(result.get("name_candidate_present")),
                 "trigger_match": bool(result.get("text_trigger_detected")),
@@ -636,7 +652,9 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
                 "message": result.get("message", ""),
                 "region": result.get("region"),
                 "toast_crop_box": list(result.get("toast_crop_box") or []),
+                "toast_crop_rect": list(result.get("toast_crop_rect") or result.get("toast_crop_box") or []),
                 "toast_detection": result.get("toast_detection"),
+                "reason_skipped": result.get("reason_skipped", ""),
                 "ocr_text": result.get("text", ""),
                 "warnings": result.get("warnings", ()),
                 "errors": result.get("errors", ()),

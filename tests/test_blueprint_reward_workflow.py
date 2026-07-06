@@ -82,7 +82,7 @@ def test_blueprint_scan_interval_is_not_subsecond():
 def test_blueprint_reward_workflow_waits_until_trigger_disappears():
     workflow = BlueprintRewardWorkflow()
 
-    assert workflow.trigger_seen("Received Blueprint:")
+    assert workflow.trigger_seen("Received Blueprint:", visual_toast_detected=True)
     assert workflow.state == STATE_TRIGGER_DETECTED
 
     workflow.start_scanning()
@@ -90,10 +90,17 @@ def test_blueprint_reward_workflow_waits_until_trigger_disappears():
     workflow.wait_for_window_close()
     assert workflow.state == STATE_WAITING_FOR_WINDOW_CLOSE
 
-    assert not workflow.trigger_seen("Received Blueprint:")
+    assert not workflow.trigger_seen("Received Blueprint:", visual_toast_detected=True)
     assert workflow.state == STATE_WAITING_FOR_WINDOW_CLOSE
 
     assert not workflow.trigger_seen("")
+    assert workflow.state == STATE_IDLE
+
+
+def test_blueprint_reward_workflow_ignores_ocr_text_without_visual_toast():
+    workflow = BlueprintRewardWorkflow()
+
+    assert not workflow.trigger_seen("Received Blueprint:", visual_toast_detected=False)
     assert workflow.state == STATE_IDLE
 
 
@@ -108,7 +115,7 @@ def test_blueprint_reward_workflow_can_wait_after_visual_toast_without_text_trig
     assert not workflow.visual_toast_seen()
     assert workflow.state == STATE_WAITING_FOR_WINDOW_CLOSE
 
-    assert not workflow.trigger_seen("")
+    assert not workflow.trigger_seen("", visual_toast_detected=False)
     assert workflow.state == STATE_IDLE
 
 

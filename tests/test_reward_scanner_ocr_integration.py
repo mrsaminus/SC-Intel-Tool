@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import json
 
 import pytest
 from PySide6.QtCore import QThreadPool
@@ -171,6 +172,87 @@ def test_reward_scanner_does_not_run_full_ocr_without_trigger(monkeypatch, tmp_p
     tab.deleteLater()
 
 
+def test_reward_scanner_ignores_ocr_text_without_visual_toast(monkeypatch, tmp_path, qapp):
+    tab = build_scanner_tab(monkeypatch, tmp_path)
+    tab.set_blueprints([BlueprintStub("field-recon-helmet", "Field Recon Helmet")])
+    calls = []
+
+    class FakeOCRService:
+        screenshot_service = FakeScreenshotService(calls, plain_image())
+
+        def scan_image(self, image, parser=None, settings=None, preprocess=True):
+            raise AssertionError("OCR must not run without the visual toast box")
+
+    def run_synchronously(function, on_result=None, on_error=None, on_finished=None):
+        try:
+            if on_result:
+                on_result(function())
+        finally:
+            if on_finished:
+                on_finished()
+
+    tab.ocr_service = FakeOCRService()
+    tab.start_background_task = run_synchronously
+
+    tab.scan_once()
+    qapp.processEvents()
+
+    assert len(calls) == 1
+    assert calls[0][0] == "capture"
+    assert tab.ocr_text.toPlainText() == ""
+    assert tab.reward_workflow.state == "Idle"
+    assert not (tmp_path / "SC-Intel-Tool" / "ocr_debug" / "blueprint_reward").exists()
+    tab.close()
+    tab.deleteLater()
+
+
+def test_reward_scanner_toast_without_blueprint_text_ocr_does_not_match(monkeypatch, tmp_path, qapp):
+    tab = build_scanner_tab(monkeypatch, tmp_path)
+    tab.set_blueprints([BlueprintStub("field-recon-helmet", "Field Recon Helmet")])
+    calls = []
+
+    class FakeOCRService:
+        screenshot_service = FakeScreenshotService(calls, toast_image())
+
+        def scan_image(self, image, parser=None, settings=None, preprocess=True):
+            calls.append(("ocr", image, parser, preprocess))
+            return OCRPipelineResult(
+                status="ok",
+                ocr_result=OCRResult(text="Delivery Complete"),
+                captured_image=image,
+            )
+
+    def run_synchronously(function, on_result=None, on_error=None, on_finished=None):
+        try:
+            if on_result:
+                on_result(function())
+        finally:
+            if on_finished:
+                on_finished()
+
+    tab.ocr_service = FakeOCRService()
+    tab.start_background_task = run_synchronously
+
+    tab.scan_once()
+    qapp.processEvents()
+
+    assert len(calls) == 2
+    assert calls[0][0] == "capture"
+    assert calls[1][0] == "ocr"
+    assert tab.matches_table.rowCount() == 0
+    assert "not a Blueprint reward" in tab.status_label.text()
+    assert tab.reward_workflow.state == STATE_WAITING_FOR_WINDOW_CLOSE
+    debug_sessions = list((tmp_path / "SC-Intel-Tool" / "ocr_debug" / "blueprint_reward").iterdir())
+    assert len(debug_sessions) == 1
+    metadata = json.loads((debug_sessions[0] / "metadata.json").read_text(encoding="utf-8"))
+    assert metadata["visual_toast_detected"] is True
+    assert metadata["text_trigger_detected"] is False
+    assert metadata["visual_toast_confidence"] > 0
+    assert metadata["toast_crop_rect"]
+    tab.close()
+    tab.deleteLater()
+
+
 def test_reward_scanner_waiting_state_prevents_duplicate_full_scan(monkeypatch, tmp_path, qapp):
     tab = build_scanner_tab(monkeypatch, tmp_path)
     tab.reward_workflow.wait_for_window_close()
@@ -271,10 +353,12 @@ def test_reward_scanner_toast_with_missing_blueprint_name_saves_debug(monkeypatc
     assert tab.reward_workflow.state == STATE_WAITING_FOR_WINDOW_CLOSE
     debug_sessions = list((tmp_path / "SC-Intel-Tool" / "ocr_debug" / "blueprint_reward").iterdir())
     assert len(debug_sessions) == 1
-    metadata = (debug_sessions[0] / "metadata.json").read_text(encoding="utf-8")
-    assert '"visual_toast_detected": true' in metadata
-    assert '"text_trigger_detected": true' in metadata
-    assert '"scan_interval_ms": 1000' in metadata
+    metadata = json.loads((debug_sessions[0] / "metadata.json").read_text(encoding="utf-8"))
+    assert metadata["visual_toast_detected"] is True
+    assert metadata["text_trigger_detected"] is True
+    assert metadata["scan_interval_ms"] == 1000
+    assert metadata["visual_toast_confidence"] > 0
+    assert metadata["toast_crop_rect"]
     tab.close()
     tab.deleteLater()
 
