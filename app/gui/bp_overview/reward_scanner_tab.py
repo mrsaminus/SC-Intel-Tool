@@ -22,12 +22,16 @@ from app.database import get_app_setting, set_app_setting
 from app.event_center.service import record_event
 from app.ocr import OCRProfileManager, OCRRegion, OCRService, REWARD_SCANNER_PROFILE_KEY
 from app.ocr.blueprint_reward_workflow import (
+    BLUEPRINT_SCAN_INTERVAL_MS,
     BlueprintRewardWorkflow,
+    blueprint_name_candidate_present,
+    crop_notification_toast,
     detect_blueprint_reward_trigger,
-    title_region_from_reward_region,
+    detect_notification_toast,
 )
 from app.ocr.debug_capture import is_ocr_debug_enabled, start_ocr_debug_session
 from app.ocr.reward_scanner import RewardScannerParser, reward_scan_result_from_pipeline
+from app.ocr.results import OCRPipelineResult
 
 from ..responsive import install_scroll_area
 from ..workers import BackgroundTaskMixin
@@ -44,7 +48,6 @@ from .shared import ROW_ROLE, create_card, create_table, table_item
 
 REGION_SETTING_KEY = "bp_reward_scanner_region"
 REGION_NAME = "Reward Scanner"
-NONMATCH_DEBUG_SAMPLE_SECONDS = 30
 
 
 class RewardScannerTab(BackgroundTaskMixin, QWidget):
@@ -59,14 +62,14 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         self.trigger_check_running = False
         self.scan_once_request_id = 0
         self.trigger_request_id = 0
-        self.last_nonmatch_debug_saved_at = 0.0
+        self.last_trigger_check_started_at = 0.0
         self.full_scan_debug_sessions = {}
         self.region_overlay = None
         self.ocr_profile_manager = OCRProfileManager()
         self.ocr_service = OCRService(settings=self.current_ocr_profile().to_settings())
         self.reward_workflow = BlueprintRewardWorkflow()
         self.trigger_timer = QTimer(self)
-        self.trigger_timer.setInterval(2500)
+        self.trigger_timer.setInterval(BLUEPRINT_SCAN_INTERVAL_MS)
         self.trigger_timer.timeout.connect(self.check_reward_trigger)
 
         content_widget = QWidget()
@@ -84,8 +87,8 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
     def build_privacy_card(self):
         card = create_card("REWARD SCANNER ALPHA")
         text = QLabel(
-            "Optional and off by default. When enabled, the scanner watches the selected region for the "
-            "\"Received Blueprint\" title first, then runs full local OCR only when the reward window is visible. "
+            "Optional and off by default. When enabled, the scanner watches the selected region once per second "
+            "for the Star Citizen reward notification toast, then OCRs only that toast when it is visible. "
             "No screenshots or OCR text are uploaded. Confirm Add is required before ownership changes."
         )
         text.setObjectName("moduleSubtitle")
@@ -159,7 +162,7 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         buttons.addWidget(self.confirm_button)
         layout.addLayout(buttons)
 
-        self.status_label = QLabel("Scanner is off. Enable it to watch for the Received Blueprint trigger.")
+        self.status_label = QLabel("Scanner is off. Enable it to watch for the Blueprint notification toast.")
         self.status_label.setObjectName("moduleSubtitle")
         self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
@@ -228,14 +231,14 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
             QMessageBox.information(
                 self,
                 "Scanner Disabled",
-                "Enable the scanner before checking for a Received Blueprint window. It remains off by default.",
+                "Enable the scanner before checking for a Blueprint notification toast. It remains off by default.",
             )
             return
         self.check_reward_trigger(force=True)
 
     def on_scanner_enabled_changed(self, enabled):
         if enabled:
-            self.status_label.setText("Scanner enabled. Watching for the Received Blueprint trigger.")
+            self.status_label.setText("Scanner enabled. Watching for the Blueprint notification toast.")
             self.trigger_timer.start()
             self.check_reward_trigger(force=True)
             return
@@ -245,7 +248,7 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         self.scan_once_running = False
         self.scan_once_button.setEnabled(True)
         self.scan_once_button.setText("Check Now")
-        self.status_label.setText("Scanner is off. Enable it to watch for the Received Blueprint trigger.")
+        self.status_label.setText("Scanner is off. Enable it to watch for the Blueprint notification toast.")
 
     def check_reward_trigger(self, force=False):
         if not self.enabled_checkbox.isChecked():
@@ -254,12 +257,18 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
             if force:
                 self.status_label.setText("Scanner is already checking this region.")
             return
+        now = time.monotonic()
+        elapsed_ms = (now - self.last_trigger_check_started_at) * 1000
+        if self.last_trigger_check_started_at and elapsed_ms < BLUEPRINT_SCAN_INTERVAL_MS:
+            if force:
+                self.status_label.setText("Scanner is rate limited to one Blueprint notification check per second.")
+            return
         region = self.region()
         if not region:
             if force:
                 QMessageBox.warning(self, "Region Required", "Enter X, Y, Width and Height before checking.")
             else:
-                self.status_label.setText("Scanner enabled. Select a Received Blueprint region to begin.")
+                self.status_label.setText("Scanner enabled. Select a Blueprint notification region to begin.")
             return
         if self.remember_region_checkbox.isChecked():
             self.save_region()
@@ -271,69 +280,242 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
             profile=profile.key,
             description="BP Overview reward scanner capture region.",
         )
-        trigger_region = title_region_from_reward_region(ocr_region)
         self.trigger_check_running = True
         self.trigger_request_id += 1
+        self.last_trigger_check_started_at = now
         request_id = self.trigger_request_id
         self.scan_once_button.setEnabled(False)
         self.scan_once_button.setText("Checking...")
         if self.reward_workflow.waiting_for_window_close:
             self.status_label.setText("Waiting for the current Received Blueprint window to close.")
         else:
-            self.status_label.setText("Checking for Received Blueprint trigger...")
+            self.status_label.setText("Checking for Blueprint notification toast...")
 
         self.start_background_task(
-            lambda: self.ocr_service.scan_profile_region(profile, trigger_region, parser=None),
+            lambda waiting=self.reward_workflow.waiting_for_window_close: self.scan_blueprint_notification(
+                profile,
+                ocr_region,
+                waiting_for_window_close=waiting,
+            ),
             lambda result, current_request=request_id: self.on_trigger_check_result(current_request, result),
             lambda exc, current_request=request_id: self.on_trigger_check_error(current_request, exc),
             lambda current_request=request_id: self.finish_trigger_check(current_request),
         )
 
-    def on_trigger_check_result(self, request_id, pipeline):
+    def scan_blueprint_notification(self, profile, ocr_region, waiting_for_window_close=False):
+        settings = profile.to_settings()
+        try:
+            region_image = self.ocr_service.screenshot_service.capture_region(
+                ocr_region,
+                preprocess=False,
+                settings=settings,
+            )
+        except Exception as exc:
+            message = str(exc)
+            return {
+                "status": "capture_error",
+                "message": message,
+                "visual_toast_detected": False,
+                "text_trigger_detected": False,
+                "name_candidate_present": False,
+                "scan_interval_ms": BLUEPRINT_SCAN_INTERVAL_MS,
+                "region": ocr_region.to_dict(),
+                "toast_crop_box": None,
+                "toast_detection": None,
+                "text": "",
+                "matches": [],
+                "blueprint_count": len(self.blueprints),
+                "warnings": ("capture_error",),
+                "errors": (message,),
+            }
+
+        detection = detect_notification_toast(region_image)
+        if not detection.detected:
+            return {
+                "status": "no_toast",
+                "message": "No Blueprint notification toast detected.",
+                "visual_toast_detected": False,
+                "text_trigger_detected": False,
+                "name_candidate_present": False,
+                "scan_interval_ms": BLUEPRINT_SCAN_INTERVAL_MS,
+                "region": ocr_region.to_dict(),
+                "toast_crop_box": None,
+                "toast_detection": detection.to_dict(),
+                "text": "",
+                "matches": [],
+                "blueprint_count": len(self.blueprints),
+                "warnings": (),
+                "errors": (),
+            }
+
+        toast_image = crop_notification_toast(region_image, detection)
+        if waiting_for_window_close:
+            return {
+                "status": "toast_present",
+                "message": "Blueprint notification toast is still visible.",
+                "visual_toast_detected": True,
+                "text_trigger_detected": False,
+                "name_candidate_present": False,
+                "scan_interval_ms": BLUEPRINT_SCAN_INTERVAL_MS,
+                "region": ocr_region.to_dict(),
+                "toast_crop_box": detection.crop_box,
+                "toast_detection": detection.to_dict(),
+                "captured_image": region_image,
+                "toast_image": toast_image,
+                "text": "",
+                "matches": [],
+                "blueprint_count": len(self.blueprints),
+                "warnings": (),
+                "errors": (),
+            }
+
+        pipeline = self.ocr_service.scan_image(toast_image, parser=None, settings=settings, preprocess=True)
+        text = pipeline.ocr_result.text if pipeline.ocr_result else ""
+        text_trigger_detected = detect_blueprint_reward_trigger(text)
+        name_candidate_present = blueprint_name_candidate_present(text) if text_trigger_detected else False
+        parsed_pipeline = pipeline
+        matches = []
+        parser_warnings = ()
+        parser_errors = ()
+        if pipeline.status == "ok" and text_trigger_detected and name_candidate_present:
+            try:
+                parser = RewardScannerParser(tuple(self.blueprints))
+                parsed_result = parser.parse(pipeline.ocr_result)
+                parsed_pipeline = OCRPipelineResult(
+                    status=pipeline.status,
+                    ocr_result=pipeline.ocr_result,
+                    parsed_result=parsed_result,
+                    message=pipeline.message,
+                    warnings=pipeline.warnings,
+                    errors=pipeline.errors,
+                    captured_image=pipeline.captured_image,
+                )
+                matches = parsed_result.data.get("matches", []) if parsed_result and parsed_result.data else []
+                parser_warnings = tuple(getattr(parsed_result, "warnings", ()) or ())
+                parser_errors = tuple(getattr(parsed_result, "errors", ()) or ())
+            except Exception as exc:
+                message = str(exc)
+                return {
+                    "status": "parse_error",
+                    "message": message,
+                    "visual_toast_detected": True,
+                    "text_trigger_detected": True,
+                    "name_candidate_present": name_candidate_present,
+                    "scan_interval_ms": BLUEPRINT_SCAN_INTERVAL_MS,
+                    "region": ocr_region.to_dict(),
+                    "toast_crop_box": detection.crop_box,
+                    "toast_detection": detection.to_dict(),
+                    "captured_image": region_image,
+                    "toast_image": toast_image,
+                    "pipeline": pipeline,
+                    "text": text,
+                    "matches": [],
+                    "blueprint_count": len(self.blueprints),
+                    "warnings": (),
+                    "errors": (message,),
+                    "parser_warnings": (),
+                    "parser_errors": (message,),
+                }
+
+        result = reward_scan_result_from_pipeline(parsed_pipeline, len(self.blueprints))
+        result.update({
+            "visual_toast_detected": True,
+            "text_trigger_detected": text_trigger_detected,
+            "name_candidate_present": name_candidate_present,
+            "scan_interval_ms": BLUEPRINT_SCAN_INTERVAL_MS,
+            "region": ocr_region.to_dict(),
+            "toast_crop_box": detection.crop_box,
+            "toast_detection": detection.to_dict(),
+            "captured_image": region_image,
+            "toast_image": toast_image,
+            "text": text,
+            "matches": matches,
+            "blueprint_count": len(self.blueprints),
+            "pipeline": parsed_pipeline,
+            "parser_warnings": parser_warnings,
+            "parser_errors": parser_errors,
+        })
+        return result
+
+    def on_trigger_check_result(self, request_id, result):
         if request_id != self.trigger_request_id:
             return
 
-        status = pipeline.status
-        text = pipeline.ocr_result.text if pipeline.ocr_result else ""
+        status = result.get("status", "")
+        text = result.get("text", "")
         state_before = self.reward_workflow.state
-        trigger_match = detect_blueprint_reward_trigger(text)
-        debug_session = self.save_trigger_debug_result(
-            pipeline=pipeline,
-            text=text,
-            trigger_match=trigger_match,
-            state_before=state_before,
-            state_after=self.reward_workflow.state,
-        )
         if status == "capture_error":
-            self.status_label.setText(f"Trigger capture failed locally: {pipeline.message}")
+            self.status_label.setText(f"Notification capture failed locally: {result.get('message', '')}")
             return
         if status == "missing_ocr":
             self.status_label.setText(
-                f"Local OCR engine unavailable: {pipeline.message}. Manual paste is available. "
+                f"Local OCR engine unavailable: {result.get('message', '')}. Manual paste is available. "
                 "Debug captures are stored locally when capture runs."
             )
+            self.save_notification_debug_result(result, state_before=state_before, state_after=self.reward_workflow.state)
             return
         if status in {"ocr_error", "parse_error"}:
-            self.status_label.setText(f"Trigger check failed locally: {pipeline.message}")
+            self.status_label.setText(f"Notification OCR failed locally: {result.get('message', '')}")
+            self.save_notification_debug_result(result, state_before=state_before, state_after=self.reward_workflow.state)
+            self.reward_workflow.wait_for_window_close()
             return
 
-        should_scan = self.reward_workflow.trigger_seen(text)
+        if status == "no_toast":
+            if self.reward_workflow.waiting_for_window_close:
+                self.reward_workflow.reset()
+            self.status_label.setText("Watching for Blueprint notification toast.")
+            return
+
+        if self.reward_workflow.waiting_for_window_close:
+            if result.get("visual_toast_detected"):
+                self.status_label.setText("Blueprint notification already processed. Waiting for the toast to close.")
+                return
+            self.reward_workflow.reset()
+            self.status_label.setText("Watching for Blueprint notification toast.")
+            return
+
+        trigger_match = bool(result.get("text_trigger_detected"))
+        should_scan = (
+            self.reward_workflow.trigger_seen(text)
+            if trigger_match
+            else self.reward_workflow.visual_toast_seen()
+        )
+        debug_session = self.save_notification_debug_result(
+            result,
+            state_before=state_before,
+            state_after=self.reward_workflow.state,
+        )
         if debug_session:
             debug_session.update_metadata({"scanner_state_after": self.reward_workflow.state})
-        if self.reward_workflow.waiting_for_window_close:
-            self.status_label.setText("Received Blueprint already processed. Waiting for the reward window to close.")
-            return
         if not trigger_match:
-            self.status_label.setText("Watching for Received Blueprint trigger.")
+            self.status_label.setText("Notification toast detected, but it was not a Blueprint reward.")
+            self.reward_workflow.wait_for_window_close()
+            if debug_session:
+                debug_session.update_metadata({"scanner_state_after": self.reward_workflow.state})
             return
         if should_scan:
-            self.status_label.setText("Received Blueprint trigger detected. Running full local OCR.")
-            self.start_full_reward_scan(debug_session=debug_session)
+            self.reward_workflow.start_scanning()
+            if not result.get("name_candidate_present"):
+                self.populate_matches([])
+                self.update_match_state(None)
+                self.status_label.setText("Blueprint notification detected, but no blueprint name was recognized.")
+                self.reward_workflow.wait_for_window_close()
+                return
+            if not result.get("blueprint_count"):
+                self.status_label.setText("Load blueprint names before parsing reward text.")
+                self.populate_matches([])
+                self.update_match_state(None)
+                self.reward_workflow.wait_for_window_close()
+                return
+            self.ocr_text.setPlainText(text)
+            self.apply_matches(text, result.get("matches", []))
+            self.reward_workflow.mark_matched()
+            self.reward_workflow.wait_for_window_close()
 
     def on_trigger_check_error(self, request_id, exc):
         if request_id != self.trigger_request_id:
             return
-        self.status_label.setText(f"Trigger check failed locally: {exc}")
+        self.status_label.setText(f"Notification check failed locally: {exc}")
 
     def finish_trigger_check(self, request_id):
         if request_id != self.trigger_request_id:
@@ -426,44 +608,61 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         self.scan_once_button.setEnabled(True)
         self.scan_once_button.setText("Check Now")
 
-    def save_trigger_debug_result(self, pipeline, text, trigger_match, state_before, state_after):
+    def save_notification_debug_result(self, result, state_before, state_after):
         if not is_ocr_debug_enabled():
             self.debug_status_label.setText(self.default_debug_status_text())
             return None
-        if not trigger_match and not self.should_save_nonmatch_debug_sample():
+        if not (
+            result.get("visual_toast_detected")
+            or result.get("text_trigger_detected")
+            or result.get("name_candidate_present")
+        ):
             return None
 
-        region = self.region()
-        trigger_region = None
-        if region:
-            profile = self.current_ocr_profile()
-            trigger_region = title_region_from_reward_region(
-                OCRRegion.from_tuple(region, name=REGION_NAME, profile=profile.key)
-            )
         session = start_ocr_debug_session(
             "blueprint_reward",
             metadata={
                 "workflow_name": "Blueprint Reward Scanner",
-                "phase": "trigger",
+                "phase": "notification",
                 "scanner_state_before": state_before,
                 "scanner_state_after": state_after,
-                "trigger_match": trigger_match,
-                "status": getattr(pipeline, "status", ""),
-                "message": getattr(pipeline, "message", ""),
-                "region": trigger_region.to_dict() if trigger_region else None,
-                "warnings": getattr(pipeline, "warnings", ()),
-                "errors": getattr(pipeline, "errors", ()),
-                "sample_policy": "trigger_match" if trigger_match else "throttled_nonmatch",
+                "workflow_state": state_before,
+                "visual_toast_detected": bool(result.get("visual_toast_detected")),
+                "text_trigger_detected": bool(result.get("text_trigger_detected")),
+                "name_candidate_present": bool(result.get("name_candidate_present")),
+                "trigger_match": bool(result.get("text_trigger_detected")),
+                "scan_interval_ms": result.get("scan_interval_ms", BLUEPRINT_SCAN_INTERVAL_MS),
+                "status": result.get("status", ""),
+                "message": result.get("message", ""),
+                "region": result.get("region"),
+                "toast_crop_box": list(result.get("toast_crop_box") or []),
+                "toast_detection": result.get("toast_detection"),
+                "ocr_text": result.get("text", ""),
+                "warnings": result.get("warnings", ()),
+                "errors": result.get("errors", ()),
+                "sample_policy": "visual_toast_or_text_trigger",
             },
         )
         if not session:
             self.debug_status_label.setText(self.default_debug_status_text())
             return None
-        session.save_image("trigger.png", getattr(pipeline, "captured_image", None))
-        session.save_text("trigger_ocr.txt", text)
+        session.save_image("trigger.png", result.get("toast_image"))
+        session.save_text("trigger_ocr.txt", result.get("text", ""))
+        if result.get("text_trigger_detected") or result.get("name_candidate_present"):
+            session.save_image("full_region.png", result.get("toast_image"))
+            session.save_text("full_ocr.txt", result.get("text", ""))
+            session.update_metadata({
+                "phase": "toast_scan",
+                "scanner_state": self.reward_workflow.state,
+                "full_scan_status": result.get("status", ""),
+                "full_scan_message": result.get("message", ""),
+                "full_region": result.get("region"),
+                "blueprint_count": result.get("blueprint_count", 0),
+                "match_count": len(result.get("matches") or []),
+                "parser_warnings": result.get("parser_warnings", ()),
+                "parser_errors": result.get("parser_errors", ()),
+            })
         self.debug_status_label.setText(f"Last debug capture saved: {session.path}")
-        if not trigger_match:
-            self.last_nonmatch_debug_saved_at = time.monotonic()
         return session
 
     def save_full_debug_result(self, request_id, result):
@@ -489,9 +688,6 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
             "parser_errors": result.get("parser_errors", ()),
         })
         self.debug_status_label.setText(f"Last debug capture saved: {session.path}")
-
-    def should_save_nonmatch_debug_sample(self):
-        return (time.monotonic() - self.last_nonmatch_debug_saved_at) >= NONMATCH_DEBUG_SAMPLE_SECONDS
 
     def default_debug_status_text(self):
         if is_ocr_debug_enabled():

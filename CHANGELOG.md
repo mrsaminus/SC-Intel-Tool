@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### OCR
+
+- Blueprint Reward Scanner now checks for the visual Star Citizen notification
+  toast before running OCR.
+- Rate-limited Blueprint scanner checks to one scan per second.
+- Stopped saving OCR debug captures for unrelated no-toast frames.
+- Blueprint scanner now OCRs the notification toast only after the toast is
+  visually detected.
+
 ### Wikelo
 
 - Fixed incomplete Wikelo data import for split-layout ship reward rows.

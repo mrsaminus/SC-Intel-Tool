@@ -1,4 +1,4 @@
-from .capture import ScreenshotService, normalize_region
+from .capture import ScreenshotService, normalize_region, preprocess_image
 from .engine import LocalOCREngine, MissingOCREngineError, OCREngineError
 from .parser import ParsedOCRResult
 from .profiles import normalize_profile
@@ -15,25 +15,8 @@ class OCRService:
     def run_ocr(self, image, settings=None):
         return self.engine.run(image, settings=settings or self.settings)
 
-    def scan_region(self, region, parser=None, capture_function=None, settings=None):
+    def scan_image(self, image, parser=None, settings=None, preprocess=True):
         settings = settings or self.settings
-        region = normalize_region(region)
-        try:
-            image = (
-                capture_function(region)
-                if capture_function
-                else self.screenshot_service.capture_region(region, settings=settings)
-            )
-        except Exception as exc:
-            message = str(exc)
-            result = OCRResult(errors=(message,), warnings=("capture_error",))
-            return OCRPipelineResult(
-                status="capture_error",
-                ocr_result=result,
-                message=message,
-                errors=(message,),
-            )
-
         image_error = self.image_validation_error(image)
         if image_error:
             result = OCRResult(errors=(image_error,), warnings=("capture_error",))
@@ -45,11 +28,12 @@ class OCRService:
                 captured_image=image,
             )
 
+        ocr_image = preprocess_image(image, settings=settings) if preprocess else image
         try:
-            result = self.run_ocr(image, settings=settings)
+            result = self.run_ocr(ocr_image, settings=settings)
         except MissingOCREngineError as exc:
             message = str(exc)
-            result = OCRResult(image_size=getattr(image, "size", None), warnings=("missing_ocr",), errors=(message,))
+            result = OCRResult(image_size=getattr(ocr_image, "size", None), warnings=("missing_ocr",), errors=(message,))
             return OCRPipelineResult(
                 status="missing_ocr",
                 ocr_result=result,
@@ -59,7 +43,7 @@ class OCRService:
             )
         except OCREngineError as exc:
             message = str(exc)
-            result = OCRResult(image_size=getattr(image, "size", None), warnings=("ocr_error",), errors=(message,))
+            result = OCRResult(image_size=getattr(ocr_image, "size", None), warnings=("ocr_error",), errors=(message,))
             return OCRPipelineResult(
                 status="ocr_error",
                 ocr_result=result,
@@ -69,7 +53,7 @@ class OCRService:
             )
         except Exception as exc:
             message = str(exc)
-            result = OCRResult(image_size=getattr(image, "size", None), warnings=("ocr_error",), errors=(message,))
+            result = OCRResult(image_size=getattr(ocr_image, "size", None), warnings=("ocr_error",), errors=(message,))
             return OCRPipelineResult(
                 status="ocr_error",
                 ocr_result=result,
@@ -102,6 +86,38 @@ class OCRService:
             errors=result.errors,
             captured_image=image,
         )
+
+    def scan_region(self, region, parser=None, capture_function=None, settings=None):
+        settings = settings or self.settings
+        region = normalize_region(region)
+        try:
+            image = (
+                capture_function(region)
+                if capture_function
+                else self.screenshot_service.capture_region(region, settings=settings)
+            )
+        except Exception as exc:
+            message = str(exc)
+            result = OCRResult(errors=(message,), warnings=("capture_error",))
+            return OCRPipelineResult(
+                status="capture_error",
+                ocr_result=result,
+                message=message,
+                errors=(message,),
+            )
+
+        image_error = self.image_validation_error(image)
+        if image_error:
+            result = OCRResult(errors=(image_error,), warnings=("capture_error",))
+            return OCRPipelineResult(
+                status="capture_error",
+                ocr_result=result,
+                message=image_error,
+                errors=(image_error,),
+                captured_image=image,
+            )
+
+        return self.scan_image(image, parser=parser, settings=settings, preprocess=False)
 
     def scan_profile_region(self, profile, region, parser=None, capture_function=None):
         profile = normalize_profile(profile)

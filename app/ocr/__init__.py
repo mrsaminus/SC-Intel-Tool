@@ -1,8 +1,13 @@
 from .capture import ScreenshotService, capture_region_image, preprocess_image
 from .blueprint_reward_workflow import (
     BLUEPRINT_REWARD_TRIGGER,
+    BLUEPRINT_SCAN_INTERVAL_MS,
     BlueprintRewardWorkflow,
+    ToastDetection,
+    blueprint_name_candidate_present,
+    crop_notification_toast,
     detect_blueprint_reward_trigger,
+    detect_notification_toast,
     title_region_from_reward_region,
 )
 from .confidence import clamp_confidence, confidence_label
@@ -42,6 +47,7 @@ from .settings import DEFAULT_OCR_SETTINGS, OCRSettings
 __all__ = [
     "DEFAULT_OCR_SETTINGS",
     "BLUEPRINT_REWARD_TRIGGER",
+    "BLUEPRINT_SCAN_INTERVAL_MS",
     "BlueprintRewardWorkflow",
     "HAULING_CONTRACTS_PROFILE_KEY",
     "HaulingContractsOCRParser",
@@ -64,12 +70,16 @@ __all__ = [
     "RewardScannerParser",
     "ScreenshotService",
     "TesseractOCREngine",
+    "ToastDetection",
+    "blueprint_name_candidate_present",
     "capture_region_image",
     "check_ocr_engine_availability",
     "clear_ocr_debug_captures",
     "clamp_confidence",
     "confidence_label",
+    "crop_notification_toast",
     "detect_blueprint_reward_trigger",
+    "detect_notification_toast",
     "format_debug_size",
     "get_ocr_debug_root",
     "get_ocr_debug_summary",
