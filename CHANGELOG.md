@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.8.10.1 - 2026-07-04
+
 ### OCR
 
 - Blueprint Reward Scanner now checks for the visual Star Citizen notification
