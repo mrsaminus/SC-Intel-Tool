@@ -78,7 +78,9 @@ SALVAGE_REFINERY_DETAILS = {
         "density": "Lowest density",
         "yield": "Highest yield",
         "time": "Longest refinery processing time",
-        "yield_multiplier": 1.3,
+        # Per-cSCU material conversion calibrated from a 4.9-era in-game refinery quote:
+        # 171,200 cSCU Construction Salvage via Ferron Exchange -> 25,680 cSCU.
+        "yield_multiplier": 0.75,
     },
 }
 

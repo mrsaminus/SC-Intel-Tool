@@ -272,6 +272,25 @@ def test_wikelo_old_schema_cache_is_not_reused_as_fresh(monkeypatch, tmp_path):
     assert not cache.cache_is_fresh(cache.WIKELO_CACHE_KEY)
 
 
+def test_wikelo_refresh_error_preserves_current_schema_cache(monkeypatch, tmp_path, qapp):
+    isolated_database(monkeypatch, tmp_path)
+    cache = reload_module("app.local_cache")
+    cache.save_wikelo_cache([sample_wikelo_item()])
+
+    wikelo_module = reload_module("app.gui.wikelo_tab")
+    tab = wikelo_module.WikeloItemsTab()
+
+    tab.on_wikelo_items_error(RuntimeError("source unavailable"), silent=True)
+    items, metadata = cache.load_wikelo_cache()
+
+    assert metadata.schema_version == cache.WIKELO_SCHEMA_VERSION
+    assert metadata.status == "error"
+    assert len(items) == 1
+    assert items[0].item_name == "Test Reward"
+    assert cache.cache_exists(cache.WIKELO_CACHE_KEY)
+    tab.close()
+
+
 def test_wikelo_uses_cache_before_live_refresh(monkeypatch, tmp_path, qapp):
     isolated_database(monkeypatch, tmp_path)
     cache = reload_module("app.local_cache")

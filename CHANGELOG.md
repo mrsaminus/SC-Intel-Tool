@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.8.10.2 - 2026-08-17
+
+### Alpha Final Stabilization
+
+- Corrected Construction Salvage refinery yield handling from the verified
+  171,200 cSCU Ferron Exchange in-game quote, preventing the old 44,512 cSCU
+  overestimate from returning.
+- Added an independent regression test for the observed Construction Salvage
+  quote: 171,200 cSCU input now yields 25,680 cSCU.
+- Fixed Wikelo refresh-failure metadata so a failed live refresh no longer
+  downgrades the cache schema or hides otherwise valid stale/offline data.
+- Removed the obsolete Reward Scanner full-region OCR path that was no longer
+  used by the visual notification-toast workflow.
+- Stabilized OCR debug settings tests by mocking OCR engine availability where
+  the test only verifies Settings UI wiring.
+
 ## 0.1.0-alpha.8.10.1 - 2026-07-04
 
 ### OCR

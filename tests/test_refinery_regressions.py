@@ -77,6 +77,16 @@ def edit_refinery_cell(tab, row, column, value):
     tab.on_refinery_item_changed(item)
 
 
+def test_construction_salvage_ferron_matches_observed_in_game_quote(refinery):
+    refinery.refinery_method_filter.setCurrentText("Ferron Exchange")
+
+    observed_yield = refinery.calculate_refinery_yield("Construction Salvage", 171200)
+
+    assert observed_yield == 25680
+    assert observed_yield != 44512
+    assert observed_yield / 171200 == pytest.approx(0.15)
+
+
 @pytest.mark.parametrize(
     ("method", "coefficient"),
     [

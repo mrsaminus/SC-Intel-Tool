@@ -58,12 +58,9 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         self.selected_match = None
         self.ownership_changed_callback = ownership_changed_callback
         self.scan_running = False
-        self.scan_once_running = False
         self.trigger_check_running = False
-        self.scan_once_request_id = 0
         self.trigger_request_id = 0
         self.last_trigger_check_started_at = 0.0
-        self.full_scan_debug_sessions = {}
         self.region_overlay = None
         self.ocr_profile_manager = OCRProfileManager()
         self.ocr_service = OCRService(settings=self.current_ocr_profile().to_settings())
@@ -245,7 +242,6 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         self.trigger_timer.stop()
         self.reward_workflow.reset()
         self.trigger_check_running = False
-        self.scan_once_running = False
         self.scan_once_button.setEnabled(True)
         self.scan_once_button.setText("Check Now")
         self.status_label.setText("Scanner is off. Enable it to watch for the Blueprint notification toast.")
@@ -253,7 +249,7 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
     def check_reward_trigger(self, force=False):
         if not self.enabled_checkbox.isChecked():
             return
-        if self.trigger_check_running or self.scan_once_running:
+        if self.trigger_check_running:
             if force:
                 self.status_label.setText("Scanner is already checking this region.")
             return
@@ -536,90 +532,6 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
         if request_id != self.trigger_request_id:
             return
         self.trigger_check_running = False
-        if not self.scan_once_running:
-            self.scan_once_button.setEnabled(True)
-            self.scan_once_button.setText("Check Now")
-
-    def start_full_reward_scan(self, debug_session=None):
-        if self.scan_once_running:
-            return
-        region = self.region()
-        if not region:
-            self.status_label.setText("Region disappeared before full scan could run.")
-            return
-        self.reward_workflow.start_scanning()
-        self.scan_once_running = True
-        self.scan_once_request_id += 1
-        request_id = self.scan_once_request_id
-        blueprints = tuple(self.blueprints)
-        profile = self.current_ocr_profile()
-        ocr_region = OCRRegion.from_tuple(
-            region,
-            name=REGION_NAME,
-            profile=profile.key,
-            description="BP Overview reward scanner capture region.",
-        )
-        parser = RewardScannerParser(blueprints)
-        self.scan_once_button.setEnabled(False)
-        self.scan_once_button.setText("Scanning...")
-        self.status_label.setText("Capturing full reward region and running local OCR...")
-        if debug_session:
-            self.full_scan_debug_sessions[request_id] = debug_session
-
-        self.start_background_task(
-            lambda: self.ocr_service.scan_profile_region(profile, ocr_region, parser=parser),
-            lambda result, current_request=request_id, count=len(blueprints): self.on_scan_once_result(
-                current_request,
-                reward_scan_result_from_pipeline(result, count),
-            ),
-            lambda exc, current_request=request_id: self.on_scan_once_error(current_request, exc),
-            lambda current_request=request_id: self.finish_scan_once(current_request),
-        )
-
-    def on_scan_once_result(self, request_id, result):
-        if request_id != self.scan_once_request_id:
-            return
-
-        self.save_full_debug_result(request_id, result)
-        status = result.get("status")
-        if status == "capture_error":
-            self.status_label.setText(f"Region capture failed locally: {result.get('message', '')}")
-            self.reward_workflow.wait_for_window_close()
-            return
-        if status == "missing_ocr":
-            self.status_label.setText(
-                f"Local OCR engine unavailable: {pipeline.message}. Manual paste is available. "
-                "Debug captures are stored locally when capture runs."
-            )
-            self.reward_workflow.wait_for_window_close()
-            return
-        if status == "ocr_error":
-            self.status_label.setText(f"Scan failed locally: {result.get('message', '')}")
-            self.reward_workflow.wait_for_window_close()
-            return
-
-        text = result.get("text", "")
-        self.ocr_text.setPlainText(text)
-        if not result.get("blueprint_count"):
-            self.status_label.setText("Load blueprint names before parsing reward text.")
-            self.populate_matches([])
-            self.update_match_state(None)
-            self.reward_workflow.wait_for_window_close()
-            return
-        self.apply_matches(text, result.get("matches", []))
-        self.reward_workflow.mark_matched()
-        self.reward_workflow.wait_for_window_close()
-
-    def on_scan_once_error(self, request_id, exc):
-        if request_id != self.scan_once_request_id:
-            return
-        self.status_label.setText(f"Scan failed locally: {exc}")
-
-    def finish_scan_once(self, request_id):
-        if request_id != self.scan_once_request_id:
-            return
-        self.full_scan_debug_sessions.pop(request_id, None)
-        self.scan_once_running = False
         self.scan_once_button.setEnabled(True)
         self.scan_once_button.setText("Check Now")
 
@@ -682,30 +594,6 @@ class RewardScannerTab(BackgroundTaskMixin, QWidget):
             })
         self.debug_status_label.setText(f"Last debug capture saved: {session.path}")
         return session
-
-    def save_full_debug_result(self, request_id, result):
-        session = self.full_scan_debug_sessions.get(request_id)
-        if not session:
-            return
-        region = self.region()
-        profile = self.current_ocr_profile()
-        ocr_region = OCRRegion.from_tuple(region, name=REGION_NAME, profile=profile.key) if region else None
-        session.save_image("full_region.png", result.get("captured_image"))
-        session.save_text("full_ocr.txt", result.get("text", ""))
-        session.update_metadata({
-            "phase": "full_scan",
-            "scanner_state": self.reward_workflow.state,
-            "full_scan_status": result.get("status", ""),
-            "full_scan_message": result.get("message", ""),
-            "full_region": ocr_region.to_dict() if ocr_region else None,
-            "blueprint_count": result.get("blueprint_count", 0),
-            "match_count": len(result.get("matches") or []),
-            "warnings": result.get("warnings", ()),
-            "errors": result.get("errors", ()),
-            "parser_warnings": result.get("parser_warnings", ()),
-            "parser_errors": result.get("parser_errors", ()),
-        })
-        self.debug_status_label.setText(f"Last debug capture saved: {session.path}")
 
     def default_debug_status_text(self):
         if is_ocr_debug_enabled():

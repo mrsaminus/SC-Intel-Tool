@@ -115,7 +115,7 @@ def test_reward_scanner_uses_ocr_service_pipeline(monkeypatch, tmp_path, qapp):
     assert tab.matches_table.rowCount() == 1
     assert tab.confirm_button.isEnabled()
     assert tab.reward_workflow.state == STATE_WAITING_FOR_WINDOW_CLOSE
-    assert not tab.scan_once_running
+    assert not tab.trigger_check_running
     assert tab.scan_once_button.isEnabled()
     debug_sessions = list((tmp_path / "SC-Intel-Tool" / "ocr_debug" / "blueprint_reward").iterdir())
     assert len(debug_sessions) == 1
@@ -436,7 +436,7 @@ def test_reward_scanner_manual_checks_are_rate_limited(monkeypatch, tmp_path, qa
 
 def test_reward_scanner_repeated_scan_is_ignored(monkeypatch, tmp_path, qapp):
     tab = build_scanner_tab(monkeypatch, tmp_path)
-    tab.scan_once_running = True
+    tab.trigger_check_running = True
     calls = []
     tab.start_background_task = lambda *args, **kwargs: calls.append(args)
 
@@ -451,9 +451,9 @@ def test_reward_scanner_repeated_scan_is_ignored(monkeypatch, tmp_path, qapp):
 
 def test_reward_scanner_stale_result_is_ignored(monkeypatch, tmp_path, qapp):
     tab = build_scanner_tab(monkeypatch, tmp_path)
-    tab.scan_once_request_id = 2
+    tab.trigger_request_id = 2
 
-    tab.on_scan_once_result(
+    tab.on_trigger_check_result(
         1,
         {
             "status": "ok",
@@ -472,7 +472,7 @@ def test_reward_scanner_stale_result_is_ignored(monkeypatch, tmp_path, qapp):
 
 def test_reward_scanner_pipeline_parse_error_shows_scan_failure(monkeypatch, tmp_path, qapp):
     tab = build_scanner_tab(monkeypatch, tmp_path)
-    tab.scan_once_request_id = 1
+    tab.trigger_request_id = 1
     pipeline = OCRPipelineResult(
         status="parse_error",
         ocr_result=OCRResult(text="bad text"),
@@ -482,13 +482,16 @@ def test_reward_scanner_pipeline_parse_error_shows_scan_failure(monkeypatch, tmp
     )
     tab_module = reload_module("app.gui.bp_overview.reward_scanner_tab")
 
-    tab.on_scan_once_result(
+    tab.on_trigger_check_result(
         1,
-        tab_module.reward_scan_result_from_pipeline(pipeline, blueprint_count=1),
+        {
+            **tab_module.reward_scan_result_from_pipeline(pipeline, blueprint_count=1),
+            "visual_toast_detected": True,
+        },
     )
     qapp.processEvents()
 
-    assert "Scan failed locally: parser exploded" in tab.status_label.text()
+    assert "Notification OCR failed locally: parser exploded" in tab.status_label.text()
     assert tab.reward_workflow.state == STATE_WAITING_FOR_WINDOW_CLOSE
     tab.close()
     tab.deleteLater()

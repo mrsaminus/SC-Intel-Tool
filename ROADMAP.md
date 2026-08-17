@@ -1,15 +1,18 @@
 # SC Intel Tool Roadmap
 
-Last updated: 2026-07-03
+Last updated: 2026-08-17
 
 SC Intel Tool is a Star Citizen desktop companion for player lookup, local
 intel notes, mining and salvage planning, trading, hauling manifests, item
 lookup, Wikelo tracking, blueprint/crafting reference, watchlists and local app
 activity events.
 
-The app is closing the public alpha phase. The next development phase begins
-with `0.2.0-beta`, focused on stability, truthful UI, local data safety,
-release reliability and tester-driven polish.
+The app is closing the public alpha phase. Final Alpha closure was briefly
+blocked by a Refinery correctness audit finding; `0.1.0-alpha.8.10.2` is the
+stabilization candidate that corrects that blocker and verifies the related
+Wikelo/offline-cache and Reward Scanner cleanup work. The next development
+phase begins with `0.2.0-beta`, focused on stability, truthful UI, local data
+safety, release reliability and tester-driven polish.
 
 ## Current Public App
 

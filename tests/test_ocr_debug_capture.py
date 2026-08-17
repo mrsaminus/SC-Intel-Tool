@@ -1,6 +1,7 @@
 import json
 import os
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from PIL import Image
@@ -104,6 +105,11 @@ def test_gitignore_protects_ocr_debug_folder():
 def test_settings_displays_ocr_debug_controls(monkeypatch, tmp_path, qapp):
     _database, _db_path = isolated_database(monkeypatch, tmp_path)
     settings_module = reload_module("app.gui.settings_tab")
+    monkeypatch.setattr(
+        settings_module,
+        "check_ocr_engine_availability",
+        lambda: SimpleNamespace(available=True, engine_name="Mock OCR", message=""),
+    )
 
     settings = settings_module.SettingsTab()
     settings.show()

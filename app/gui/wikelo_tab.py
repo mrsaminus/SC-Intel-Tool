@@ -26,6 +26,7 @@ from app.database import (
 )
 from app.local_cache import (
     WIKELO_CACHE_KEY,
+    WIKELO_SCHEMA_VERSION,
     cache_is_fresh,
     load_wikelo_cache,
     mark_cache_error,
@@ -209,7 +210,7 @@ class WikeloItemsTab(BackgroundTaskMixin, QWidget):
         self.populate_wikelo_results()
 
     def on_wikelo_items_error(self, exc, silent=False):
-        mark_cache_error(WIKELO_CACHE_KEY, "Public Wikelo spreadsheet", "1", str(exc))
+        mark_cache_error(WIKELO_CACHE_KEY, "Public Wikelo spreadsheet", WIKELO_SCHEMA_VERSION, str(exc))
         self.wikelo_status_label.setText(f"Wikelo data refresh failed: {exc}")
         if not silent:
             QMessageBox.warning(self, "Wikelo refresh failed", str(exc))
