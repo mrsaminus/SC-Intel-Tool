@@ -9,7 +9,7 @@ activity events.
 
 The app is closing the public alpha phase. Final Alpha closure was briefly
 blocked by a Refinery correctness audit finding; `0.1.0-alpha.8.10.2` is the
-stabilization candidate that corrects that blocker and verifies the related
+stabilization release that corrects that blocker and verifies the related
 Wikelo/offline-cache and Reward Scanner cleanup work. The next development
 phase begins with `0.2.0-beta`, focused on stability, truthful UI, local data
 safety, release reliability and tester-driven polish.
@@ -173,7 +173,17 @@ safety, release reliability and tester-driven polish.
 - Improve copy/export summaries where users actually need them.
 - Keep Home informative without turning it into a cluttered dashboard.
 
-### 4. Trading Polish
+### 4. Salvage Refinery Validation
+
+- Verify Construction Rubble, Construction Pieces and Construction Salvage
+  against additional real in-game examples.
+- Validate refinery/method combinations beyond the current verified
+  Construction Salvage Ferron Exchange quote.
+- Compare empirical results with current game-data/refinery constants.
+- Replace empirical calibration if authoritative current-game data establishes
+  a different salvage refinery model.
+
+### 5. Trading Polish
 
 - Keep UEX Trading and Create Routes as the public operational trading tools.
 - Improve saved/recent route organization.
@@ -181,7 +191,7 @@ safety, release reliability and tester-driven polish.
 - Consider optional route-quality enrichment from a trading tool only after the
   public UX and access handling have a proper design.
 
-### 5. BP Overview / Crafting Polish
+### 6. BP Overview / Crafting Polish
 
 - Improve Blueprint category readability and filtering.
 - Improve crafting material entry quality of life.
@@ -189,14 +199,14 @@ safety, release reliability and tester-driven polish.
 - Package or document OCR support only when it is reliable enough for normal
   users.
 
-### 6. Watchlists / Activity Log Polish
+### 7. Watchlists / Activity Log Polish
 
 - Improve manual refresh summaries.
 - Add optional export/import later.
 - Consider OS notifications later, after manual local events are stable.
 - Keep everything local-only by default.
 
-### 7. Hauling Polish
+### 8. Hauling Polish
 
 - Keep the Hauling Operations Center focused on local manifest workflows.
 - Improve copy/export formatting only after tester feedback.
